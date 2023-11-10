@@ -30,7 +30,12 @@ Timings and WebDriver Closure:
 
 Documented the time spent on the entire process, highlighting the dedication and effort invested.
 Closed the WebDriver at the conclusion of the script execution.
-Despite the challenges faced, your perseverance and innovative thinking led to the realization that automating the manual process of pressing Command + S and Enter, coupled with external libraries to simulate mouse clicks and keystrokes, provided a viable workaround for saving PDFs. This experience showcases your problem-solving skills and adaptability in the face of intricate web interactions and security barriers.
+Despite the challenges faced, your perseverance and innovative thinking led to the realization that automating the manual process of pressing Command + S and Enter, c oupled with external libraries to simulate mouse clicks and keystrokes, provided a viable workaround for saving PDFs. This experience showcases your problem-solving skills and adaptability in the face of intricate web interactions and security barriers.
 
 Youtubde Demo Link - Ask me for the demo link 
  
+
+~10 hrs of programming to save 55 paystubs in ~20 minutes
+when i could've spent ~1hr of just manually downloading each paystub
+but it was definitely worth it since its like a mini hack-a-thon for me to put 
+everything what i know and can do put it together. 
