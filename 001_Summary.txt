@@ -1,0 +1,35 @@
+In summary, your scripting journey involved tackling the complexities of interacting with a workday website to download PDFs, with various notable observations and challenges:
+
+Login and Navigation:
+
+Successfully initialized the WebDriver, logged in, and navigated to the targeted section on the workday website.
+Table Data Extraction:
+
+Effectively extracted and printed relevant data from the table, providing insights into dates, start/end dates, company, and amounts.
+Download Attempts:
+
+Encountered challenges when attempting to download PDFs using traditional methods.
+Faced redirects and struggled to fetch the correct PDF URL due to workday's robust security measures.
+Response Analysis:
+
+Conducted analysis on responses, checking status, content type, file size, PDF URL, and response headers.
+Encountered issues with redirects leading to unexpected login pages instead of the anticipated PDF content.
+Challenges and Limitations:
+
+Recognized the formidable security measures implemented by workday, hindering direct access to PDFs.
+Faced difficulties employing keypress events outside of Selenium when HTML elements were no longer available.
+Workarounds:
+
+Successfully utilized screenshots as an alternative means to obtain information.
+Extracted valuable date information from screenshots, providing a workaround for the inability to download PDFs directly.
+Conclusion:
+
+Acknowledged the effectiveness of workday's security measures in preventing large-scale information downloads.
+Successfully employed alternative methods, such as screenshots and date extraction, to achieve the desired outcomes.
+Timings and WebDriver Closure:
+
+Documented the time spent on the entire process, highlighting the dedication and effort invested.
+Closed the WebDriver at the conclusion of the script execution.
+Despite the challenges faced, your perseverance and innovative thinking led to the realization that automating the manual process of pressing Command + S and Enter, coupled with external libraries to simulate mouse clicks and keystrokes, provided a viable workaround for saving PDFs. This experience showcases your problem-solving skills and adaptability in the face of intricate web interactions and security barriers.
+
+Youtubde Demo Link - Ask me for the demo link
