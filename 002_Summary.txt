@@ -1,0 +1,30 @@
+User
+How can I leverage job searching w/ automation? So far, I learned and review Python Selenium. As a recently laid off, I want to automate applying to jobs on LinkedIn via Easy Apply. Can you provide ma high level architecture of what I need and tools to use before I even start coding it? 
+ChatGPT
+Certainly! Automating job searching and application processes can be a powerful way to streamline your job search. Before diving into coding, it's essential to plan the architecture of your automation system. Here's a high-level overview:
+
+High-Level Architecture:
+Job Search Platform: LinkedIn
+
+Choose the job search platform you want to automate. In your case, LinkedIn is the target. Be sure to review and comply with the platform's terms of service to avoid any issues.
+Automation Script: Python w/ Selenium
+
+Use Python with Selenium for web automation. Selenium is a powerful tool for interacting with websites, and it can simulate user actions like clicking buttons and filling out forms.
+WebDriver: ChromeDriver
+
+Choose a WebDriver compatible with Selenium and your preferred browser (e.g., ChromeDriver for Google Chrome). This will act as an intermediary between your script and the web browser.
+Job Listing Data Storage: SQLite
+
+You may want to store job listing data for future reference or analysis. Consider using a database (SQLite, MySQL, etc.) or a simple file system to store details like job title, company, and application status.
+Resume and Cover Letter Management: 
+
+If you're using the "Easy Apply" feature, you might need to upload your resume and cover letter. Automate the process of managing these documents. You can use a document management system or a dedicated folder on your computer.
+Logging and Monitoring: Logging System
+
+Implement a logging system to keep track of the automation process. This can help you troubleshoot issues and monitor the progress of your job applications.
+
+
+~2 hours playing w/ LinkedIn Easy Apply and created a https://miro.com/app/board/uXjVNOGrDgA=/?share_link_id=395369068045
+
+~2 hours milestone of getting a list of texts from the 24 job postings 
+tools picked up, lightshot, giphycatcher for mac users to take screenshots and gif recordings for quickly documenting learnings and demos
