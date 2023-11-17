@@ -28,3 +28,20 @@ Implement a logging system to keep track of the automation process. This can hel
 
 ~2 hours milestone of getting a list of texts from the 24 job postings 
 tools picked up, lightshot, giphycatcher for mac users to take screenshots and gif recordings for quickly documenting learnings and demos
+
+Blocker
+after working ~ 2 more hrs came across security verification check after logining too many times
+https://prnt.sc/DCpPwQ8rs3Db
+as I was navigating the application process for the easy apply
+
+11/16/23 ~ 1 hr I just found that I can workaround this since I have wait until element are presence and I just need to manually login and verify
+that way i can still proceed with the easy apply automation. 
+
+11/16/23 ~1 hr Just tried again around 10pm and I no longer need to verify anymore
+I also learned using try catch statement is very useful in just error handling and continuing w/ the script as I'm able to run throught the whole thing continiously and catching errors that I can fix on the spot which is pretty
+I will make note of that when writing test scripts, to always use try-catch exception statements as they is super helpful in moving forward the scripts
+
+11/17/23 ~ 2 https://prnt.sc/oSsjmGtdf6Pd reach a good milstone where I was able go through all 24 job posting and apply to those that easy apply and it took 13 minutes! 
+The try exception handled alot of errors. I think the additonal questions page w/ inputs of job expereince needs to be manually inputted every times
+since idk the questions directly and it's different everytime. And there was exceptional pages within the job application which is uncommon but workaroundable.
+For my next task, I want to keep looping for the next page and continue.
