@@ -1,7 +1,7 @@
-from ast import For
-
 from multiprocessing.connection import wait
 from selenium.common.exceptions import StaleElementReferenceException
+from selenium.common.exceptions import ElementClickInterceptedException
+
 import shutil
 import time
 import re
@@ -19,6 +19,8 @@ from selenium.webdriver.common.keys import Keys
 # Global variable
 wait = None
 driver = webdriver.Chrome()
+submit_button_clicked = False
+review_button_clicked = False
 
 def read_credentials_from_json(json_file_path):
     """
@@ -52,7 +54,7 @@ def main():
 
     # Login Page 
     global wait
-    wait = WebDriverWait(driver, 60)
+    wait = WebDriverWait(driver, 10)
     username_input = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, 'input[autocomplete="username"]')))
     username_input.send_keys(user_name)
     password_input = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, 'input[autocomplete="current-password"]')))
@@ -70,16 +72,16 @@ def main():
         
 
     # Function to get a list of items in https://prnt.sc/M-YQgNYdTNnP
-    ul_element = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, 'ul.scaffold-layout__list-container')))
+    ul_element = WebDriverWait(driver,60).until(EC.presence_of_element_located((By.CSS_SELECTOR, 'ul.scaffold-layout__list-container')))
     # Learning - https://prnt.sc/9KBp58duY-rO - You can select multiple attributes in the attached image | Milestone 002 - https://prnt.sc/bmUK_--qvZKZ
     list_items = ul_element.find_elements(By.CSS_SELECTOR, 'li.jobs-search-results__list-item')
     print("Number of list items:", len(list_items))
     counter = 0
     for item in list_items:
         item.click()
+        item.click()
         counter += 1
         print(f"Clicked on Job Posting {counter}")
-        time.sleep(2)
         # Clicking "Easy Apply" button | Learning on using substring within CSS Selector https://prnt.sc/0LbN5DZAiBMg
         try:
 
@@ -89,10 +91,23 @@ def main():
             print(f"Job Title: {job_title}, Company Name: {company_name}, Location: {location}")
 
             easy_apply_button_locator = (By.CSS_SELECTOR, 'button.jobs-apply-button[aria-label*="Easy Apply"]')
-            easy_apply_button = WebDriverWait(driver, 5).until(EC.presence_of_element_located(easy_apply_button_locator))
-            easy_apply_button.click()
-            print("Easy Apply button clicked")
-            navigate_application_process()
+            easy_apply_button = wait.until(EC.presence_of_element_located(easy_apply_button_locator))
+            max_retries = 3
+            for retry in range(max_retries):
+                time.sleep(2)
+                easy_apply_button.click()
+                print("Easy Apply button clicked")
+                # Wait for the modal to appear
+                try:
+                    WebDriverWait(driver, 10).until(
+                        EC.visibility_of_element_located((By.CSS_SELECTOR, 'div[data-test-modal-id="easy-apply-modal"]'))  # Adjust the locator based on your modal structure
+                    )
+                    print("Modal appeared!")
+                    navigate_application_process()
+                    break # Break the loop is successful
+                except Exception as e:
+                    print("Error waiting for the modal: ", str(e))
+                
         except TimeoutException:
             print("TimeoutException: Easy Apply button not found")
             continue
@@ -100,6 +115,23 @@ def main():
             print("StaleElementReferenceException: Retrying to click Easy Apply button")
             # Re-find the list items
             list_items = ul_element.find_elements(By.CSS_SELECTOR, 'li.jobs-search-results__list-item')
+            time.sleep(2)
+            easy_apply_button_locator = (By.CSS_SELECTOR, 'button.jobs-apply-button[aria-label*="Easy Apply"]')
+            easy_apply_button = wait.until(EC.presence_of_element_located(easy_apply_button_locator))
+            for retry in range(max_retries):
+                time.sleep(2)
+                easy_apply_button.click()
+                print("Easy Apply button clicked")
+                # Wait for the modal to appear
+                try:
+                    WebDriverWait(driver, 10).until(
+                        EC.visibility_of_element_located((By.CSS_SELECTOR, 'div[data-test-modal-id="easy-apply-modal"]'))  # Adjust the locator based on your modal structure
+                    )
+                    print("Modal appeared!")
+                    navigate_application_process()
+                    break # Break the loop is successful
+                except Exception as e:
+                    print("Error waiting for the modal: ", str(e))
             continue
 
     
@@ -129,93 +161,167 @@ def end_timer(start_time):
 
 def navigate_application_process():
     # Now, navigate through the application process based on https://miro.com/app/board/uXjVNOGrDgA=/ or https://prnt.sc/Goyrr_c_92tB
-    try:
-        navigate_to_contact_info_page()
-    except Exception as e:
-        print(f"Error navigating to Contact Info Page: {e}")
+    navigation_functions = [
+        navigate_to_contact_info_page,
+        navigate_to_home_address_page,
+        navigate_to_resume_page,
+        navigate_to_photo_page,
+        navigate_to_work_experience_page,
+        navigate_to_education_page,
+        navigate_to_additional_questions_page,
+        navigate_to_work_authorization_page,
+        navigate_to_review_application_page,
+        navigate_to_applied_page
+    ]
 
-    try:
-        navigate_to_home_address_page()
-    except Exception as e:
-        print(f"Error navigating to Home Address Page: {e}")
+   # Flag to check if "Submit application" is clicked
+    submit_button_clicked = False
+    review_button_clicked = False
 
-    try:
-        navigate_to_resume_page()
-    except Exception as e:
-        print(f"Error navigating to Resume Page: {e}")
-
-    try:
-        navigate_to_additional_questions_page()
-    except Exception as e:
-        print(f"Error navigating to Additional Questions Page: {e}")
-
-    try:
-        navigate_to_work_authorization_page()
-    except Exception as e:
-        print(f"Error navigating to Work Authorization Page: {e}")
-
-    try:
-        navigate_to_review_application_page()
-    except Exception as e:
-        print(f"Error navigating to Review Your Application Page: {e}")
-
-    try:
+    if submit_button_clicked:
         navigate_to_applied_page()
-    except Exception as e:
-        print(f"Error navigating to Applied Page: {e}")
+        submit_button_clicked = False
+    if review_button_clicked:
+        navigate_to_review_application_page()
+        navigate_to_applied_page()
+        review_button_clicked = False
 
+    for navigation_function in navigation_functions:
+        try:
+            navigation_function()
+        except TimeoutException:
+            print(f"TimeoutException: Timeout while navigating to {navigation_function.__name__}")
+        except Exception as e:
+            print(f"Error navigating to {navigation_function.__name__}: \n{e}")
 
 # Implement functions for navigating to each page
 def navigate_to_contact_info_page():
     # Implementation for navigating to Contact Info Page
-    try:
-        wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, 'button[aria-label="Continue to next step"]'))).click()
-        print("Just click \"Next\" on Contact Info Page")
-    except TimeoutException:
-        wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, 'button[aria-label="Submit application"]'))).click()
-        print("Just click \"Submit application\" on \"Contact Info Page\" Page")
+    global submit_button_clicked
+    contact_info_text = driver.find_element(By.CSS_SELECTOR, 'div.ph5 > div.pb4 > h3.t-16.t-bold').text
+    if contact_info_text == "Contact info":
+        print(f"Actual Text: \"{contact_info_text}\" Expected: \"Contact info\". Navigating through Contact info's page")
+        try:
+            wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, 'button[aria-label="Continue to next step"]'))).click()
+            print("Just click \"Next\" on Contact Info Page")
+        except TimeoutException:
+            wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, 'button[aria-label="Submit application"]'))).click()
+            print("Just click \"Submit application\" on \"Contact Info Page\" Page")
+            submit_button_clicked = True
+    else:
+        print(f"Actual Text: \"{contact_info_text}\" Expected: \"Contact info\". Skipped Contact info's page")
 
 def navigate_to_home_address_page():
     # Implementation for navigating to Home Address Page
-    time.sleep(2)
+    home_address_text = driver.find_element(By.CSS_SELECTOR, 'div.ph5 > div.pb4 > h3.t-16.t-bold').text
+    if home_address_text == "Home address":
+        print(f"Actual Text: \"{home_address_text}\" Expected: \"Home address\". Navigating through Home address's page")
+        input_element = driver.find_element(By.CSS_SELECTOR, '[id$="-city-HOME-CITY"]')
+        input_element.send_keys("Alameda County, California, United States")
+        pyautogui.press("enter")
+        wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, 'button[aria-label="Continue to next step"]'))).click()
+        print("Just click \"Next\" on Home Address Page")
+    else:
+        print(f"Actual Text: \"{home_address_text}\" Expected: \"Home address\". Skipped Home address's page")
 
+
+def navigate_to_photo_page():
+    # Implementation for navigating to Photo Page
+    photo_text = driver.find_element(By.CSS_SELECTOR, 'div.ph5 > div.pb4 > h3.t-16.t-bold').text
+    if photo_text == "Photo":
+        print(f"Actual Text: \"{photo_text}\" Expected: \"Photo\". Navigating through Photo's page")
+        wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, 'button[aria-label="Continue to next step"]'))).click()
+        print("Just click \"Next\" on Photo Page")
+    else:
+        print(f"Actual Text: \"{photo_text}\" Expected: \"Photo\". Skipped through Photo's page")
+
+
+def navigate_to_work_experience_page():
+    # Implementation for navigating to Work Experience Page
+    work_experience_text = driver.find_element(By.CSS_SELECTOR, 'h3.t-16.mb2 span.t-bold').text
+    if work_experience_text == "Work experience":
+        print(f"Actual Text: \"{work_experience_text}\" Expected: \"Work experience\". Navigating through Work experience's page")
+        wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, 'button[aria-label="Continue to next step"]'))).click()
+        print("Just click \"Next\" on Work Experience Page")
+    else:
+        print(f"Actual Text: \"{work_experience_text}\" Expected: \"Work experience\". Skipped Work experience's page")
+
+def navigate_to_education_page():
+    # Implementation for navigating to Work Experience Page
+    global review_button_clicked
+    education_text = driver.find_element(By.CSS_SELECTOR, 'h3.t-16.mb2 span.t-bold').text
+    if education_text == "Education":
+        print(f"Actual Text: \"{education_text}\" Expected: \"Education\". Navigating through Education's page")
+        try:
+            wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, 'button[aria-label="Continue to next step"]'))).click()
+            print("Just click \"Next\" on Education Page")
+        except TimeoutException:
+            wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, 'button[aria-label="Review your application"]'))).click()
+            print("Just click \"Review\" on \"Education\" Page")
+            review_button_clicked = True
+    else:
+        print(f"Actual Text: \"{education_text}\" Expected: \"Education\". Skipped Education's page")
 def navigate_to_resume_page():
     # Implementation for navigating to Resume Page
-    try:
-        WebDriverWait(driver, 5).until(EC.element_to_be_clickable((By.CSS_SELECTOR, 'button[aria-label="Continue to next step"]'))).click()
-        print("Just click \"Next\" on \"Resume\" Page")
-    except TimeoutException:
-        WebDriverWait(driver, 5).until(EC.element_to_be_clickable((By.CSS_SELECTOR, 'button[aria-label="Review your application"]'))).click()
-        print("Just click \"Review\" on \"Addition Questions\" Page")
+    global review_button_clicked
+    resume_text = driver.find_element(By.CSS_SELECTOR, 'div.ph5 > div.pb4 > h3.t-16.t-bold').text
+    if resume_text == "Resume":
+        print(f"Actual Text: \"{resume_text}\" Expected: \"Resume\". Navigating through Resume's page")
+        try:
+            wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, 'button[aria-label="Continue to next step"]'))).click()
+            print("Just click \"Next\" on \"Resume\" Page")
+        except TimeoutException:
+            wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, 'button[aria-label="Review your application"]'))).click()
+            print("Just click \"Review\" on \"Resume\" Page")
+            review_button_clicked = True
+    else:
+        print(f"Actual Text: \"{resume_text}\" Expected: \"Resume\". Skipping Resume's page")
 
 
 def navigate_to_additional_questions_page():
     # Implementation for navigating to Additional Questions Page
-    try:
-        WebDriverWait(driver, 5).until(EC.element_to_be_clickable((By.CSS_SELECTOR, 'button[aria-label="Continue to next step"]'))).click()
-        print("Just click \"Next\" on \"Addition Questions\" Page")
-    except TimeoutException:
-        WebDriverWait(driver, 5).until(EC.element_to_be_clickable((By.CSS_SELECTOR, 'button[aria-label="Review your application"]'))).click()
-        print("Just click \"Review\" on \"Addition Questions\" Page")
+    global review_button_clicked
+    additional_questions_text = driver.find_element(By.CSS_SELECTOR, 'div.ph5 > div.pb4 > h3.t-16.t-bold').text
+    if additional_questions_text == "Additional Questions":
+        print(f"Actual Text: \"{additional_questions_text}\" Expected: \"Additional Questions\". Navigating through Additional Questions' page")
+        try:
+            WebDriverWait(driver,30).until(EC.element_to_be_clickable((By.CSS_SELECTOR, 'button[aria-label="Continue to next step"]'))).click()
+            print("Just click \"Next\" on \"Addition Questions\" Page")
+        except TimeoutException:
+            wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, 'button[aria-label="Review your application"]'))).click()
+            print("Just click \"Review\" on \"Addition Questions\" Page")
+            review_button_clicked = True
+    else:
+        print(f"Actual Text: \"{additional_questions_text}\" Expected: \"Additional Questions\". Skipped Additional Questions' page")
 
 def navigate_to_work_authorization_page():
     # Implementation for navigating to Work Authorization Page
-    time.sleep(2)
-    wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, 'button[aria-label="Review your application"]'))).click()
-    print("Just click \"Next\" on \"Work Authorization\" Page")
+    work_authorization_text = driver.find_element(By.CSS_SELECTOR, 'div.ph5 > div.pb4 > h3.t-16.t-bold').text
+    if work_authorization_text == "Work authorization":
+        print(f"Actual Text: \"{work_authorization_text}\" Expected: \"Work authorization\". Navigating thought Work authorization's page")
+        wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, 'button[aria-label="Review your application"]'))).click()
+        print("Just click \"Next\" on \"Work Authorization\" Page")
+    else:
+        print(f"Actual Text: \"{work_authorization_text}\" Expected: \"Work authorization\". Skipped Work authorization's page")
 
 
 def navigate_to_review_application_page():
     # Implementation for navigating to Review Your Application Page
-    time.sleep(2)
-    wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, 'button[aria-label="Submit application"]'))).click()
-    print("Just click \"Submit application\" on \"Review your application\" Page")
-
+    review_application_text = driver.find_element(By.CSS_SELECTOR, 'div.ph5 > h3.t-18').text
+    global submit_button_clicked
+    if review_application_text == "Review your application":
+        print(f"Actual Text: \"{review_application_text}\" Expected: \"Review your application\". Navigating thought Review your application's page")
+        wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, 'button[aria-label="Submit application"]'))).click()
+        print("Just click \"Submit application\" on \"Review your application\" Page")
+        time.sleep(5)
+        submit_button_clicked = True
+    else:
+        print(f"Actual Text: \"{review_application_text}\" Expected: \"Review your application\". Skipped Review your application's page")
 def navigate_to_applied_page():
-    # Implementation for navigating to Applied Page 1
-    time.sleep(2)
+    # Implementation for navigating to Applied Page
     wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, 'button[aria-label="Dismiss"]'))).click()
     print("Just click \"X\" button on Applied Page")
+
 
 if __name__ == "__main__":
     # Start the timer

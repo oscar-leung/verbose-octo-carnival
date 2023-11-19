@@ -41,7 +41,30 @@ that way i can still proceed with the easy apply automation.
 I also learned using try catch statement is very useful in just error handling and continuing w/ the script as I'm able to run throught the whole thing continiously and catching errors that I can fix on the spot which is pretty
 I will make note of that when writing test scripts, to always use try-catch exception statements as they is super helpful in moving forward the scripts
 
-11/17/23 ~ 2 https://prnt.sc/oSsjmGtdf6Pd reach a good milstone where I was able go through all 24 job posting and apply to those that easy apply and it took 13 minutes! 
+11/17/23 ~ 2hrs https://prnt.sc/oSsjmGtdf6Pd reach a good milstone where I was able go through all 24 job posting and apply to those that easy apply and it took 13 minutes! 
 The try exception handled alot of errors. I think the additonal questions page w/ inputs of job expereince needs to be manually inputted every times
 since idk the questions directly and it's different everytime. And there was exceptional pages within the job application which is uncommon but workaroundable.
 For my next task, I want to keep looping for the next page and continue.
+
+~ 5 hrs I notice that the Easy Apply button turns clickable after a certain amount of time. That's subtle way to prevent buttons
+For additonal question page, it's hard to find balance to find what need to automated since there's always different questions and I need to manually input those and wait for rest script to move forward
+I was able to scrap off text from the additional questions
+Learned what pass is during script development as placeholder for functions
+
+it's 7:18pm pst, it's a good thing to know a reset state or go back to state to fix itself
+10:52pm - I learned that appending 
+&f_AL=true&origin=JOB_SEARCH_PAGE_JOB_FILTER
+to 
+https://www.linkedin.com/jobs/collections/recommended/?currentJobId=3756056091&f_AL=true&origin=JOB_SEARCH_PAGE_JOB_FILTER
+makes the recommended job list into all easy apply. Which would prove to be useful if I want all easy apply only.
+
+11/18/23 ~4 hrs working on this
+9:58 I would like to scrap the additional questions to reuse and input.
+10:32am I was able to implement the modal https://prnt.sc/1bNqkzYj_q9l to ensure the modal shows up when I click on easy apply
+11:55am Ensure I have reliable wifi otherwise, web elements will be at different speed
+So far, in the navigation process, there are different flows that I need to account and one things is the next, review, and submit buttons
+those take me to different flows and I don't necessary want to go throught every page, so I'm currenly settings flags for review and submit buttons https://prnt.sc/KhoBPes_godW
+12:21pm Implement https://prnt.sc/C0YfLPL8xn3W where I can skipped over pages as needed
+5:28 pm I've added an additional variable ensure I am on the right page. Now it's iterating and skipping timeout executions to reduce the time 
+6:13pm there's diveristy page and additonal page from to factor in
+10:32 pm https://www.linkedin.com/jobs/collections/recommended/?currentJobId=3762340359 has the education and work experience pages to work with  
