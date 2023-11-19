@@ -189,6 +189,7 @@ def navigate_application_process():
     for navigation_function in navigation_functions:
         try:
             navigation_function()
+            time.sleep(5)
         except TimeoutException:
             print(f"TimeoutException: Timeout while navigating to {navigation_function.__name__}")
         except Exception as e:

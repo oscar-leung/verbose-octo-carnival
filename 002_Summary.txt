@@ -68,3 +68,4 @@ those take me to different flows and I don't necessary want to go throught every
 5:28 pm I've added an additional variable ensure I am on the right page. Now it's iterating and skipping timeout executions to reduce the time 
 6:13pm there's diveristy page and additonal page from to factor in
 10:32 pm https://www.linkedin.com/jobs/collections/recommended/?currentJobId=3762340359 has the education and work experience pages to work with  
+11:26 pm came across a job posting in spanish, which was edge case and good to know in the future
