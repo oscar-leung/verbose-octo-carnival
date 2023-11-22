@@ -58,7 +58,7 @@ to
 https://www.linkedin.com/jobs/collections/recommended/?currentJobId=3756056091&f_AL=true&origin=JOB_SEARCH_PAGE_JOB_FILTER
 makes the recommended job list into all easy apply. Which would prove to be useful if I want all easy apply only.
 
-11/18/23 ~4 hrs working on this
+11/18/23 ~6 hrs working on this
 9:58 I would like to scrap the additional questions to reuse and input.
 10:32am I was able to implement the modal https://prnt.sc/1bNqkzYj_q9l to ensure the modal shows up when I click on easy apply
 11:55am Ensure I have reliable wifi otherwise, web elements will be at different speed
@@ -69,3 +69,14 @@ those take me to different flows and I don't necessary want to go throught every
 6:13pm there's diveristy page and additonal page from to factor in
 10:32 pm https://www.linkedin.com/jobs/collections/recommended/?currentJobId=3762340359 has the education and work experience pages to work with  
 11:26 pm came across a job posting in spanish, which was edge case and good to know in the future
+1:08 am and applied to over 200 jobs so far while tinkering and running the script so far which isnt too bad if I say so
+there's definitely alot more to learn and fix over time. Might be worth re-doing/re-factoring the whole thing too!
+At least I got 2 leads so far, one from linkedIn message and one phone call. Surprise that it works. 
+
+11/19/23
+11:09 am    The Save Application Modal is messing my script up. Need a way dismiss it when it shows up. Or ways to prevent from happening in.
+11:59 am    Summary so far https://prnt.sc/1jBjSu-FvtDc I think all in all I was able to applied consistently and applied to over 400 jobs so far use this automation on easy apply. Now lets this even further by building a framework :D moving to 003 now yay ~
+
+11/21/23    https://prnt.sc/Bd8jZar_qTMo took ~600 seconds to complete the first page with a 5-6 intervention so far - will reduce the number of interactions in 003 project
+
+todo        Photo Implementation page https://www.linkedin.com/jobs/collections/recommended/?currentJobId=3762694217

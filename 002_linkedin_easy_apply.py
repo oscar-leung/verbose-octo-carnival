@@ -40,6 +40,18 @@ def read_credentials_from_json(json_file_path):
 
     return user_name, password
 
+def click_discard_if_visible(modal_selector):
+    try:
+        modal_element = WebDriverWait(driver, 10).until(EC.visibility_of_element_located((By.CSS_SELECTOR, modal_selector)))
+
+        # If the modal is visible, click the "Discard" button
+        discard_button = modal_element.find_element(By.CSS_SELECTOR, 'button[data-test-dialog-secondary-btn]')
+        discard_button.click()
+
+    except TimeoutException:
+        # If the modal is not visible, do something else or skip
+        print("Save Application Modal not visible. Continuing")
+
 def main():
     """
     Your main script logic goes here.
@@ -54,7 +66,7 @@ def main():
 
     # Login Page 
     global wait
-    wait = WebDriverWait(driver, 10)
+    wait = WebDriverWait(driver, 2)
     username_input = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, 'input[autocomplete="username"]')))
     username_input.send_keys(user_name)
     password_input = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, 'input[autocomplete="current-password"]')))
@@ -78,13 +90,15 @@ def main():
     print("Number of list items:", len(list_items))
     counter = 0
     for item in list_items:
+        modal_selector = 'div[data-test-modal][role="alertdialog"].artdeco-modal--layer-confirmation[size="small"][aria-labelledby="dialog-label-st24"]'
+        click_discard_if_visible(modal_selector)
         item.click()
         item.click()
         counter += 1
         print(f"Clicked on Job Posting {counter}")
         # Clicking "Easy Apply" button | Learning on using substring within CSS Selector https://prnt.sc/0LbN5DZAiBMg
         try:
-
+            time.sleep(2)
             job_title = item.find_element(By.CSS_SELECTOR, 'a.job-card-container__link.job-card-list__title').text
             company_name = item.find_element(By.CSS_SELECTOR, 'span.job-card-container__primary-description').text
             location = item.find_element(By.CSS_SELECTOR, 'li.job-card-container__metadata-item').text
@@ -192,8 +206,8 @@ def navigate_application_process():
             time.sleep(5)
         except TimeoutException:
             print(f"TimeoutException: Timeout while navigating to {navigation_function.__name__}")
-        except Exception as e:
-            print(f"Error navigating to {navigation_function.__name__}: \n{e}")
+        except Exception:
+            print(f"Error navigating to {navigation_function.__name__}")
 
 # Implement functions for navigating to each page
 def navigate_to_contact_info_page():
@@ -322,6 +336,52 @@ def navigate_to_applied_page():
     # Implementation for navigating to Applied Page
     wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, 'button[aria-label="Dismiss"]'))).click()
     print("Just click \"X\" button on Applied Page")
+
+# Add this function to your code
+def scrape_and_append_to_json():
+    # Define the JSON file path
+    json_file_path = "additional_questions.json"
+
+    # Get all question elements
+    question_elements = driver.find_elements(By.CSS_SELECTOR, 'fieldset[data-test-form-builder-radio-button-form-component="true"]')
+
+    # Prepare a list to store question data
+    question_data_list = []
+
+    # Loop through each question element
+    for question_element in question_elements:
+        # Extract question text
+        question_text = question_element.find_element(By.CSS_SELECTOR, 'span[data-test-form-builder-radio-button-form-component__title]').text
+
+        # Extract options
+        options = question_element.find_elements(By.CSS_SELECTOR, 'div[data-test-text-selectable-option]')
+        option_data = []
+        for option in options:
+            option_text = option.find_element(By.CSS_SELECTOR, 'label[data-test-text-selectable-option__label]').text
+            option_data.append(option_text)
+
+        # Create a dictionary for the current question
+        question_data = {
+            'question': question_text,
+            'options': option_data
+        }
+
+        # Append the question data to the list
+        question_data_list.append(question_data)
+
+    # Read existing data from the JSON file
+    try:
+        with open(json_file_path, 'r') as json_file:
+            existing_data = json.load(json_file)
+    except FileNotFoundError:
+        existing_data = []
+
+    # Append the new question data to the existing data
+    existing_data.extend(question_data_list)
+
+    # Write the updated data to the JSON file
+    with open(json_file_path, 'w') as json_file:
+        json.dump(existing_data, json_file, indent=2)
 
 
 if __name__ == "__main__":

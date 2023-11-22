@@ -1,0 +1,51 @@
+[
+  {
+    "question": "Are you comfortable working in a remote setting?\nAre you comfortable working in a remote setting?",
+    "options": [
+      "Yes",
+      "No"
+    ]
+  },
+  {
+    "question": "Are you comfortable working in a hybrid setting?\nAre you comfortable working in a hybrid setting?",
+    "options": [
+      "Yes",
+      "No"
+    ]
+  },
+  {
+    "question": "Will you now, or in the future, require sponsorship for employment visa status (e.g. H-1B visa status)?\nWill you now, or in the future, require sponsorship for employment visa status (e.g. H-1B visa status)?",
+    "options": [
+      "Yes",
+      "No"
+    ]
+  },
+  {
+    "question": "Are you willing to take a drug test, in accordance with local law/regulations?\nAre you willing to take a drug test, in accordance with local law/regulations?",
+    "options": [
+      "Yes",
+      "No"
+    ]
+  },
+  {
+    "question": "Are you comfortable commuting to this job's location?\nAre you comfortable commuting to this job's location?",
+    "options": [
+      "Yes",
+      "No"
+    ]
+  },
+  {
+    "question": "Are you comfortable working in an onsite setting?\nAre you comfortable working in an onsite setting?",
+    "options": [
+      "Yes",
+      "No"
+    ]
+  },
+  {
+    "question": "Have you completed the following level of education: Bachelor's Degree?\nHave you completed the following level of education: Bachelor's Degree?",
+    "options": [
+      "Yes",
+      "No"
+    ]
+  }
+]
