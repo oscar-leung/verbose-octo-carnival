@@ -5,9 +5,29 @@
 
 11/20/23
     1:25 pm     
-todo - screening questions
+todo - screening questions - workaround by using while loop to keep pressing next
 https://www.linkedin.com/jobs/collections/recommended/?currentJobId=3742440460
 
 Job Boards
 wayup
 jobot
+caljobs
+
+11/29/23    Getting back into the groove of things
+11:00 am    Woke up after coming home 2 am
+3:31 pm     Back from Thanksgiving and replacing flat tire car w/ spare. Made car appointment 
+4:36 pm     Applied to over ~ 40 easy apply jobs while submitting calfresh and coveredCA. 
+5:22 pm     Will need apply for https://benefitscal.com/ApplyForBenefits/ABHCA after getting case number from
+10:43 pm    I will now start adding relevant to summary and add what I did in another exceptional
+            Familiarize myself with error handling library from selenium.common.exceptions
+            Using Exception as e: to catch everything for now
+            Learn about _ as a replacement https://prnt.sc/4UicUTc0EPd6 thanks to SonarLint linting away
+            Learn about logging https://prnt.sc/LfXIXa1cS91V
+11:57 pm    https://prnt.sc/DTj229T2DuV0 For my next step, I want to utlized page objects for the application process. That way I can figure the flow I needed as need rather following strictly a flow. 
+
+11/30/23    
+7:54 pm     https://prnt.sc/pCm1UF5RuqxQ Able to print all easy apply job description
+            https://prnt.sc/ObFEkmLnqjSI Figure that not every element is rendered but on the dom it still shows.
+10:22 pm    003_Milestone_Screen Shot 2023-11-30 at 10.21.11 PM I was able get a fully working library for the linkedin bot! The code is much cleaner and robust. And it even keep going next rather expecting the flows. The downside right now is that the elements aren't being loaded it at max, it can go to 7 unless I scroll down or something to make the element appear
+11:30 am    https://prnt.sc/s8bDeu--r5rF New milestone! Applied to 100+ jobs in less than hour so far with this :) Pretty satisfied so far and I think I'm ready to put this on portfolio as a demo. I can run it pretty seemless now and I can manually go over the additional questions everytime. The best part utlized ipython! That helped a ton when it comes to troubleshooting and debugging my project.
+12:23 am    Applied up to 180 jobs so far. 
