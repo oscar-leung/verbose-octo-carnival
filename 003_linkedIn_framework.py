@@ -74,7 +74,7 @@ class LinkedInBot:
                 print("Next Button Clicked!")
                 time.sleep(1)
             except TimeoutException:
-                print("TimeoutException in easy_application_process. Looking for submit button now.")
+                print("TimeoutException in easy_application_process.")
                 break  # Break out of the loop if the "Review your application" button is not found within the timeout
 
         try:
@@ -124,7 +124,7 @@ class LinkedInBot:
 
 if __name__ == "__main__":
     oscar_bot = LinkedInBot()
-    oscar_bot.login("oscarleung1@gmail.com","Bumblebee5%2022")
+    oscar_bot.login("","")
     oscar_bot.navigate_to("https://www.linkedin.com/jobs/collections/recommended/")
     job_list = oscar_bot.get_job_list()
     oscar_bot.apply(job_list)

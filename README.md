@@ -40,3 +40,9 @@ Framework Development: Consider building a framework for better code organizatio
 Resume and Cover Letter Automation: Explore options for automating the upload of resumes and cover letters.
 Conclusion
 The project successfully automated the job application process on LinkedIn, demonstrating effective use of Selenium for web automation. Ongoing enhancements and optimizations are planned for future iterations.
+
+12/01/23
+Added 003_linkedIn_framework.py
+Were I basically made it more robust and maintainable than 002_linkedin_easy_apply.py. It's able to keep applying selective jobs. Using IPython, I can combine manual and automation to work as effecienity as I can since Ipython doesn't closes out when errors. Avoid verification. And I can manually submit what roles and answer addtional questions as needed. Applying to over 100 jobs in 30 minutes at best, which is not bad. With that in the pipeline, I can focus on other future projects while applying to jobs. And with what I learned so far, I can continue automating website tasks as I see fit for my day to day work. :D
+
+Check out my https://oscar-leung.netlify.app/ portfolio if you read this far
