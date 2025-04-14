@@ -101,6 +101,14 @@ class LinkedInBot:
         except TimeoutException:
             print("TimeoutException: Done button not found.")
 
+        try:
+            dismiss_button = self.wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, 'button[aria-label="Dismiss"]')))
+            dismiss_button.click()
+            print("Dismiss Button Clicked!")
+            time.sleep(1)  # Optional: Add a delay to allow the modal to close
+        except TimeoutException:
+            print("TimeoutException: Dismiss button not found.")
+
             
     def retry_clicks(self, btn_selector:str, tries:int):
         max_retries = tries
@@ -124,7 +132,13 @@ class LinkedInBot:
 
 if __name__ == "__main__":
     oscar_bot = LinkedInBot()
-    oscar_bot.login("","")
+    oscar_bot.login("oscarleung1@gmail.com","Bumblebee5%2022")
     oscar_bot.navigate_to("https://www.linkedin.com/jobs/collections/recommended/")
     job_list = oscar_bot.get_job_list()
     oscar_bot.apply(job_list)
+
+    oscar_bot.driver.find_element(By.ID,"username").send_keys("oscarleung1@gmail.com")
+    oscar_bot.driver.find_element(By.ID,"password").send_keys("Bumblebee5%2022")
+    oscar_bot.driver.find_element(By.XPATH, "//button[@type='submit']").click()
+    oscar_bot.driver.find_element(By.XPATH, "//a//span[@title='Jobs']").click()
+    oscar_bot.driver.find_element(By.XPATH, "//a[.//strong[contains(text(),'Easy Apply')]]").click()

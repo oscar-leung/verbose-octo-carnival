@@ -46,3 +46,157 @@ Added 003_linkedIn_framework.py
 Were I basically made it more robust and maintainable than 002_linkedin_easy_apply.py. It's able to keep applying selective jobs. Using IPython, I can combine manual and automation to work as effecienity as I can since Ipython doesn't closes out when errors. Avoid verification. And I can manually submit what roles and answer addtional questions as needed. Applying to over 100 jobs in 30 minutes at best, which is not bad. With that in the pipeline, I can focus on other future projects while applying to jobs. And with what I learned so far, I can continue automating website tasks as I see fit for my day to day work. :D
 
 Check out my https://oscar-leung.netlify.app/ portfolio if you read this far
+
+
+01/30/25
+keywords
+source venv/bin/activate
+ipython
+
+02/19/25
+linkedin global search
+("QA Engineer" OR "Quality Assurance" OR "SQA" OR "Software Engineer" OR "Automation Engineer" OR "Software Tester" OR "Test Engineer" OR "QA Automation" OR "Test Automation" OR "Front-End Developer" OR "React Developer" OR "Angular Developer" OR "Web Developer" OR "Mobile Developer" OR "UI Developer" OR "UX Developer" OR "Full-Stack Developer" OR "Test Lead" OR "Software Development Engineer in Test" OR "SDET")  
+OR  
+("Salesforce" OR "Jira" OR "Selenium" OR "Java" OR "Python" OR "TestRail" OR "Expresso" OR "SQL" OR "GitHub" OR "Jenkins" OR "TeamCity" OR "Automation Framework" OR "Regression Testing" OR "Unit Testing" OR "Smoke Testing" OR "Exploratory Testing" OR "Angular" OR "React" OR "Vue.js" OR "Node.js" OR "HTML" OR "CSS" OR "JavaScript" OR "TypeScript" OR "Swift" OR "Kotlin" OR "Android" OR "iOS" OR "Flutter" OR "Vue" OR "Redux" OR "Firebase" OR "Copado" OR "CI/CD" OR "DevOps" OR "TestNG" OR "Appium" OR "Figma")
+
+("QA Engineer" OR "Quality Assurance" OR "SQA" OR "Software Engineer" OR "Automation Engineer" OR "Software Tester" OR "Test Engineer" OR "QA Automation" OR "Test Automation" OR "Front-End Developer" OR "React Developer" OR "Angular Developer" OR "Web Developer" OR "Mobile Developer" OR "UI Developer" OR "UX Developer" OR "Full-Stack Developer" OR "Test Lead" OR "Software Development Engineer in Test" OR "SDET" OR "Machine Learning Engineer" OR "AI Engineer" OR "Data Scientist")  
+OR
+("Salesforce" OR "Jira" OR "Selenium" OR "Java" OR "Python" OR "TestRail" OR "Expresso" OR "SQL" OR "GitHub" OR "Jenkins" OR "TeamCity" OR "Automation Framework" OR "Regression Testing" OR "Unit Testing" OR "Smoke Testing" OR "Exploratory Testing" OR "Angular" OR "React" OR "Vue.js" OR "Node.js" OR "HTML" OR "CSS" OR "JavaScript" OR "TypeScript" OR "Swift" OR "Kotlin" OR "Android" OR "iOS" OR "Flutter" OR "Vue" OR "Redux" OR "Firebase" OR "Copado" OR "CI/CD" OR "DevOps" OR "TestNG" OR "Appium" OR "Figma" OR "TensorFlow" OR "PyTorch" OR "Scikit-learn" OR "Keras" OR "OpenCV" OR "Pandas" OR "NumPy" OR "Matplotlib" OR "SciPy" OR "Hugging Face")  
+
+
+("Quality Assurance Engineer" OR "QA Engineer" OR "Software Test Engineer" OR "Software Quality Assurance Engineer" OR "Software QA Engineer" OR "SDET" OR "Software Development Engineer in Test" OR "Software Engineer in Test" OR "Software Developer in Test" OR "Test Engineer" OR "Software Engineer")  
+OR  
+("Quality Assurance" OR "Java" OR "Testing" OR "Software Quality Assurance" OR "Selenium" OR "Selenium WebDriver" OR "Manual Testing" OR "Regression Testing" OR "Test Cases" OR "Functional Testing" OR "Black Box Testing" OR "Mobile Testing" OR "QA Engineering")  
+
+("QA Engineer") OR
+("Quality Assurance") OR
+("SQA") OR
+("Software Engineer") OR
+("Automation Engineer") OR
+("Software Tester") OR
+("Test Engineer") OR
+("QA Automation") OR
+("Test Automation") OR
+("Front-End Developer") OR
+("React Developer") OR
+("Angular Developer") OR
+("Web Developer") OR
+("Mobile Developer") OR
+("UI Developer") OR
+("UX Developer") OR
+("Full-Stack Developer") OR
+("Test Lead") OR
+("Software Development Engineer in Test") OR
+("SDET") OR
+("Machine Learning Engineer") OR
+("AI Engineer") OR
+("Data Scientist") OR
+("Cloud Engineer") OR
+("DevOps Engineer") OR
+("Cybersecurity Specialist") OR
+("Data Analyst") OR
+("Product Manager") OR
+("Blockchain Developer") OR
+("Salesforce") OR
+("Jira") OR
+("Selenium") OR
+("Java") OR
+("Python") OR
+("TestRail") OR
+("Espresso") OR
+("SQL") OR
+("GitHub") OR
+("Jenkins") OR
+("TeamCity") OR
+("Automation Framework") OR
+("Regression Testing") OR
+("Unit Testing") OR
+("Smoke Testing") OR
+("Exploratory Testing") OR
+("Angular") OR
+("React") OR
+("Vue.js") OR
+("Node.js") OR
+("HTML") OR
+("CSS") OR
+("JavaScript") OR
+("TypeScript") OR
+("Swift") OR
+("Kotlin") OR
+("Android") OR
+("iOS") OR
+("Flutter") OR
+("Redux") OR
+("Firebase") OR
+("Copado") OR
+("CI/CD") OR
+("DevOps") OR
+("TestNG") OR
+("Appium") OR
+("Figma") OR
+("TensorFlow") OR
+("PyTorch") OR
+("OpenCV") OR
+("Pandas") OR
+("NumPy") OR
+("Matplotlib") OR
+("SciPy") OR
+("Hugging Face") OR
+("AWS") OR
+("Azure") OR
+("Google Cloud") OR
+("Docker") OR
+("Kubernetes") OR
+("Microservices") OR
+("GraphQL") OR
+("Django") OR
+("Flask") OR
+("Spring Boot") OR
+("Rust") OR
+("Go") OR
+("Ruby") OR
+("PHP") OR
+("Perl") OR
+("Scala") OR
+("SwiftUI") OR
+("AR/VR") OR
+("Unity") OR
+("Unreal Engine") OR
+("Blockchain") OR
+("Solidity") OR
+("Smart Contracts") OR
+("RPA") OR
+("Robotic Process Automation") OR
+("Big Data") OR
+("Hadoop") OR
+("Spark") OR
+("Kafka") OR
+("ElasticSearch") OR
+("Data Mining") OR
+("Data Warehousing") OR
+("Business Intelligence") OR
+("ETL") OR
+("Airflow") OR
+("Tableau") OR
+("Power BI") OR
+("Snowflake") OR
+("Redshift") OR
+("Looker") OR
+("Agile") OR
+("Scrum") OR
+("Kanban") OR
+("Project Management") OR
+("Leadership") OR
+("Communication") OR
+("Problem-Solving") OR
+("Critical Thinking") OR
+("Collaboration") OR
+("Adaptability") OR
+("Creativity") OR
+("Time Management")
+
+
+03/21/2025
+(("QA Engineer") OR ("Quality Assurance") OR ("SQA") OR ("Software Engineer") OR ("Automation Engineer") OR ("Software Tester") OR ("Test Engineer") OR ("QA Automation") OR ("Test Automation") OR ("Front-End Developer") OR ("React Developer") OR ("Angular Developer") OR ("Web Developer") OR ("Mobile Developer") OR ("UI Developer") OR ("UX Developer") OR ("Full-Stack Developer") OR ("Software Development Engineer in Test") OR ("SDET") OR ("Machine Learning Engineer") OR ("AI Engineer") OR ("Data Scientist") OR ("Cloud Engineer") OR ("DevOps Engineer") OR ("Cybersecurity Specialist") OR ("Data Analyst") OR ("Product Manager") OR ("Blockchain Developer") OR ("Salesforce") OR ("Jira") OR ("Selenium") OR ("Java") OR ("Python") OR ("TestRail") OR ("Espresso") OR ("SQL") OR ("GitHub") OR ("Jenkins") OR ("TeamCity") OR ("Automation Framework") OR ("Regression Testing") OR ("Unit Testing") OR ("Smoke Testing") OR ("Exploratory Testing") OR ("Angular") OR ("React") OR ("Vue.js") OR ("Node.js") OR ("HTML") OR ("CSS") OR ("JavaScript") OR ("TypeScript") OR ("Swift") OR ("Kotlin") OR ("Android") OR ("iOS") OR ("Flutter") OR ("Redux") OR ("Firebase") OR ("Copado") OR ("CI/CD") OR ("DevOps") OR ("TestNG") OR ("Appium") OR ("Figma") OR ("TensorFlow") OR ("PyTorch") OR ("OpenCV") OR ("Pandas") OR ("NumPy") OR ("Matplotlib") OR ("SciPy") OR ("Hugging Face") OR ("AWS") OR ("Azure") OR ("Google Cloud") OR ("Docker") OR ("Kubernetes") OR ("Microservices") OR ("GraphQL") OR ("Django") OR ("Flask") OR ("Spring Boot") OR ("Rust") OR ("Go") OR ("Ruby") OR ("PHP") OR ("Perl") OR ("Scala") OR ("SwiftUI") OR ("AR/VR") OR ("Unity") OR ("Unreal Engine") OR ("Blockchain") OR ("Solidity") OR ("Smart Contracts") OR ("RPA") OR ("Robotic Process Automation") OR ("Big Data") OR ("Hadoop") OR ("Spark") OR ("Kafka") OR ("ElasticSearch") OR ("Data Mining") OR ("Data Warehousing") OR ("Business Intelligence") OR ("ETL") OR ("Airflow") OR ("Tableau") OR ("Power BI") OR ("Snowflake") OR ("Redshift") OR ("Looker") OR ("Agile") OR ("Scrum") OR ("Kanban") OR ("Project Management") OR ("Leadership") OR ("Communication") OR ("Problem-Solving") OR ("Critical Thinking") OR ("Collaboration") OR ("Adaptability") OR ("Creativity") OR ("Time Management"))
+AND NOT ("Manager") AND NOT ("Engineering Manager") AND NOT ("Senior Manager") 
+AND NOT ("Lead") AND NOT ("Principal") AND NOT ("Consultant")
