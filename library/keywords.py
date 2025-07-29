@@ -2,6 +2,8 @@ from selenium.webdriver.common.by import By
 from collections import Counter
 from collections import defaultdict
 
+# The purpose of the keywords is to help me write automation by collecting data from the dom page. 
+
 def find_all_interactable(driver):
     selectors = [
         "button",

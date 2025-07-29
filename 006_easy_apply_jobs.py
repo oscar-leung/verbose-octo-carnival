@@ -9,6 +9,15 @@ from selenium.common.exceptions import StaleElementReferenceException,TimeoutExc
 from selenium.webdriver.support.ui import Select
 from selenium.webdriver.common.keys import Keys
 import pyautogui
+from dotenv import load_dotenv
+import os
+
+# Load variables from .env
+load_dotenv()
+
+
+username = os.getenv("LINKIN_USERNAME")
+password = os.getenv("LINKIN_PASSWORD")
 
 
 
@@ -1265,8 +1274,8 @@ def easy_apply():
 # ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––  this python script does easy applys jobs for me ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
 driver = webdriver.Chrome()
 driver.get("https://www.linkedin.com/login")
-driver.find_element(By.ID,"username").send_keys("oscarleung1@gmail.com")
-driver.find_element(By.ID,"password").send_keys("Bumblebee5%2022")
+driver.find_element(By.ID,"username").send_keys(username)
+driver.find_element(By.ID,"password").send_keys(password)
 driver.find_element(By.XPATH, "//button[@type='submit']").click()
 driver.find_element(By.XPATH, "//a//span[@title='Jobs']").click()
 driver.get("https://www.linkedin.com/jobs/search/")
