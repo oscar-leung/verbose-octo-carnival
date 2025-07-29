@@ -567,8 +567,11 @@ def enter_experience(driver, label_text, experience_years):
     """
     try:
         # Locate the label by its text
-        label = driver.find_element(By.XPATH, f"//label[contains(text(), '{label_text}')]")
-        
+        # label = driver.find_element(By.XPATH, f"//label[contains(text(), '{label_text}')]")
+        label = driver.find_element(By.XPATH, f"//label[.//span[contains(normalize-space(), '{label_text}')]]")
+        # label = driver.find_element(By.XPATH, f"//label[.//span[contains(normalize-space(), 'Location (city)')]]")
+
+
         # Get the 'for' attribute of the label, which matches the input field's 'id'
         input_id = label.get_attribute("for")
         
@@ -595,11 +598,9 @@ def select_radio_button(driver, question_text, option_value):
         # Locate the fieldset by matching the question text within the legend or span
         fieldset = driver.find_element(By.XPATH, f"//fieldset[.//span[contains(text(), \"{question_text}\")]]")
 
-        # Locate the input radio button by value
-        input_element = fieldset.find_element(By.XPATH, f".//input[@value='{option_value}']")
-
-        # Find the associated label by using the 'for' attribute from the input element
-        label = fieldset.find_element(By.XPATH, f".//label[@for='{input_element.get_attribute('id')}']")
+        # Find the label with the option text (Yes/No)
+        label = fieldset.find_element(By.XPATH, f".//label[normalize-space()='No']")
+        
 
         # Click the label to select the radio button
         label.click()
@@ -677,6 +678,7 @@ def easy_apply():
     enter_experience(driver, "City", "Santa Clara")
     enter_experience(driver, "State or Province", "California")
     enter_experience(driver, "Zip/Postal Code", "95050")
+    enter_experience(driver, "Location (city)", "Santa Clara County, California, United States")
     select_dropdown_option(driver, "Country", "UNITED STATES")
 
     # Resume Info
@@ -690,6 +692,8 @@ def easy_apply():
 
     # Work Auth
     select_radio_button(driver, "Will you now, or in the future, require sponsorship for employment visa status (e.g. H-1B visa status)?", "No")
+    select_radio_button(driver, "Are you legally authorized to work in the US without restriction?", "No")
+    select_radio_button(driver, "Will you now or in the future require visa sponsorship or a visa transfer?", "No")
     click_button("//button[@aria-label='Review your application']")
 
 
@@ -717,7 +721,19 @@ def easy_apply():
 
     # addtional questions – input fields
 
-
+    enter_experience(driver, "How many years of work experience do you have with Liquibase?", "1")
+    enter_experience(driver, "How many years of work experience do you have with JavaScript Frameworks?", "2")
+    enter_experience(driver, "How many years of work experience do you have with Vanilla JavaScript?", "2")
+    enter_experience(driver, "How many years of Overall work experience do you have?", "5")
+    enter_experience(driver, "How many years of work experience do you have with Load Testing?", "1")
+    enter_experience(driver, "How many years of experience do you have creating Physical Design methodology flows?", "1")
+    enter_experience(driver, "What is your expected hourly pay on W2 basis? (You will work with us as a direct employee, not c2c /1099)", "40")
+    enter_experience(driver, "How many years of experience do you have with DevOps & CI/CD (Git, Jenkins, Docker)?", "1")
+    enter_experience(driver, "How many years of experience do you have with AWS (Serverless/Lambda)?", "1")
+    enter_experience(driver, "How many years of experience do you have with React/Angular.js?", "1")
+    enter_experience(driver, "How many years of experience do you have in designing APIs with Node.js?", "1")
+    enter_experience(driver, "How many years of work experience do you have with Data Driven Testing?", "1")
+    enter_experience(driver, "How many years of Hospitals and Health Care experience do you currently have?", "1")
     enter_experience(driver, "How many years of work experience do you have with RCM?", "1")
     enter_experience(driver, "How many years of work experience do you have with Business-to-Business (B2B)?", "1")
     enter_experience(driver, "How many years of work experience do you have with Product Management?", "1")
@@ -1064,8 +1080,20 @@ def easy_apply():
     enter_experience(driver, "How many years of work experience do you have with GitHub Copilot?", "1")
     enter_experience(driver, "How many years of work experience do you have with Microsoft Copilot?", "1")
     enter_experience(driver, "How many years of work experience do you have with SAP ERP?", "1")
+    enter_experience(driver, "How many years of work experience do you have with Micro Focus Quality Center?", "1")
+    enter_experience(driver, "How many years of work experience do you have with Azure Kubernetes Service (AKS)?", "1")
+    enter_experience(driver, "How long have you been working in software development?", "2")
+    enter_experience(driver, "How many years of work experience do you have with Large Language Models (LLM)?", "1")
+    enter_experience(driver, "How many years of work experience do you have with GitHub Models?", "1")
+    enter_experience(driver, "How many years of work experience do you have with E-commerce SEO?", "1")
 
     # Additional questions – dropdown menu
+    select_dropdown_option(driver, "Do you have knowledge of Shopify Hydrogen for headless e-commerce development.", "No")
+    select_dropdown_option(driver, "Do you have any references from previous clients?", "Yes")
+    select_dropdown_option(driver, "Are you comfortable working in Flutter?", "No")
+    select_dropdown_option(driver, "Do you have a github profile?", "Yes")
+    select_dropdown_option(driver, "Do you need Visa Sponsorship, now or in the future to work on our W2?", "No")
+    select_dropdown_option(driver, "Do you currently reside in the San Francisco Bay Area?", "Yes")
     select_dropdown_option(driver, "Are you willing and able to work in Go/ Golang?", "Yes")
     select_dropdown_option(driver, "Did you complete your education in the United States?", "Yes")
     select_dropdown_option(driver, "Do you have experience with Playwright, Puppeteer, or Beautiful Soup?", "Yes")
@@ -1196,7 +1224,7 @@ def easy_apply():
 
 
     # Additonal question – radio buttons 
-    
+    select_radio_button(driver, "Are you comfortable working in a hybrid setting?", "Yes")
     select_radio_button(driver, "Are you authorized to work in the United States?", "Yes")
     select_radio_button(driver, "Have you completed the following level of education: Associate's Degree?", "Yes")
     select_radio_button(driver, "Do you have the following license or certification: Advisory Services?", "Yes")
@@ -1206,11 +1234,9 @@ def easy_apply():
     select_radio_button(driver, "Are you comfortable working in a remote setting?", "Yes")
     select_radio_button(driver, "Will you now or in the future require sponsorship by the company?", "Yes")
     select_radio_button(driver, "Will you now, or in the future, require sponsorship for employment visa status (e.g. H-1B visa status)?", "No")
+    
+    click_button("//button[normalize-space()='Next']")
     select_radio_button(driver, "Will you now, or in the future, require sponsorship for employment visa status (e.g. H-1B visa status)?", "No")
-    
-    
-
-    # click_button("//button[normalize-space()='Next']")
 
     # Work Authoritzation – radio buttons 
 

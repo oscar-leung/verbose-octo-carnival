@@ -64,6 +64,8 @@ workday_career_pages = {
     "Dataminr": "https://dataminr.wd12.myworkdayjobs.com/en-US/Dataminr/userHome",
     "Fullsteam": "https://fullsteam.wd1.myworkdayjobs.com/en-US/External/jobTasks/completed/application",
     "Home Depot": "https://homedepot.wd5.myworkdayjobs.com/en-US/CareerDepot/userHome",
+    "Kar": "https://kar.wd1.myworkdayjobs.com/en-US/OPENLANE_Careers",
+    "Meredith": "https://meredith.wd5.myworkdayjobs.com/en-US/EXT/userHome",
 }
 
 def click_button(xpath):
