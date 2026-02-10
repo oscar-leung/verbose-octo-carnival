@@ -1,7 +1,9 @@
 import logging
+import os
 import time
 import random
 import re
+from dotenv import load_dotenv
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -9,6 +11,10 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import StaleElementReferenceException,TimeoutException, ElementNotInteractableException,NoSuchElementException
 
 
+# Load variables from .env
+load_dotenv()
+username = os.getenv("prize_rebel_email")
+password = os.getenv("prize_rebel_password")
 
 driver = webdriver.Chrome()
 driver.get("https://www.prizerebel.com/login")
@@ -16,10 +22,10 @@ driver.get("https://www.prizerebel.com/login")
 
 wait = WebDriverWait(driver, 60)
 username_input = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, 'input[type="email"]')))
-username_input.send_keys("oscarleung1@gmail.com")
+username_input.send_keys(username)
 
 password_input = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, 'input[type="password"]')))
-password_input.send_keys("Bumblebee4$2024")
+password_input.send_keys(password)
 
 # Manaully enter CAPTCHA
 reCAPTCHA = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, 'span#recaptcha-anchor')))

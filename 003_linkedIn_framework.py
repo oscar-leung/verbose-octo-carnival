@@ -1,5 +1,7 @@
 import logging
+import os
 import time
+from dotenv import load_dotenv
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -129,16 +131,20 @@ class LinkedInBot:
                 logging.error(f"Unexpected exception during button click: {e}")
                 break
 
+# Load variables from .env
+load_dotenv()
+username = os.getenv("LINKIN_USERNAME")
+password = os.getenv("LINKIN_PASSWORD")
 
 if __name__ == "__main__":
     oscar_bot = LinkedInBot()
-    oscar_bot.login("oscarleung1@gmail.com","Bumblebee5%2022")
+    oscar_bot.login(username,password)
     oscar_bot.navigate_to("https://www.linkedin.com/jobs/collections/recommended/")
     job_list = oscar_bot.get_job_list()
     oscar_bot.apply(job_list)
 
-    oscar_bot.driver.find_element(By.ID,"username").send_keys("oscarleung1@gmail.com")
-    oscar_bot.driver.find_element(By.ID,"password").send_keys("Bumblebee5%2022")
+    oscar_bot.driver.find_element(By.ID,"username").send_keys(username)
+    oscar_bot.driver.find_element(By.ID,"password").send_keys(password)
     oscar_bot.driver.find_element(By.XPATH, "//button[@type='submit']").click()
     oscar_bot.driver.find_element(By.XPATH, "//a//span[@title='Jobs']").click()
     oscar_bot.driver.find_element(By.XPATH, "//a[.//strong[contains(text(),'Easy Apply')]]").click()

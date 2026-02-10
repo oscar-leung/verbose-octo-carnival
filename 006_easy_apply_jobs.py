@@ -11,15 +11,13 @@ from selenium.webdriver.common.keys import Keys
 import pyautogui
 from dotenv import load_dotenv
 import os
+from datetime import datetime
 
 # Load variables from .env
 load_dotenv()
 
-
 username = os.getenv("LINKIN_USERNAME")
 password = os.getenv("LINKIN_PASSWORD")
-
-
 
 def print_element_info(element):
     """Print detailed information about a web element."""
@@ -60,9 +58,11 @@ def click_button(xpath):
         time.sleep(1)
         print(f"Clicked button with XPath: {xpath}")
     except NoSuchElementException:
-        print(f"Button not found: {xpath}")
+        # print(f"Button not found: {xpath}")
+        pass
     except Exception as e:
-        print(f"Error clicking button with XPath: {xpath}. Error: {e}")
+        # print(f"Error clicking button with XPath: {xpath}. Error: {e}")
+        pass
 def populate_additional_questions():
 
     try:
@@ -555,11 +555,11 @@ def click_next_button(driver, max_clicks=5):
             time.sleep(1)
 
         except NoSuchElementException:
-            print("The 'Next' button is not found, exiting loop...")
+            # print("The 'Next' button is not found, exiting loop...")
             break  # Exit the loop if no more 'Next' buttons are found
 
         except ElementClickInterceptedException:
-            print("Next button click was intercepted. Retrying...")
+            # print("Next button click was intercepted. Retrying...")
             time.sleep(1)  # Wait before retrying to click
 
     # If the max number of clicks is reached, print a message and proceed
@@ -577,7 +577,8 @@ def enter_experience(driver, label_text, experience_years):
     try:
         # Locate the label by its text
         # label = driver.find_element(By.XPATH, f"//label[contains(text(), '{label_text}')]")
-        label = driver.find_element(By.XPATH, f"//label[.//span[contains(normalize-space(), '{label_text}')]]")
+        # label = driver.find_element(By.XPATH, f"//label[.//span[contains(normalize-space(), '{label_text}')]]")
+        label = driver.find_element(By.XPATH, f"//label[contains(normalize-space(), '{label_text}')]")
         # label = driver.find_element(By.XPATH, f"//label[.//span[contains(normalize-space(), 'Location (city)')]]")
 
 
@@ -590,10 +591,11 @@ def enter_experience(driver, label_text, experience_years):
         # Clear the field and enter the number of years of experience
         input_element.clear()
         input_element.send_keys(experience_years)  # Enter the specified years of experience
-        print(f"Entered {experience_years} years of experience for '{label_text}'.")
+        # print(f"Entered {experience_years} years of experience for '{label_text}'.")
 
     except NoSuchElementException:
-        print(f"Input field not found for label: '{label_text}'.")
+        # print(f"Input field not found for label: '{label_text}'.")
+        pass
 def select_radio_button(driver, question_text, option_value):
     """
     Function to select a radio button option for a given question in a form.
@@ -617,9 +619,9 @@ def select_radio_button(driver, question_text, option_value):
         print(f"Selected the option '{option_value}' for question '{question_text}'.")
 
     except NoSuchElementException:
-        print(f"Could not find the radio button with value '{option_value}' for the question '{question_text}'.")
+        pass
     except ElementClickInterceptedException:
-        print(f"Element click intercepted for '{option_value}' on the question '{question_text}'.")
+        pass
 def select_dropdown_option(driver, question_text, option_value):
 
     """
@@ -645,13 +647,8 @@ def select_dropdown_option(driver, question_text, option_value):
         
         # Select the desired option by visible text
         select.select_by_visible_text(option_value)
-        
-        print(f"Successfully selected '{option_value}' for the question '{question_text}'.")
-
-    except NoSuchElementException:
-        print(f"Unable to locate the question or dropdown for '{question_text}'.")
-    except TimeoutException:
-        print("The page took too long to load or the dropdown did not appear in time.")
+    except:
+        pass
 def fill_input_field(driver, locator_type, locator_value, text, timeout=1):
     """
     Function to fill an input field safely.
@@ -664,36 +661,99 @@ def fill_input_field(driver, locator_type, locator_value, text, timeout=1):
     """
     try:
         # Wait until the input field is visible & enabled
-        input_field = WebDriverWait(driver, timeout).until(
-            EC.element_to_be_clickable((locator_type, locator_value))
-        )
+        input_field =  driver.find_element(By.XPATH, locator_type)
         input_field.clear()  # Clear existing text
+        time.sleep(2)
         input_field.send_keys(text)  # Enter new text
-        time.sleep(1)
-        input_field.send_keys(Keys.RETURN)  # Press Enter
+        time.sleep(2)
+        input_field.send_keys(Keys.ENTER)  # Press Enter
+        # input_field.send_keys(text, Keys.RETURN)  # Enter new text
         print(f"Filled input field: {locator_value} with '{text}'")
+    except:
+        # print(f"Error filling input field {locator_value}: {e}")
+        pass
+def log_all_errored_questions(driver, file_path='error_questions_log.txt'):
+    try:
+        # Wait until at least one error icon appears
+        WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.XPATH, "//li-icon[@type='error-pebble-icon']"))
+        )
+
+        # Find all error icons
+        error_icons = driver.find_elements(By.XPATH, "//li-icon[@type='error-pebble-icon']")
+        questions_logged = 0
+
+        for icon in error_icons:
+            try:
+                # Climb up to find the container
+                error_component = icon.find_element(By.XPATH, "./ancestor::div[@data-test-single-line-text-form-component]")
+
+                # Find the associated label
+                label_element = error_component.find_element(By.XPATH, ".//label")
+                    
+                # Extract question text
+                question_text = label_element.text.strip()
+                if question_text:
+                    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    log_entry = f"[{timestamp}] {question_text}\n"
+
+                    # Write to log file (append or create)
+                    mode = 'a' if os.path.exists(file_path) else 'w'
+                    with open(file_path, mode, encoding='utf-8') as f:
+                        f.write(log_entry)
+                    print(f"📝 Logged: {question_text}")
+                    questions_logged += 1
+            except NoSuchElementException:
+                continue  # Skip if structure is unexpected
+                
+        if questions_logged == 0:
+            print("✅ No errored questions found.")
+        else:
+            print(f"✅ {questions_logged} errored question(s) logged.")
+
     except Exception as e:
-        print(f"Error filling input field {locator_value}: {e}")
+        print(f"❌ Error during logging: {e}")
+def zoom_out():
+    os.system('osascript -e \'tell application "Google Chrome" to activate\'')
+    time.sleep(0.2)
+
+    # zoom out (Cmd + -)
+    pyautogui.hotkey('command', '-')
+    pyautogui.hotkey('command', '-')
+    pyautogui.hotkey('command', '-')
+    pyautogui.hotkey('command', '-')
+    pyautogui.hotkey('command', '-')
+def move_window_to_topright():
+    """Moves the current window to the top-right corner of the screen (macOS specific)."""
+    os.system('osascript -e \'tell application "Google Chrome" to activate\'')
+    pyautogui.hotkey('ctrl', 'option', 'i') # Move window top right shortcut using magnet app 
+    time.sleep(0.2)
+
 
 def easy_apply():
     # Start the easy apply process
-    click_button("//button[contains(@class, 'jobs-apply-button')]")
+    click_button("//button[id='jobs-apply-button-id']")
 
     # Job search safetly reminder
     click_button("//button[normalize-space()='Continue applying']")
     
     # Contact Info
     click_button("//button[@aria-label='Continue to next step']")
-    enter_experience(driver, "City", "Santa Clara")
+    # enter_experience(driver, "City", "Santa Clara")
     enter_experience(driver, "State or Province", "California")
     enter_experience(driver, "Zip/Postal Code", "95050")
-    enter_experience(driver, "Location (city)", "Santa Clara County, California, United States")
+    enter_experience(driver, "Location (city)", "Alameda County, California, United States")
+    click_button("//div[@data-test-single-typeahead-entity-form-search-result='true']")
     select_dropdown_option(driver, "Country", "UNITED STATES")
 
     # Resume Info
     click_button("//button[@aria-label='Continue to next step']")
 
     # Additional Questions
+    enter_experience(driver, "LinkedIn Profile", "https://www.linkedin.com/in/oscar-leung/")
+    click_button("//input[@data-test-text-selectable-option__input='Yes']")
+    click_button("//div[@data-test-text-selectable-option='0']")
+    
     click_button("//button[@aria-label='Continue to next step']")
 
     # Diversity
@@ -705,7 +765,31 @@ def easy_apply():
     select_radio_button(driver, "Will you now or in the future require visa sponsorship or a visa transfer?", "No")
     click_button("//button[@aria-label='Review your application']")
 
+    # education
+    click_button("//button[@aria-label='Continue to next step']")
 
+    #Voluntary self identification
+    click_button("//label[normalize-space()='Confirmed']")
+    click_button("//button[@aria-label='Continue to next step']")
+        
+    # screening questions
+    click_button("//button[@aria-label='Continue to next step']")
+
+    # privacy policy
+    click_button("//label[normalize-space()='I Agree Terms & Conditions']")
+    click_button("//button[@aria-label='Continue to next step']")
+
+    # additonal
+    select_radio_button(driver, "Are you eligible to work in the country in which this role is located?", "Yes")
+    select_radio_button(driver, "Are you a US citizen?", "Yes")
+    select_radio_button(driver, "Are you currently employed outside your primary role?", "No")
+    select_radio_button(driver, "Do you serve as a board member or company director for any organization?", "No")
+    select_radio_button(driver, "Are you legally authorized to work in the country where the job is located without any restrictions?", "No")
+    select_dropdown_option(driver, "If this role or future roles require relocation:", "I am willing to relocate and will self relocate")
+    select_dropdown_option(driver, "Have you previously worked for Palo Alto Networks?", "No - I have not worked for Palo Alto Networks")
+    select_radio_button(driver, "Have you interviewed with Palo Alto Networks in the past?", "No")
+    select_radio_button(driver, "Would you like to be considered for future opportunities?", "Yes")
+    select_dropdown_option(driver, "How did you hear about us?", "Job Board")
 
     # # populate_additional_questions() 
     # for i in range(4):
@@ -729,7 +813,203 @@ def easy_apply():
 
 
     # addtional questions – input fields
-
+    enter_experience(driver, "How many years of work experience do you have with R (Programming Language)", "1")
+    enter_experience(driver, "Previous experience building a Sharepoint page from end to end?", "1")
+    enter_experience(driver, "How many years of working experience do you have as a SharePoint Developer, having expert-level SharePoint creation skills?", "1")
+    enter_experience(driver, "How many years of work experience do you have with Loan Underwriting?", "1")
+    enter_experience(driver, "How many years of Banking experience do you currently have?", "1")
+    enter_experience(driver, "How many years of work experience do you have with Kana?", "1")
+    enter_experience(driver, "How many years of work experience do you have with Genesys?", "1")
+    enter_experience(driver, "How many years of work experience do you have with Slate?", "1")
+    enter_experience(driver, "How many years of work experience do you have with Admissions?", "1")
+    enter_experience(driver, "How many years of work experience do you have with Revenue Recognition?", "1")
+    enter_experience(driver, "How many years of work experience do you have with Certified Public Accounting?", "1")
+    enter_experience(driver, "How many years of work experience do you have with Security Compliance?", "1")
+    enter_experience(driver, "How many years of experience do you have with secure code reviews and static/dynamic analysis tools?", "1")
+    enter_experience(driver, "How many years of experience do you have with hands-on experience securing Power Platform, including Canvas Apps and Dataverse, and familiarity with compliance automation frameworks or platforms?", "1")
+    enter_experience(driver, "How many years of work experience do you have with Microsoft Exchange?", "1")
+    enter_experience(driver, "How many years of work experience do you have with Proofpoint?", "1")
+    enter_experience(driver, "How many years of work experience do you have with PyTorch?", "1")
+    enter_experience(driver, "Please confirm your work authorization. Select 1 for US Citizen, Select 2 for Green Card, Select 3 for EAD, Select 4 for H1B.", "1")
+    enter_experience(driver, "How many years of experience with Okta Implementation and Okta API integration ?", "1")
+    enter_experience(driver, "How many years of experience in writing or maintaining web scrapers you have?", "1")
+    enter_experience(driver, "How many years of work experience do you have with Pega PRPC?", "1")
+    enter_experience(driver, "How many years of work experience do you have with Prometheus.io?", "1")
+    enter_experience(driver, "How much experience do you with observability and monitoring?", "1")
+    enter_experience(driver, "Strong experience with Python.", "1")
+    enter_experience(driver, "How many years of work experience do you have with WordPress?", "1")
+    enter_experience(driver, "How many years of work experience do you have with IBM AIX?", "1")
+    enter_experience(driver, "How many years experience do you have testing automotive systems and applications such as Apple CarPlay, Android Auto, etc.?", "1")
+    enter_experience(driver, "How many years of work experience do you have with React?", "1")
+    enter_experience(driver, "How many years of work experience do you have with HTML/CSS Validation?", "1")
+    enter_experience(driver, "Years of experience as a Full Stack Engineer?", "1")
+    enter_experience(driver, "Years of experience with Python?", "1")
+    enter_experience(driver, "Years of experience with Java?", "1")
+    enter_experience(driver, "Years of experience with Springboot?", "1")
+    enter_experience(driver, "Years of experience with ReactJS?", "1")
+    enter_experience(driver, "Years of experience with AWS?", "1")
+    enter_experience(driver, "Years of experience with AWS Lambda?", "1")
+    enter_experience(driver, "How many years’ experience do you have as a JS React Developer?", "1")
+    enter_experience(driver, "How many years of experience do you have with either Python or Node?", "1")
+    enter_experience(driver, "Do you have full stack development experience building with AI in a B2B SaaS or top-tier tech company?", "1")
+    enter_experience(driver, "How many years of Semiconductor Manufacturing experience do you currently have?", "1")
+    enter_experience(driver, "How many years of work experience do you have with GCP?", "1")
+    enter_experience(driver, "How many years experience with FastAPI?", "1")
+    enter_experience(driver, "How many years of work experience do you have with Five9?", "1")
+    enter_experience(driver, "How many years of work experience do you have with SaaS-based test management tool - QMetry?", "1")
+    enter_experience(driver, "How many years of work experience do you have with AI-based testing concepts or tools?", "1")
+    enter_experience(driver, "How many years of work experience do you have with CI/CD concepts and tooling (Azure DevOps, Harness, Git, Docker)?", "1")
+    enter_experience(driver, "How many years of work experience do you have with QE Operations?", "1")
+    enter_experience(driver, "How many years of work experience do you have with SaaS Test Management Tools?", "1")
+    enter_experience(driver, "How many years of work experience do you have with Test Automation Support?", "1")
+    enter_experience(driver, "How many years of work experience do you have with manual testing?", "1")
+    enter_experience(driver, "How many years of work experience do you have with Automation testing?", "1")
+    enter_experience(driver, "How many years of work experience do you have with HTML5?", "1")
+    enter_experience(driver, "How many years of experience do you have with CI/CD workflows?", "1")
+    enter_experience(driver, "How many years experience do you have working in immigration or legal technology markets?", "1")
+    enter_experience(driver, "How many years of work experience do you have with Oracle Service Bus?", "1")
+    enter_experience(driver, "How much Software/Product Engineering experience do you have? (in years)", "1")
+    enter_experience(driver, "What is your Current Location?", "1")
+    enter_experience(driver, "How many years of work experience do you have with Helm Charts?", "1")
+    enter_experience(driver, "What is your expected salary?", "1")
+    enter_experience(driver, "How many years of experience in writing or maintaining web scrapers you have?", "1")
+    enter_experience(driver, "How many years of work experience do you have with Informatica MDM?", "1")
+    enter_experience(driver, "Do you hold -Citizenship / Work Permit / Visa Status of the located country?", "1")
+    enter_experience(driver, "Years of experience in LLM:", "1")
+    enter_experience(driver, "Years of experience as a Software Engineer:", "1")
+    enter_experience(driver, "How many years of experience you have as DevOps Engineer?", "1")
+    enter_experience(driver, "Are you experienced in building full-stack and scalable production applications?", "1")
+    enter_experience(driver, "How many years of experience you have in Implement robust monitoring, logging, and alerting systems using tools like CloudWatch, Prometheus, Grafana, and ELK Stack.?", "1")
+    enter_experience(driver, "Are you expertise in software architecture, development, debugging, and code quality?", "1")
+    enter_experience(driver, "How many years of experience you have in DevSecOps Methodologies, With A Proven Track Record of Successful Implementation?", "1")
+    enter_experience(driver, "Can you commit to a minimum of 10 hours per week with some overlap with Pacific Standard Time (PST)?", "1")
+    enter_experience(driver, "How many years of experience you have in Docker and orchestration with Kubernetes, including multi-cluster and hybrid deployments?", "1")
+    enter_experience(driver, "How many years of experience you have in static application security testing (SAST) and dynamic application security testing (DAST) container scanning, software composition analysis, IaC Scanning,?", "1")
+    enter_experience(driver, "How many years of experience you have in Deploying Cloud Technologies Utilizing IaaS and PaaS Components?", "1")
+    enter_experience(driver, "How many years of experience you have in Terraform, Ansible, and other IaC and configuration management tools?", "1")
+    enter_experience(driver, "Are you comfortable working as a contractor without benefits like medical insurance or paid leave?", "1")
+    enter_experience(driver, "How many years of experience you have in scripting and programming languages such as Bash, Python, or Go?", "1")
+    enter_experience(driver, "Current Location:", "1")
+    enter_experience(driver, "Expected Hourly Rate in USD:", "1")
+    enter_experience(driver, "We have a rate for this role: USD 50 - 125 Hourly, Are you comfortable with this:", "1")
+    enter_experience(driver, "Notice Period:", "1")
+    enter_experience(driver, "Will you now or in the future require visa sponsorship or a transfer for employment status (e.g., H-1B visa status)? If yes, please elaborate.", "1")
+    enter_experience(driver, "How many years of work experience do you have with Golang?", "1")
+    enter_experience(driver, "How many years of work experience do you have with Application Migrations?", "1")
+    enter_experience(driver, "What are your salary requirements?", "1")
+    enter_experience(driver, "How many years do you have with React or Vue Or Angular?", "1")
+    enter_experience(driver, "How many years experience in web development using C++?", "1")
+    enter_experience(driver, "How many years of experience do you have as a Java developer?", "1")
+    enter_experience(driver, "What is your current monthly salary?", "1")
+    enter_experience(driver, "What are your salary expectations for this role?", "1")
+    enter_experience(driver, "How long is your notice period?", "1")
+    enter_experience(driver, "How many years of experience do you have in CSS and HTML5?", "1")
+    enter_experience(driver, "How many years of experience do you have in JQuery and JavaScript, ?", "1")
+    enter_experience(driver, "How many years of experience do you have in SQL and Jenkins?", "1")
+    enter_experience(driver, "How many years of work experience do you have with Startups?", "1")
+    enter_experience(driver, "How many years of work experience do you have with Open Source Platforms?", "1")
+    enter_experience(driver, "How many years of work experience do you have with Windows Programming?", "1")
+    enter_experience(driver, "How many years of Android application development do you have?", "1")
+    enter_experience(driver, "How many years of work experience do you have with Medidata?", "1")
+    enter_experience(driver, "How many years experience with Medidata Rave?", "1")
+    enter_experience(driver, "How many years of React Native experience do you have", "1")
+    enter_experience(driver, "How many previous experiences do you have developing mobile apps? (you will be asked about this in the interview)", "1")
+    enter_experience(driver, "How many years of experience do you have writing or maintaining automated tests in JavaScript, TypeScript, or Python?", "1")
+    enter_experience(driver, "How many years of experience do you have with backend engineering?", "1")
+    enter_experience(driver, "Years of experience in software development using .NET with C#", "1")
+    enter_experience(driver, "How many years of work experience do you have with Alfresco with .NET-based systems via web services and experience with Alfresco SDK, Alfresco REST APIs, and custom content models", "1")
+    enter_experience(driver, "How many years of work experience do you have with Hibernate?", "1")
+    enter_experience(driver, "How many years of work experience do you have with Certified Salesforce.com Developer?", "1")
+    enter_experience(driver, "How many years of work experience do you have with Blazor?", "1")
+    enter_experience(driver, "How many years of work experience do you have with Telecom Domain ?", "1")
+    enter_experience(driver, "How many years of work experience do you have with SmartCOMM Developer?", "1")
+    enter_experience(driver, "How many years of work experience do you have with Security Compliance?", "1")
+    enter_experience(driver, "How many years of experience do you have with secure code reviews and static/dynamic analysis tools?", "1")
+    enter_experience(driver, "How many years of experience do you have with hands-on experience securing Power Platform, including Canvas Apps and Dataverse, and familiarity with compliance automation frameworks or platforms?", "1")
+    enter_experience(driver, "How many years of experience you have in IDocker and orchestration with Kubernetes, including multi-cluster and hybrid deployments?", "1")
+    enter_experience(driver, "How many years of experience you have in static application security testing (SAST) and dynamic application security testing (DAST) container scanning, software composition analysis, IaC Scanning,?", "1")
+    enter_experience(driver, "How many years of experience you have in Deploying Cloud Technologies Utilizing IaaS and PaaS Components?", "1")
+    enter_experience(driver, "How many years of experience you have in Terraform, Ansible, and other IaC and configuration management tools?", "1")
+    enter_experience(driver, "How many years of experience you have in scripting and programming languages such as Bash, Python, or Go?", "1")
+    enter_experience(driver, "How many years of work experience do you have with Informatica MDM?", "1")
+    enter_experience(driver, "How many years of work experience do you have with Oracle Service Bus?", "1")
+    enter_experience(driver, "How many years of experience you have in Implement robust monitoring, logging, and alerting systems using tools like CloudWatch, Prometheus, Grafana, and ELK Stack.?", "1")
+    enter_experience(driver, "Are you comfortable working as a contractor without benefits like medical insurance or paid leave?", "1")
+    enter_experience(driver, "Years of experience as a Software Engineer:", "1")
+    enter_experience(driver, "Are you experienced in building full-stack and scalable production applications?", "1")
+    enter_experience(driver, "Can you commit to a minimum of 10 hours per week with some overlap with Pacific Standard Time (PST)?", "1")
+    enter_experience(driver, "This is a permanent remote role with an initial 1-month contract. Are you comfortable?", "1")
+    enter_experience(driver, "Are you comfortable working as a contractor without benefits like medical insurance or paid leave?", "1")
+    enter_experience(driver, "We have a rate for this role: USD 50 - 125 Hourly, Are you comfortable with this:", "1")
+    enter_experience(driver, "How many years of experience do you have with Rust (eg. Solana/Substrate)?", "1")
+    enter_experience(driver, "How many years of experience do you have working in FinTech especially Crypto Assets?", "1")
+    enter_experience(driver, "How many years of work experience do you have with Hadoop?", "1")
+    enter_experience(driver, "How many years of work experience do you have with StarLIMS?", "1")
+    enter_experience(driver, "How many years of work experience do you have with Workflow Automation?", "1")
+    enter_experience(driver, "How many years of work experience do you have with Model-View-Presenter (MVP)?", "1")
+    enter_experience(driver, "How many years of work experience do you have with [E-commerce]?", "1")
+    enter_experience(driver, "How many years of work experience do you have with Microsoft Power BI?", "1")
+    enter_experience(driver, "How many years of work experience do you have with Distributed Applications?", "1")
+    enter_experience(driver, "How many years of work experience do you have with DocuSign?", "1")
+    enter_experience(driver, "How many years of work experience do you have with Microsoft Excel Macros?", "1")
+    enter_experience(driver, "How many years of work experience do you have with Backend development ?", "1")
+    enter_experience(driver, "How many years of work experience do you have with Business Integration?", "1")
+    enter_experience(driver, "How many years of work experience do you have with Dell Boomi?", "1")
+    enter_experience(driver, "How many years of work experience do you have with Oracle Fusion Middleware?", "1")
+    enter_experience(driver, "How many years of work experience do you have with Contact Center as a Service (CCaaS)?", "1")
+    enter_experience(driver, "How many years of work experience do you have with SQL Server Reporting Services (SSRS)?", "1")
+    enter_experience(driver, "How many years of work experience do you have with Transact-SQL (T-SQL)?", "1")
+    enter_experience(driver, "How many years of work experience do you have with Mobile Robotics?", "1")
+    enter_experience(driver, "How many years of work experience do you have with Data Governance?", "1")
+    enter_experience(driver, "How many years of work experience do you have with Zuora?", "1")
+    enter_experience(driver, "How many years of work experience do you have with Administration?", "1")
+    enter_experience(driver, "How many years of work experience do you have with OpenShift?", "1")
+    enter_experience(driver, "How many years of work experience do you have with IBM Cloud?", "1")
+    enter_experience(driver, "How many years of work experience do you have with Linux System Administration?", "1")
+    enter_experience(driver, "How many years of Aviation and Aerospace Component Manufacturing experience do you currently have?", "1")
+    enter_experience(driver, "How many years of work experience do you have with Adobe Workfront?", "1")
+    enter_experience(driver, "How many years of work experience do you have with Order Management?", "1")
+    enter_experience(driver, "How many years of work experience do you have with Oracle HCM?", "1")
+    enter_experience(driver, "How many years of work experience do you have with Oracle Cloud?", "1")
+    enter_experience(driver, "How many years of work experience do you have with BI Publisher?", "1")
+    enter_experience(driver, "How many years of work experience do you have with Rest API", "1")
+    enter_experience(driver, "How many years of work experience do you have with Technical Recruiting?", "1")
+    enter_experience(driver, "How many years of work experience do you have with Corporate Recruiting?", "1")
+    enter_experience(driver, "Years of experience with Greenhouse ATS:", "1")
+    enter_experience(driver, "How many years of work experience do you have with ABBYY?", "1")
+    enter_experience(driver, "How many years of work experience do you have with Okta Single Sign-On?", "1")
+    enter_experience(driver, "How many years of work experience do you have with Microsoft Entra ID?", "1")
+    enter_experience(driver, "How many years of work experience do you have with Identity and Access Management (IAM)?", "1")
+    enter_experience(driver, "How many years of work experience do you have with Neo4j?", "1")
+    enter_experience(driver, "How many years of work experience do you have with TR-069?", "1")
+    enter_experience(driver, "How many years of work experience do you have with WiFi?", "1")
+    enter_experience(driver, "How many years of work experience do you have with Data Governance?", "1")
+    enter_experience(driver, "How many years of work experience do you have with Soldering?", "1")
+    enter_experience(driver, "How many years of experience do you have with ansible?", "1")
+    enter_experience(driver, "How many years of work experience do you have with Microsoft Power BI?", "1")
+    enter_experience(driver, "How many years of work experience do you have with Palantir?", "1")
+    enter_experience(driver, "How many years of work experience do you have with Solutions Engineering?", "1")
+    enter_experience(driver, "How many years of work experience do you have with Technical Presentations?", "1")
+    enter_experience(driver, "How many years of work experience do you have with Technical Presales?", "1")
+    enter_experience(driver, "How many years of work experience do you have with [E-commerce]?", "1")
+    enter_experience(driver, "How many years of experience do you have with Electron?", "1")
+    enter_experience(driver, "how many years of experience do you have in Dicom migrations", "1")
+    enter_experience(driver, "How many years of work experience do you have with System Performance?", "1")
+    enter_experience(driver, "How many years of work experience do you have with Semiconductor Device?", "1")
+    enter_experience(driver, "How many years of work experience do you have with AI/ML Development?", "1")
+    enter_experience(driver, "How many years of Computer and Network Security experience do you currently have?", "1")
+    enter_experience(driver, "How many years of work experience do you have with Retrieval-Augmented Generation (RAG)?", "1")
+    enter_experience(driver, "How many years of work experience do you have with High Performance Computing (HPC)?", "1")
+    enter_experience(driver, "How many years of work experience do you have with Automotive?", "1")
+    enter_experience(driver, "How many years of work experience do you have with Azure SQL?", "1")
+    enter_experience(driver, "How many years of work experience do you have with Natural Language?", "1")
+    enter_experience(driver, "How many years of work experience do you have with Subscriptions?", "1")
+    enter_experience(driver, "How many years of work experience do you have with Renewals?", "1")
+    enter_experience(driver, "How many years of experience do you have with Agentic Process Automation?", "1")
+    enter_experience(driver, "How many years of work experience do you have with ECMAScript?", "1")
+    enter_experience(driver, "How many years of work experience do you have with TypeScript?", "1")
+    enter_experience(driver, "How many years of experience do you have with Python and PyTorch for developing and deploying machine learning models?", "1")
+    enter_experience(driver, "How many years of work experience do you have with Applicant Tracking Systems?", "1")
     enter_experience(driver, "How many years of work experience do you have with Liquibase?", "1")
     enter_experience(driver, "How many years of work experience do you have with JavaScript Frameworks?", "2")
     enter_experience(driver, "How many years of work experience do you have with Vanilla JavaScript?", "2")
@@ -1243,9 +1523,6 @@ def easy_apply():
     select_radio_button(driver, "Are you comfortable working in a remote setting?", "Yes")
     select_radio_button(driver, "Will you now or in the future require sponsorship by the company?", "Yes")
     select_radio_button(driver, "Will you now, or in the future, require sponsorship for employment visa status (e.g. H-1B visa status)?", "No")
-    
-    click_button("//button[normalize-space()='Next']")
-    select_radio_button(driver, "Will you now, or in the future, require sponsorship for employment visa status (e.g. H-1B visa status)?", "No")
 
     # Work Authoritzation – radio buttons 
 
@@ -1263,8 +1540,6 @@ def easy_apply():
     #     click_button("//div[@data-test-date-picker='']")
     #     click_button("//button[contains(@aria-label, 'This is today')]")
 
-    
-    
     click_button("//button[normalize-space()='Review']")
     click_button("//button[normalize-space()='Submit application']")
     click_button("//button[normalize-space()='Done']")
@@ -1273,42 +1548,106 @@ def easy_apply():
 
 # ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––  this python script does easy applys jobs for me ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
 driver = webdriver.Chrome()
+wait = WebDriverWait(driver, 5)
 driver.get("https://www.linkedin.com/login")
+zoom_out()
+move_window_to_topright()
 driver.find_element(By.ID,"username").send_keys(username)
 driver.find_element(By.ID,"password").send_keys(password)
+# wait.until(EC.element_to_be_clickable((By.XPATH, "//button[@data-localization-key='formButtonPrimary']"))).click()
+wait.until(EC.element_to_be_clickable(By.XPATH, "//button[@type='submit']")).click()
 driver.find_element(By.XPATH, "//button[@type='submit']").click()
-driver.find_element(By.XPATH, "//a//span[@title='Jobs']").click()
-driver.get("https://www.linkedin.com/jobs/search/")
-
-input_text = (
-    '"QA Engineer" OR "Quality Assurance" OR "SQA" OR "Software Engineer" OR "Automation Engineer" OR "Software Tester" OR '
-    '"Test Engineer" OR "QA Automation" OR "Test Automation" OR "Front-End Developer" OR "React Developer" OR '
-    '"Angular Developer" OR "Web Developer" OR "Mobile Developer" OR "UI Developer" OR "UX Developer" OR '
-    '"Full-Stack Developer" AND "Salesforce" OR "Jira" OR "Selenium" OR "Java" OR "Python" OR "TestRail" OR "Expresso" '
-    'OR "SQL" OR "GitHub" OR "Jenkins" OR "TeamCity" OR "Automation Framework" OR "Regression Testing" OR "Unit Testing" '
-    'OR "Smoke Testing" OR "Exploratory Testing" OR "Angular" OR "React" OR "Vue.js" OR "Node.js" OR "HTML" OR "CSS" '
-    'OR "JavaScript" OR "TypeScript" OR "Swift" OR "Kotlin" OR "Android" OR "iOS" OR "Flutter" OR "Vue" OR "Redux" '
-    'OR "Firebase"'
-)
-
-fill_input_field(driver, By.XPATH, "//input[@aria-label='Search by title, skill, or company']", input_text, 1)
-
-job_list = driver.find_elements(By.XPATH, "//li[@data-occludable-job-id]")
-
-# Iterate over the job listings
-for index, job in enumerate(job_list):
-    try:
-        # Scroll to the element if necessary (ensures the element is in view)
-        driver.execute_script("arguments[0].scrollIntoView();", job)
-        # Click on the job posting
-        job.click()
-        time.sleep(2)
-        print(f"Clicked on job posting {index + 1}")
-        # Here you can add code to interact with the job posting, like applying, scraping info, etc.
-        easy_apply()
-        click_button("//div[@role='dialog']//button[@aria-label='Dismiss']")
-        click_button("//button[normalize-space()='Discard']")
-    except Exception as e:
-        print(f"Failed to click on job {index + 1}: {e}")
+driver.get("https://www.linkedin.com/jobs/")
+driver.find_element(By.XPATH, "//button[@type='submit']").click()
+click_button("//div[@componentkey='JobsHomeATFModule_RecentJobSearchesModule']//div//a[1]")
 
 
+minutes = 30
+duration = minutes * 60
+start_time = time.time()
+end_time = start_time + duration
+
+page = 1
+job_counter = 0
+
+try:
+    while time.time() < end_time:
+        elapsed = int(time.time() - start_time)
+        remaining = int(end_time - time.time())
+        mins_elapsed, secs_elapsed = divmod(elapsed, 60)
+        mins_left, secs_left = divmod(remaining, 60)
+
+        print(
+            f"\n🔁  Page {page}  |  "
+            f"Elapsed: {mins_elapsed:02d}:{secs_elapsed:02d}  |  "
+            f"Remaining: {mins_left:02d}:{secs_left:02d}"
+        )
+
+        job_list = driver.find_elements(By.XPATH, "//li[@data-occludable-job-id]")
+        print(f"Found {len(job_list)} jobs on page {page}\n")
+
+        for index, job in enumerate(job_list):
+            # stop early if timer exceeded mid‑loop
+            if time.time() >= end_time:
+                print(f"⏰ {minutes} minutes limit reached — stopping job loop.")
+                raise KeyboardInterrupt
+
+            try:
+                driver.execute_script("arguments[0].scrollIntoView();", job)
+                job.click()
+                time.sleep(2)
+                job_counter += 1
+                print(f"▶️  Clicked job {job_counter} (#{index + 1} on page {page})")
+
+                # --- your custom actions ---
+                easy_apply()
+
+                click_button("//div[@role='alertdialog']//button")
+                containers = driver.find_elements(By.XPATH, "//div[@class='ph5']/div[1]/div")
+
+                for index, box in enumerate(containers, start=1):
+                    try:
+                        print(f"Filling: {box.find_element(By.XPATH, ".//label").text.strip()}")
+                        print(index)
+                        try:
+                            box.find_element(By.XPATH, ".//input").clear()                    
+                            box.find_element(By.XPATH, ".//input").send_keys("1")                    
+                        except:
+                            print("no input field or unable to fill input field")
+                            
+                        select_field = box.find_element(By.XPATH, ".//select")
+                        select = Select(select_field)
+                        select.select_by_visible_text("Yes") 
+                    except Exception as e:
+                        continue
+
+                # work auth
+                select_radio_button(driver, "Will you now, or in the future, require sponsorship for employment visa status (e.g. H-1B visa status)?", "No")
+
+                click_button("//button[normalize-space()='Review']")
+                click_button("//button[normalize-space()='Submit application']")
+
+                log_all_errored_questions(driver, file_path="error_questions_log.txt")
+                click_button("//div[@role='dialog']//button[@aria-label='Dismiss']")
+                click_button("//button[normalize-space()='Discard']")
+
+                time.sleep(2)  # short pause between jobs
+            except Exception as e:
+                print(f"⚠️  Failed job {index + 1} on page {page}: {e}")
+
+        # ---------- move to next page ----------
+        try:
+            button = driver.find_element(By.XPATH, "//button[@aria-label='View next page']")
+            driver.execute_script("arguments[0].scrollIntoView({block:'center'});", button)
+            button.click()
+            page += 1
+            print(f"➡️  Navigated to page {page}")
+            time.sleep(5)  # wait for next page to load
+        except Exception as e:
+            print(f"❌  Could not click next page (maybe none left?): {e}")
+            
+
+    print(f"\n✅ Finished. Total jobs clicked: {job_counter} in {mins_elapsed} min {secs_elapsed} s.")
+
+except KeyboardInterrupt:
+    print("\n🟥 Script stopped (Ctrl + C or time limit reached).")

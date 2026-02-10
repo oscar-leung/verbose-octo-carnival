@@ -1,11 +1,17 @@
 import logging
+import os
 import time
+from dotenv import load_dotenv
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import StaleElementReferenceException,TimeoutException, ElementNotInteractableException,NoSuchElementException
 
+# Load variables from .env
+load_dotenv()
+username = os.getenv("habitica_email")
+password = os.getenv("habitica_password")
 
 
 driver = webdriver.Chrome()
@@ -14,10 +20,10 @@ driver.get("https://habitica.com/login?redirectTo=%2Fparty")
 
 wait = WebDriverWait(driver, 60)
 username_input = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, 'input[id="usernameInput"]')))
-username_input.send_keys("oscarleung1@gmail.com")
+username_input.send_keys(username)
 
 password_input = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, 'input[id="passwordInput"]')))
-password_input.send_keys("Bumblebee6^2023")
+password_input.send_keys(password)
 
 signin_button = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, 'button[class="btn btn-info"]')))
 signin_button.click()
