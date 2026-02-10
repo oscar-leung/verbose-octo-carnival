@@ -26,3 +26,16 @@ build/
 # folders
 PythonAnywhere/
 PythonAnywhere/images/
+
+# Playwright
+node_modules/
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+
+# linkedin_runs
+linkedin_runs/
+
+# workflows
+playwright.yml

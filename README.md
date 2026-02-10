@@ -200,3 +200,75 @@ OR
 (("QA Engineer") OR ("Quality Assurance") OR ("SQA") OR ("Software Engineer") OR ("Automation Engineer") OR ("Software Tester") OR ("Test Engineer") OR ("QA Automation") OR ("Test Automation") OR ("Front-End Developer") OR ("React Developer") OR ("Angular Developer") OR ("Web Developer") OR ("Mobile Developer") OR ("UI Developer") OR ("UX Developer") OR ("Full-Stack Developer") OR ("Software Development Engineer in Test") OR ("SDET") OR ("Machine Learning Engineer") OR ("AI Engineer") OR ("Data Scientist") OR ("Cloud Engineer") OR ("DevOps Engineer") OR ("Cybersecurity Specialist") OR ("Data Analyst") OR ("Product Manager") OR ("Blockchain Developer") OR ("Salesforce") OR ("Jira") OR ("Selenium") OR ("Java") OR ("Python") OR ("TestRail") OR ("Espresso") OR ("SQL") OR ("GitHub") OR ("Jenkins") OR ("TeamCity") OR ("Automation Framework") OR ("Regression Testing") OR ("Unit Testing") OR ("Smoke Testing") OR ("Exploratory Testing") OR ("Angular") OR ("React") OR ("Vue.js") OR ("Node.js") OR ("HTML") OR ("CSS") OR ("JavaScript") OR ("TypeScript") OR ("Swift") OR ("Kotlin") OR ("Android") OR ("iOS") OR ("Flutter") OR ("Redux") OR ("Firebase") OR ("Copado") OR ("CI/CD") OR ("DevOps") OR ("TestNG") OR ("Appium") OR ("Figma") OR ("TensorFlow") OR ("PyTorch") OR ("OpenCV") OR ("Pandas") OR ("NumPy") OR ("Matplotlib") OR ("SciPy") OR ("Hugging Face") OR ("AWS") OR ("Azure") OR ("Google Cloud") OR ("Docker") OR ("Kubernetes") OR ("Microservices") OR ("GraphQL") OR ("Django") OR ("Flask") OR ("Spring Boot") OR ("Rust") OR ("Go") OR ("Ruby") OR ("PHP") OR ("Perl") OR ("Scala") OR ("SwiftUI") OR ("AR/VR") OR ("Unity") OR ("Unreal Engine") OR ("Blockchain") OR ("Solidity") OR ("Smart Contracts") OR ("RPA") OR ("Robotic Process Automation") OR ("Big Data") OR ("Hadoop") OR ("Spark") OR ("Kafka") OR ("ElasticSearch") OR ("Data Mining") OR ("Data Warehousing") OR ("Business Intelligence") OR ("ETL") OR ("Airflow") OR ("Tableau") OR ("Power BI") OR ("Snowflake") OR ("Redshift") OR ("Looker") OR ("Agile") OR ("Scrum") OR ("Kanban") OR ("Project Management") OR ("Leadership") OR ("Communication") OR ("Problem-Solving") OR ("Critical Thinking") OR ("Collaboration") OR ("Adaptability") OR ("Creativity") OR ("Time Management"))
 AND NOT ("Manager") AND NOT ("Engineering Manager") AND NOT ("Senior Manager") 
 AND NOT ("Lead") AND NOT ("Principal") AND NOT ("Consultant")
+
+07/29/2025
+(("QA Engineer") OR ("Quality Assurance") OR ("SQA") OR ("Software Engineer") OR ("Automation Engineer") OR ("Software Tester") OR ("Test Engineer") OR ("QA Automation") OR ("Test Automation") OR ("Front-End Developer") OR ("React Developer") OR ("Angular Developer") OR ("Web Developer") OR ("Mobile Developer") OR ("UI Developer") OR ("UX Developer") OR ("Full-Stack Developer") OR ("Software Development Engineer in Test") OR ("SDET") OR ("Machine Learning Engineer") OR ("AI Engineer") OR ("Data Scientist") OR ("Cloud Engineer") OR ("DevOps Engineer") OR ("Cybersecurity Specialist") OR ("Data Analyst") OR ("Product Manager") OR ("Blockchain Developer") OR ("Salesforce") OR ("Jira") OR ("Selenium") OR ("Java") OR ("Python") OR ("TestRail") OR ("Espresso") OR ("SQL") OR ("GitHub") OR ("Jenkins") OR ("TeamCity") OR ("Automation Framework") OR ("Regression Testing") OR ("Unit Testing") OR ("Smoke Testing") OR ("Exploratory Testing") OR ("Angular") OR ("React") OR ("Vue.js") OR ("Node.js") OR ("HTML") OR ("CSS") OR ("JavaScript") OR ("TypeScript") OR ("Swift") OR ("Kotlin") OR ("Android") OR ("iOS") OR ("Flutter") OR ("Redux") OR ("Firebase") OR ("Copado") OR ("CI/CD") OR ("DevOps") OR ("TestNG") OR ("Appium") OR ("Figma") OR ("TensorFlow") OR ("PyTorch") OR ("OpenCV") OR ("Pandas") OR ("NumPy") OR ("Matplotlib") OR ("SciPy") OR ("Hugging Face") OR ("AWS") OR ("Azure") OR ("Google Cloud") OR ("Docker") OR ("Kubernetes") OR ("Microservices") OR ("GraphQL") OR ("Django") OR ("Flask") OR ("Spring Boot") OR ("Rust") OR ("Go") OR ("Ruby") OR ("PHP") OR ("Perl") OR ("Scala") OR ("SwiftUI") OR ("AR/VR") OR ("Unity") OR ("Unreal Engine") OR ("Blockchain") OR ("Solidity") OR ("Smart Contracts") OR ("RPA") OR ("Robotic Process Automation") OR ("Big Data") OR ("Hadoop") OR ("Spark") OR ("Kafka") OR ("ElasticSearch") OR ("Data Mining") OR ("Data Warehousing") OR ("Business Intelligence") OR ("ETL") OR ("Airflow") OR ("Tableau") OR ("Power BI") OR ("Snowflake") OR ("Redshift") OR ("Looker") OR ("Agile") OR ("Scrum") OR ("Kanban") OR ("Project Management") OR ("Leadership") OR ("Communication") OR ("Problem-Solving") OR ("Critical Thinking") OR ("Collaboration") OR ("Adaptability") OR ("Creativity") OR ("Time Management"))
+AND NOT ("Manager") AND NOT ("Engineering Manager") AND NOT ("Senior Manager") 
+AND NOT ("Lead") AND NOT ("Principal") AND NOT ("Consultant")
+
+Curent Use
+((software engineer OR qa OR AI OR Salesforce OR web) AND NOT "Founding" AND NOT "sr" AND NOT "manager" AND NOT "senior" AND NOT "lead" AND NOT "hardware" AND NOT "snr" AND NOT "Consultant" AND NOT "sales" AND NOT "director" AND NOT "therapist" AND NOT "account" AND NOT "business" AND NOT "volunteer" AND NOT "proofreader" AND NOT "embedded" AND NOT "principal" AND NOT "robotics" AND NOT "SAP" AND NOT "Customer" AND NOT "Architect" AND NOT "relations" AND NOT "security" AND NOT "verification")
+
+Template Starter
+(software engineer OR qa OR AI OR Salesforce)
+((software engineer OR qa) AND NOT [insert here]) 
+
+11/24/2025
+Been around since I've updated here – worked on automation task for Outlier which is pretty nice ~ :) 
+Was able get 4 hours of tasks done in half an our with the script running in the background. 
+
+# README Update - 02/10/26
+
+```markdown
+## 02/10/26
+**Major Update: Built-in Jobs Filtering & Workflow Optimization**
+
+Added `007_built_in_jobs.py` - a refined LinkedIn automation script that builds upon the existing framework with smarter job filtering capabilities.
+
+### Key Improvements:
+- **Advanced Filtering Logic**: Automatically excludes senior, lead, manager, and consulting roles
+- **Targeted Job Search**: Focuses on entry-level to mid-level positions in software engineering, QA, AI, and Salesforce
+- **Enhanced Error Handling**: Improved stability with better timeout management and exception handling
+- **Streamlined Workflow**: Reduced manual filtering time, allowing for more efficient job applications
+
+### Development Efficiency Boost:
+One of the biggest productivity gains in maintaining these automation scripts has been mastering **VS Code's global search and replace** (`Cmd + Shift + F` on Mac, `Ctrl + Shift + F` on Windows).
+
+**Why this matters for automation projects:**
+- **Mass credential updates**: When rotating passwords or updating environment variables across multiple scripts, I can update all instances across 20+ automation files in seconds
+- **Quick refactoring**: Changing variable names, function names, or import paths across the entire codebase without breaking anything
+- **Consistency maintenance**: Ensuring all scripts use the same updated selectors, wait times, or error handling patterns
+- **Security improvements**: Quickly finding and replacing hardcoded credentials with environment variables
+
+This is especially critical when you're maintaining automation scripts that interact with live websites - one CSS selector change on LinkedIn's end means updating potentially dozens of wait conditions across multiple files. With `Cmd + Shift + F`, what could take 30 minutes of manual file-by-file editing becomes a 30-second search-and-replace operation.
+
+**Pro tip**: Always use "Find in Files" to verify what you're about to change before using "Replace in Files" - saved me from breaking working code more times than I can count.
+
+### Current Keywords Filter:
+```
+((software engineer OR qa OR AI OR Salesforce OR web) 
+AND NOT "Founding" AND NOT "sr" AND NOT "manager" AND NOT "senior" 
+AND NOT "lead" AND NOT "hardware" AND NOT "snr" AND NOT "Consultant" 
+AND NOT "sales" AND NOT "director" AND NOT "therapist" AND NOT "account" 
+AND NOT "business" AND NOT "volunteer" AND NOT "proofreader" 
+AND NOT "embedded" AND NOT "principal" AND NOT "robotics" AND NOT "SAP" 
+AND NOT "Customer" AND NOT "Architect" AND NOT "relations" 
+AND NOT "security" AND NOT "verification")
+```
+
+### Personal Update:
+Currently evaluating a job offer from Ryse (theryseteam.com), a B2B sales training company in Concord, CA. While exploring this opportunity, continuing to optimize my job search automation tools to maintain efficiency in the application process.
+
+The automation continues to prove invaluable - what used to take hours of manual filtering and applying now runs efficiently in the background, allowing me to focus on quality applications and interview preparation.
+
+---
+
+**Tech Stack Used**: Python, Selenium, ChromeDriver, IPython for interactive automation  
+**Development Tools**: VS Code with heavy use of global search/replace for maintaining multiple automation scripts  
+**Current Status**: Actively job searching while refining automation tools  
+**Portfolio**: https://oscar-leung.netlify.app/  
+
+**Developer**: Oscar Leung
+```
+
+---
