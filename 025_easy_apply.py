@@ -335,6 +335,7 @@ clickWebElement("//button[@type='submit']")
 
 # nav to job postings page
 driver.get("https://www.linkedin.com/jobs/collections/easy-apply/")
+# driver.get("https://www.linkedin.com/jobs/collections/remote-jobs/")
 
 # get list of job postings – should be 25 per page by default or less
 job_list = driver.find_elements(By.XPATH, "//li[@data-occludable-job-id]")

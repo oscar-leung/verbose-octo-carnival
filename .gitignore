@@ -36,6 +36,7 @@ node_modules/
 
 # linkedin_runs
 linkedin_runs/
+runs/
 
 # workflows
 playwright.yml
