@@ -219,3 +219,7 @@ Was able get 4 hours of tasks done in half an our with the script running in the
 
 02/10/26
 Uploaded a bunch of scrips 
+
+04/02/026
+Uploaded handshake scripts and archive much of email data.
+Planning to do full reset on this email scrapping and making it meaning and connecting it all at once and streamlining.

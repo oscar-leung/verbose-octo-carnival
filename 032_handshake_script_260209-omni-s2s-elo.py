@@ -366,27 +366,47 @@ def handshake_complete_task(record: CycleRecord) -> bool:
     logger.info("  🟦 Completing Handshake task...")
     switch_to_tab("ai.joinhandshake.com")
 
-    steps = [
-        ("//button[normalize-space()='251030-audio-transcript (Max: 20 minutes)']",   "Select task type"),
-        ("//button[@aria-label='Submit' or normalize-space()='Submit']",               "Submit 1"),
-        ("//button[normalize-space()='No']",                                           "Answer No"),
-        ("//button[@aria-label='Submit' or normalize-space()='Submit']",               "Submit 2"),
-        ("//button[normalize-space()='I submitted my task on Multimango']",            "Confirm Multimango"),
-        ("//button[@aria-label='Submit' or normalize-space()='Submit']",               "Submit 3"),
-        ("//button[normalize-space()='Submit task']",                                  "Submit task"),
-        ("//button[normalize-space()='Next task']",                                    "Next task"),
-        ("//button[normalize-space()='Open Multimango']",                              "Open Multimango"),
+    # ── Required sequential steps ─────────────────────────────────────────────
+    required_steps = [
+        ("//button[normalize-space()='251030-audio-transcript (Max: 20 minutes)']", "Select task type"),
+        ("//button[@aria-label='Submit' or normalize-space()='Submit']",            "Submit 1"),
+        ("//button[normalize-space()='No']",                                        "Answer No"),
+        ("//button[@aria-label='Submit' or normalize-space()='Submit']",            "Submit 2"),
+        ("//button[normalize-space()='I submitted my task on Multimango']",         "Confirm Multimango"),
+        ("//button[@aria-label='Submit' or normalize-space()='Submit']",            "Submit 3"),
+        ("//button[normalize-space()='Submit task']",                               "Submit task"),
     ]
 
-    for xpath, label in steps:
+    for xpath, label in required_steps:
         human_wait(0.4, 1.0)
         ok = click(xpath, timeout=12)
-        if label == "Confirm time":   # optional step — skip silently
-            continue
-        logger.info(f"  {'✔' if ok else '⚠️ '} {label}")
+        if not ok:
+            logger.warning(f"  ⏱ Timeout on required step: {label}")
+            record.handshake_ok = False
+            return False
+        logger.info(f"  ✔ {label}")
 
-    # Optional confirm time
-    click("//button[normalize-space()='Confirm time']", timeout=5)
+    # ── Post-submission modal — "Confirm time" appears here ──────────────────
+    # Confirm time is inside the completion modal; click it before Next task
+    human_wait(0.5, 1.0)
+    if click("//button[normalize-space()='Confirm time']", timeout=8):
+        logger.info("  ✔ Confirm time")
+    else:
+        logger.info("  ⚠️  Confirm time not found (may already be confirmed)")
+
+    # ── Optional: "Next task" modal button ───────────────────────────────────
+    human_wait(0.3, 0.8)
+    if click("//button[normalize-space()='Next task']", timeout=5):
+        logger.info("  ✔ Next task")
+    else:
+        logger.info("  ℹ️  Next task not present — skipping")
+
+    # ── Optional: "Open Multimango" only appears on certain task types ───────
+    human_wait(0.3, 0.8)
+    if click("//button[normalize-space()='Open Multimango']", timeout=5):
+        logger.info("  ✔ Open Multimango")
+    else:
+        logger.info("  ℹ️  Open Multimango not present — skipping")
 
     record.handshake_ok = True
     logger.info("  ✅ Handshake cycle complete")
