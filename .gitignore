@@ -18,13 +18,17 @@ __pycache__/
 # Logs
 *.log
 
+# CVS
+*.csv
+
+*.json
+
 # Build artifacts
 dist/
 build/
 *.egg-info/
 
 # folders
-PythonAnywhere/
 PythonAnywhere/images/
 
 # Playwright

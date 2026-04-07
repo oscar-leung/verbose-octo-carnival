@@ -25,9 +25,10 @@ from selenium.common.exceptions import (
 # ============================================================
 # CONFIG
 # ============================================================
-OUT_DIR = "linkedin_runs"
+OUT_DIR    = "runs"
+SCRIPT_PREFIX = "linkedin_emails"
 
-MASTER_DIR = os.path.join(OUT_DIR, "_MASTER")
+MASTER_DIR = os.path.join(OUT_DIR, f"{SCRIPT_PREFIX}_MASTER")
 MASTER_EMAILS_PATH = os.path.join(MASTER_DIR, "MASTER_ALL_EMAILS.txt")
 MASTER_URLS_PATH = os.path.join(MASTER_DIR, "MASTER_ALL_JOB_POST_URLS.txt")
 MASTER_POSTS_PATH = os.path.join(MASTER_DIR, "MASTER_POSTS.jsonl")  # hella data ledger
@@ -226,7 +227,7 @@ def label_from_search_url(url: str) -> str:
 
 def make_run_folder(out_dir: str):
     run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
-    run_dir = os.path.join(out_dir, f"run_{run_id}")
+    run_dir = os.path.join(out_dir, f"{SCRIPT_PREFIX}_{run_id}")
     os.makedirs(run_dir, exist_ok=True)
     return run_id, run_dir
 

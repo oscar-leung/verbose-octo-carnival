@@ -34,7 +34,9 @@ WORKER_PASSWORD = os.getenv("multimango_password")
 
 CATEGORIES = [
     "Audio and Recording Quality",
+    "Persona Likeness (Speaker Similarity)",
     "Utility",
+    "Persona Likeness",
     "Contextual Appropriateness",
     "Naturalness",
     "Overall Preference",
@@ -42,10 +44,10 @@ CATEGORIES = [
 ]
 
 TASK_ID        = "260209-omni-s2s-elo"
-AUDIO_WAIT_SEC = 5 * 60    # time to wait for audio playback
-COOLDOWN       = 30        # seconds between cycles
-WAIT_SEC       = 20        # selenium wait timeout
-DURATION_HOURS = 10
+AUDIO_WAIT_SEC = 10 * 60    # time to wait for audio playback
+COOLDOWN       = 10        # seconds between cycles
+WAIT_SEC       = 30        # selenium wait timeout
+DURATION_HOURS = 30
 TOTAL_SECONDS  = DURATION_HOURS * 3600
 
 # Speed tuning — set False to disable human jitter entirely
@@ -55,9 +57,11 @@ HUMAN_DELAY_ENABLED = True
 # 📊 DATA COLLECTION
 # ==============================================================================
 RUN_ID       = datetime.now().strftime("%Y%m%d_%H%M%S")
-LOG_FILE     = f"automation_{RUN_ID}.log"
-DATA_FILE    = f"cycle_data_{RUN_ID}.csv"
-SUMMARY_FILE = f"summary_{RUN_ID}.json"
+_RUN_DIR     = os.path.join("runs", "handshake_elo")
+os.makedirs(_RUN_DIR, exist_ok=True)
+LOG_FILE     = os.path.join(_RUN_DIR, f"automation_{RUN_ID}.log")
+DATA_FILE    = os.path.join(_RUN_DIR, f"{RUN_ID}.csv")
+SUMMARY_FILE = os.path.join(_RUN_DIR, f"summary_{RUN_ID}.json")
 
 @dataclass
 class CycleRecord:
@@ -235,13 +239,14 @@ def login_handshake():
     global handshake_window_handle
     driver.get("https://ai.joinhandshake.com/fellow/projects")
     handshake_window_handle = driver.current_window_handle
-    zoom_out()
     move_window_topright()
     safe_send_keys((By.XPATH, "//input[@name='email']"), EMAIL)
     click_required("//button[normalize-space()='Continue with email']", "Continue with email")
     click_required("//button[normalize-space()='Log in another way']",  "Log in another way")
     safe_send_keys((By.XPATH, "//input[@name='password']"), PASS)
     click_required("//button[@aria-label='submit' or normalize-space()='Continue with password']", "Submit password")
+    time.sleep(5)
+    zoom_out()
     logger.info("✅ Handshake logged in")
 
 def login_multimango():
@@ -344,11 +349,9 @@ def multimango_tasking_cycle(record: CycleRecord) -> bool:
 
     # Submit
     try:
-        submit = WebDriverWait(driver, 15).until(
-            EC.element_to_be_clickable((By.XPATH, "//button[normalize-space()='Submit Vote']"))
-        )
-        js_click_element(submit)
+        click("//button[normalize-space()='Submit Vote']")
         record.submit_ok = True
+        time.sleep(5)
         logger.info("  ✅ Vote submitted")
     except Exception as e:
         logger.error(f"  ❌ Submit failed: {e}")
@@ -375,42 +378,19 @@ def handshake_complete_task(record: CycleRecord) -> bool:
         ("//button[normalize-space()='I submitted my task on Multimango']",         "Confirm Multimango"),
         ("//button[@aria-label='Submit' or normalize-space()='Submit']",            "Submit 3"),
         ("//button[normalize-space()='Submit task']",                               "Submit task"),
+        ("//button[normalize-space()='Confirm time']",                               "Confirm time"),
+        ("//button[normalize-space()='Next task']",                               "Next Task"), # take 
+        ("//button[normalize-space()='Open Multimango']",                               "Open Multimango")
     ]
 
     for xpath, label in required_steps:
         human_wait(0.4, 1.0)
-        ok = click(xpath, timeout=12)
+        ok = click(xpath, timeout=20)
         if not ok:
             logger.warning(f"  ⏱ Timeout on required step: {label}")
             record.handshake_ok = False
             return False
         logger.info(f"  ✔ {label}")
-
-    # ── Post-submission modal — "Confirm time" appears here ──────────────────
-    # Confirm time is inside the completion modal; click it before Next task
-    human_wait(0.5, 1.0)
-    if click("//button[normalize-space()='Confirm time']", timeout=8):
-        logger.info("  ✔ Confirm time")
-    else:
-        logger.info("  ⚠️  Confirm time not found (may already be confirmed)")
-
-    # ── Optional: "Next task" modal button ───────────────────────────────────
-    human_wait(0.3, 0.8)
-    if click("//button[normalize-space()='Next task']", timeout=5):
-        logger.info("  ✔ Next task")
-    else:
-        logger.info("  ℹ️  Next task not present — skipping")
-
-    # ── Optional: "Open Multimango" only appears on certain task types ───────
-    human_wait(0.3, 0.8)
-    if click("//button[normalize-space()='Open Multimango']", timeout=5):
-        logger.info("  ✔ Open Multimango")
-    else:
-        logger.info("  ℹ️  Open Multimango not present — skipping")
-
-    record.handshake_ok = True
-    logger.info("  ✅ Handshake cycle complete")
-    return True
 
 # ==============================================================================
 # 🔁 MAIN LOOP
@@ -486,6 +466,7 @@ def run_automation():
 
             # ── Handshake ──────────────────────────────────────────────────────
             try:
+                # add check to only complete task when timer is starting 
                 handshake_complete_task(record)
             except Exception as e:
                 metrics["failed"] += 1
