@@ -1,225 +1,224 @@
-# verbose-octo-carnival
+# verbose-octo-carnival — Job Application Automation Suite
 
-11/10/23 - added 001-installing-workday-paystubs.py
-The script uses Selenium and other libraries in Python to automate the process of logging into a Workday portal, navigating to the "My Payslips" section, and downloading paystubs as PDFs. It reads login credentials from a JSON file, interacts with web elements, and utilizes keypress simulwations to trigger the download of PDFs. The script also extracts and prints data from a table on the webpage. Note: Some parts of the script are commented out, and there are explanations and debug prints throughout. The primary goal seems to be automating the extraction and download of paystub information from a Workday portal.
+A personal automation toolkit built with Python + Selenium that applies to jobs across LinkedIn, Handshake, Indeed, and Greenhouse — scrapes job data, logs every result, and syncs everything to a Google Sheets dashboard.
 
-11/19/23
-Added 002_linkedin_easy_apply.py
-LinkedIn Job Search Automation Project Summary
-Project Overview
-Objective: Automate the job searching and application process on LinkedIn using Python with Selenium.
-Tools Used: Python, Selenium, ChromeDriver, JSON for credential storage, Miro for project planning.
-High-Level Architecture
-Job Search Platform: LinkedIn
-Automation Script: Python with Selenium
-WebDriver: ChromeDriver
-Job Listing Data Storage: SQLite
-Resume and Cover Letter Management: Manual handling or document management system
-Logging and Monitoring: Implementing a logging system
-Milestones and Learnings
-Learning Selenium Basics: Explored Selenium for web automation, including interacting with web elements, clicking buttons, and filling forms.
-Initial Setup: Created a LinkedIn bot using Selenium, logging in and navigating to the job search page.
-Initial Job Scraping: Successfully scraped job details from job listings.
-Security Verification Handling: Implemented a workaround for security verification checks.
-Exception Handling: Implemented try-catch statements for better error handling during script execution.
-Applying to Jobs: Successfully automated the Easy Apply process for job applications on over 400 jobs.
-Dynamic Page Handling: Managed dynamic pages, handling diverse flows during the application process.
-Challenges and Solutions
-Security Verification: Overcame security verification challenges by implementing wait strategies.
-Modal Handling: Implemented a method to handle and dismiss the "Save Application" modal.
-Language Edge Case: Addressed an edge case with a job posting in Spanish.
-Additional Questions Handling: Dynamically scraped and stored additional questions for reuse in future applications.
-Script Optimization: Improved script efficiency by handling page timeouts and skipping unnecessary pages.
-Key Features
-Automated Easy Apply: Applied to over 400 jobs using Easy Apply automation.
-Dynamic Page Navigation: Implemented dynamic navigation through diverse application flows.
-Additional Questions Scraping: Dynamically scraped and stored additional questions for future use.
-Script Optimization and Efficiency: Handled timeouts, skipped unnecessary pages, and improved overall script efficiency.
-Future Enhancements
-Framework Development: Consider building a framework for better code organization and scalability.
-Resume and Cover Letter Automation: Explore options for automating the upload of resumes and cover letters.
-Conclusion
-The project successfully automated the job application process on LinkedIn, demonstrating effective use of Selenium for web automation. Ongoing enhancements and optimizations are planned for future iterations.
+**Portfolio:** [oscar-leung.netlify.app](https://oscar-leung.netlify.app)
+**LinkedIn:** [linkedin.com/in/oscar-leung](https://www.linkedin.com/in/oscar-leung/)
+**PythonAnywhere:** [pythonanywhere.com/user/holymushy](https://www.pythonanywhere.com/user/holymushy/)
 
-12/01/23
-Added 003_linkedIn_framework.py
-Were I basically made it more robust and maintainable than 002_linkedin_easy_apply.py. It's able to keep applying selective jobs. Using IPython, I can combine manual and automation to work as effecienity as I can since Ipython doesn't closes out when errors. Avoid verification. And I can manually submit what roles and answer addtional questions as needed. Applying to over 100 jobs in 30 minutes at best, which is not bad. With that in the pipeline, I can focus on other future projects while applying to jobs. And with what I learned so far, I can continue automating website tasks as I see fit for my day to day work. :D
+---
 
-Check out my https://oscar-leung.netlify.app/ portfolio if you read this far
+## What it does
 
+1. **Discovers jobs** across 4 platforms (LinkedIn, Handshake, Indeed, Greenhouse via Google site: search)
+2. **Filters titles** automatically — skips Senior/Lead/Manager/Director/Sales/Founding roles
+3. **Applies via Easy Apply** where available; logs all others as skipped with reason
+4. **Logs every job** to CSV + JSON in a timestamped `runs/` folder
+5. **Syncs to Google Sheets** for a centralized dashboard (Huntr/Simplify-style)
+6. **Runs headlessly on PythonAnywhere** (LinkedIn + email scraper scheduled daily)
 
-01/30/25
-keywords
+---
+
+## Scripts
+
+### Active Job Application Scripts
+
+| # | Script | Platform | Mode | Notes |
+|---|--------|----------|------|-------|
+| 025 | `025_easy_apply.py` | LinkedIn | Local (visible) | Main LinkedIn Easy Apply loop |
+| 029 | `029_linkedIn_emails_script.py` | LinkedIn | Local/PA headless | Scrapes recruiter emails from job posts |
+| 033 | `033_handshake_applications.py` | Handshake | Local (visible) | Applies to all Easy Apply Handshake jobs |
+| 034 | `034_handshake_job_scraper.py` | Handshake | Local (visible) | Scrapes job listings without applying |
+| 035 | `035_linkedin_easy_apply_pa.py` | LinkedIn | **Headless / PA** | Best for PythonAnywhere scheduled tasks |
+| 036 | `036_handshake_apply_pa.py` | Handshake | Headless / PA | Cookie-based session to bypass Cloudflare |
+| 037 | `037_indeed_apply.py` | Indeed | Local (visible) | Manual Google OAuth login, then auto-apply |
+| 038 | `038_greenhouse_apply.py` | Greenhouse | Local (visible) | Google `site:boards.greenhouse.io` search → apply |
+
+### Supporting Scripts
+
+| # | Script | Purpose |
+|---|--------|---------|
+| 031 | `031_linkedin_analytics.py` | LinkedIn profile analytics scraper |
+| 032 | `032_handshake_script_*.py` | Handshake ELO/omni task automation |
+
+### Shared Library (`library/`)
+
+| File | Purpose |
+|------|---------|
+| `library/gsheets.py` | Google Sheets sync — deduplicates by `platform|job_id`, appends new rows |
+
+---
+
+## Job Search Filter
+
+Current LinkedIn/Handshake title filter (targets mid-level individual contributor roles):
+
+```
+((software engineer OR qa OR AI OR Salesforce OR web)
+  AND NOT "Founding" AND NOT "sr" AND NOT "Sales" AND NOT "Senior"
+  AND NOT "Product" AND NOT "Robotics" AND NOT "Campus"
+  AND NOT "Customer" AND NOT "Manager" AND NOT "Digital"
+  AND NOT "filmware" AND NOT "lead" AND NOT "field")
+```
+
+---
+
+## Setup
+
+### Prerequisites
+
+```bash
+python3 -m venv venv
 source venv/bin/activate
-ipython
+pip install -r requirements.txt
+```
 
-02/19/25
-linkedin global search
-("QA Engineer" OR "Quality Assurance" OR "SQA" OR "Software Engineer" OR "Automation Engineer" OR "Software Tester" OR "Test Engineer" OR "QA Automation" OR "Test Automation" OR "Front-End Developer" OR "React Developer" OR "Angular Developer" OR "Web Developer" OR "Mobile Developer" OR "UI Developer" OR "UX Developer" OR "Full-Stack Developer" OR "Test Lead" OR "Software Development Engineer in Test" OR "SDET")  
-OR  
-("Salesforce" OR "Jira" OR "Selenium" OR "Java" OR "Python" OR "TestRail" OR "Expresso" OR "SQL" OR "GitHub" OR "Jenkins" OR "TeamCity" OR "Automation Framework" OR "Regression Testing" OR "Unit Testing" OR "Smoke Testing" OR "Exploratory Testing" OR "Angular" OR "React" OR "Vue.js" OR "Node.js" OR "HTML" OR "CSS" OR "JavaScript" OR "TypeScript" OR "Swift" OR "Kotlin" OR "Android" OR "iOS" OR "Flutter" OR "Vue" OR "Redux" OR "Firebase" OR "Copado" OR "CI/CD" OR "DevOps" OR "TestNG" OR "Appium" OR "Figma")
+### Environment Variables
 
-("QA Engineer" OR "Quality Assurance" OR "SQA" OR "Software Engineer" OR "Automation Engineer" OR "Software Tester" OR "Test Engineer" OR "QA Automation" OR "Test Automation" OR "Front-End Developer" OR "React Developer" OR "Angular Developer" OR "Web Developer" OR "Mobile Developer" OR "UI Developer" OR "UX Developer" OR "Full-Stack Developer" OR "Test Lead" OR "Software Development Engineer in Test" OR "SDET" OR "Machine Learning Engineer" OR "AI Engineer" OR "Data Scientist")  
-OR
-("Salesforce" OR "Jira" OR "Selenium" OR "Java" OR "Python" OR "TestRail" OR "Expresso" OR "SQL" OR "GitHub" OR "Jenkins" OR "TeamCity" OR "Automation Framework" OR "Regression Testing" OR "Unit Testing" OR "Smoke Testing" OR "Exploratory Testing" OR "Angular" OR "React" OR "Vue.js" OR "Node.js" OR "HTML" OR "CSS" OR "JavaScript" OR "TypeScript" OR "Swift" OR "Kotlin" OR "Android" OR "iOS" OR "Flutter" OR "Vue" OR "Redux" OR "Firebase" OR "Copado" OR "CI/CD" OR "DevOps" OR "TestNG" OR "Appium" OR "Figma" OR "TensorFlow" OR "PyTorch" OR "Scikit-learn" OR "Keras" OR "OpenCV" OR "Pandas" OR "NumPy" OR "Matplotlib" OR "SciPy" OR "Hugging Face")  
+Create a `.env` file in the project root:
 
+```env
+LINKIN_USERNAME=your_linkedin_email@gmail.com
+LINKIN_PASSWORD=your_linkedin_password
+handshake_email=your_handshake_email@gmail.com
+handshake_password=your_handshake_password
+PHONE_NUMBER=+14155551234
+RESUME_PDF_PATH=/absolute/path/to/Oscar_Leung_Resume.pdf
+GOOGLE_SERVICE_ACCOUNT_JSON=/absolute/path/to/service_account.json
+GOOGLE_SHEET_ID=your_google_sheet_id
+```
 
-("Quality Assurance Engineer" OR "QA Engineer" OR "Software Test Engineer" OR "Software Quality Assurance Engineer" OR "Software QA Engineer" OR "SDET" OR "Software Development Engineer in Test" OR "Software Engineer in Test" OR "Software Developer in Test" OR "Test Engineer" OR "Software Engineer")  
-OR  
-("Quality Assurance" OR "Java" OR "Testing" OR "Software Quality Assurance" OR "Selenium" OR "Selenium WebDriver" OR "Manual Testing" OR "Regression Testing" OR "Test Cases" OR "Functional Testing" OR "Black Box Testing" OR "Mobile Testing" OR "QA Engineering")  
+### Run a script
 
-("QA Engineer") OR
-("Quality Assurance") OR
-("SQA") OR
-("Software Engineer") OR
-("Automation Engineer") OR
-("Software Tester") OR
-("Test Engineer") OR
-("QA Automation") OR
-("Test Automation") OR
-("Front-End Developer") OR
-("React Developer") OR
-("Angular Developer") OR
-("Web Developer") OR
-("Mobile Developer") OR
-("UI Developer") OR
-("UX Developer") OR
-("Full-Stack Developer") OR
-("Test Lead") OR
-("Software Development Engineer in Test") OR
-("SDET") OR
-("Machine Learning Engineer") OR
-("AI Engineer") OR
-("Data Scientist") OR
-("Cloud Engineer") OR
-("DevOps Engineer") OR
-("Cybersecurity Specialist") OR
-("Data Analyst") OR
-("Product Manager") OR
-("Blockchain Developer") OR
-("Salesforce") OR
-("Jira") OR
-("Selenium") OR
-("Java") OR
-("Python") OR
-("TestRail") OR
-("Espresso") OR
-("SQL") OR
-("GitHub") OR
-("Jenkins") OR
-("TeamCity") OR
-("Automation Framework") OR
-("Regression Testing") OR
-("Unit Testing") OR
-("Smoke Testing") OR
-("Exploratory Testing") OR
-("Angular") OR
-("React") OR
-("Vue.js") OR
-("Node.js") OR
-("HTML") OR
-("CSS") OR
-("JavaScript") OR
-("TypeScript") OR
-("Swift") OR
-("Kotlin") OR
-("Android") OR
-("iOS") OR
-("Flutter") OR
-("Redux") OR
-("Firebase") OR
-("Copado") OR
-("CI/CD") OR
-("DevOps") OR
-("TestNG") OR
-("Appium") OR
-("Figma") OR
-("TensorFlow") OR
-("PyTorch") OR
-("OpenCV") OR
-("Pandas") OR
-("NumPy") OR
-("Matplotlib") OR
-("SciPy") OR
-("Hugging Face") OR
-("AWS") OR
-("Azure") OR
-("Google Cloud") OR
-("Docker") OR
-("Kubernetes") OR
-("Microservices") OR
-("GraphQL") OR
-("Django") OR
-("Flask") OR
-("Spring Boot") OR
-("Rust") OR
-("Go") OR
-("Ruby") OR
-("PHP") OR
-("Perl") OR
-("Scala") OR
-("SwiftUI") OR
-("AR/VR") OR
-("Unity") OR
-("Unreal Engine") OR
-("Blockchain") OR
-("Solidity") OR
-("Smart Contracts") OR
-("RPA") OR
-("Robotic Process Automation") OR
-("Big Data") OR
-("Hadoop") OR
-("Spark") OR
-("Kafka") OR
-("ElasticSearch") OR
-("Data Mining") OR
-("Data Warehousing") OR
-("Business Intelligence") OR
-("ETL") OR
-("Airflow") OR
-("Tableau") OR
-("Power BI") OR
-("Snowflake") OR
-("Redshift") OR
-("Looker") OR
-("Agile") OR
-("Scrum") OR
-("Kanban") OR
-("Project Management") OR
-("Leadership") OR
-("Communication") OR
-("Problem-Solving") OR
-("Critical Thinking") OR
-("Collaboration") OR
-("Adaptability") OR
-("Creativity") OR
-("Time Management")
+```bash
+# LinkedIn Easy Apply (local)
+python3 025_easy_apply.py
 
+# Handshake applications (local)
+python3 033_handshake_applications.py
 
-03/21/2025
-(("QA Engineer") OR ("Quality Assurance") OR ("SQA") OR ("Software Engineer") OR ("Automation Engineer") OR ("Software Tester") OR ("Test Engineer") OR ("QA Automation") OR ("Test Automation") OR ("Front-End Developer") OR ("React Developer") OR ("Angular Developer") OR ("Web Developer") OR ("Mobile Developer") OR ("UI Developer") OR ("UX Developer") OR ("Full-Stack Developer") OR ("Software Development Engineer in Test") OR ("SDET") OR ("Machine Learning Engineer") OR ("AI Engineer") OR ("Data Scientist") OR ("Cloud Engineer") OR ("DevOps Engineer") OR ("Cybersecurity Specialist") OR ("Data Analyst") OR ("Product Manager") OR ("Blockchain Developer") OR ("Salesforce") OR ("Jira") OR ("Selenium") OR ("Java") OR ("Python") OR ("TestRail") OR ("Espresso") OR ("SQL") OR ("GitHub") OR ("Jenkins") OR ("TeamCity") OR ("Automation Framework") OR ("Regression Testing") OR ("Unit Testing") OR ("Smoke Testing") OR ("Exploratory Testing") OR ("Angular") OR ("React") OR ("Vue.js") OR ("Node.js") OR ("HTML") OR ("CSS") OR ("JavaScript") OR ("TypeScript") OR ("Swift") OR ("Kotlin") OR ("Android") OR ("iOS") OR ("Flutter") OR ("Redux") OR ("Firebase") OR ("Copado") OR ("CI/CD") OR ("DevOps") OR ("TestNG") OR ("Appium") OR ("Figma") OR ("TensorFlow") OR ("PyTorch") OR ("OpenCV") OR ("Pandas") OR ("NumPy") OR ("Matplotlib") OR ("SciPy") OR ("Hugging Face") OR ("AWS") OR ("Azure") OR ("Google Cloud") OR ("Docker") OR ("Kubernetes") OR ("Microservices") OR ("GraphQL") OR ("Django") OR ("Flask") OR ("Spring Boot") OR ("Rust") OR ("Go") OR ("Ruby") OR ("PHP") OR ("Perl") OR ("Scala") OR ("SwiftUI") OR ("AR/VR") OR ("Unity") OR ("Unreal Engine") OR ("Blockchain") OR ("Solidity") OR ("Smart Contracts") OR ("RPA") OR ("Robotic Process Automation") OR ("Big Data") OR ("Hadoop") OR ("Spark") OR ("Kafka") OR ("ElasticSearch") OR ("Data Mining") OR ("Data Warehousing") OR ("Business Intelligence") OR ("ETL") OR ("Airflow") OR ("Tableau") OR ("Power BI") OR ("Snowflake") OR ("Redshift") OR ("Looker") OR ("Agile") OR ("Scrum") OR ("Kanban") OR ("Project Management") OR ("Leadership") OR ("Communication") OR ("Problem-Solving") OR ("Critical Thinking") OR ("Collaboration") OR ("Adaptability") OR ("Creativity") OR ("Time Management"))
-AND NOT ("Manager") AND NOT ("Engineering Manager") AND NOT ("Senior Manager") 
-AND NOT ("Lead") AND NOT ("Principal") AND NOT ("Consultant")
+# Greenhouse via Google site: search
+python3 038_greenhouse_apply.py --dry-run           # preview, no submissions
+python3 038_greenhouse_apply.py --google-pages 10   # live run, 10 pages (~100 jobs)
 
-07/29/2025
-(("QA Engineer") OR ("Quality Assurance") OR ("SQA") OR ("Software Engineer") OR ("Automation Engineer") OR ("Software Tester") OR ("Test Engineer") OR ("QA Automation") OR ("Test Automation") OR ("Front-End Developer") OR ("React Developer") OR ("Angular Developer") OR ("Web Developer") OR ("Mobile Developer") OR ("UI Developer") OR ("UX Developer") OR ("Full-Stack Developer") OR ("Software Development Engineer in Test") OR ("SDET") OR ("Machine Learning Engineer") OR ("AI Engineer") OR ("Data Scientist") OR ("Cloud Engineer") OR ("DevOps Engineer") OR ("Cybersecurity Specialist") OR ("Data Analyst") OR ("Product Manager") OR ("Blockchain Developer") OR ("Salesforce") OR ("Jira") OR ("Selenium") OR ("Java") OR ("Python") OR ("TestRail") OR ("Espresso") OR ("SQL") OR ("GitHub") OR ("Jenkins") OR ("TeamCity") OR ("Automation Framework") OR ("Regression Testing") OR ("Unit Testing") OR ("Smoke Testing") OR ("Exploratory Testing") OR ("Angular") OR ("React") OR ("Vue.js") OR ("Node.js") OR ("HTML") OR ("CSS") OR ("JavaScript") OR ("TypeScript") OR ("Swift") OR ("Kotlin") OR ("Android") OR ("iOS") OR ("Flutter") OR ("Redux") OR ("Firebase") OR ("Copado") OR ("CI/CD") OR ("DevOps") OR ("TestNG") OR ("Appium") OR ("Figma") OR ("TensorFlow") OR ("PyTorch") OR ("OpenCV") OR ("Pandas") OR ("NumPy") OR ("Matplotlib") OR ("SciPy") OR ("Hugging Face") OR ("AWS") OR ("Azure") OR ("Google Cloud") OR ("Docker") OR ("Kubernetes") OR ("Microservices") OR ("GraphQL") OR ("Django") OR ("Flask") OR ("Spring Boot") OR ("Rust") OR ("Go") OR ("Ruby") OR ("PHP") OR ("Perl") OR ("Scala") OR ("SwiftUI") OR ("AR/VR") OR ("Unity") OR ("Unreal Engine") OR ("Blockchain") OR ("Solidity") OR ("Smart Contracts") OR ("RPA") OR ("Robotic Process Automation") OR ("Big Data") OR ("Hadoop") OR ("Spark") OR ("Kafka") OR ("ElasticSearch") OR ("Data Mining") OR ("Data Warehousing") OR ("Business Intelligence") OR ("ETL") OR ("Airflow") OR ("Tableau") OR ("Power BI") OR ("Snowflake") OR ("Redshift") OR ("Looker") OR ("Agile") OR ("Scrum") OR ("Kanban") OR ("Project Management") OR ("Leadership") OR ("Communication") OR ("Problem-Solving") OR ("Critical Thinking") OR ("Collaboration") OR ("Adaptability") OR ("Creativity") OR ("Time Management"))
-AND NOT ("Manager") AND NOT ("Engineering Manager") AND NOT ("Senior Manager") 
-AND NOT ("Lead") AND NOT ("Principal") AND NOT ("Consultant")
+# LinkedIn headless (PA-compatible)
+python3 035_linkedin_easy_apply_pa.py --dry-run
+```
 
-Curent Use
-((software engineer OR qa OR AI OR Salesforce OR web) AND NOT "Founding" AND NOT "sr" AND NOT "manager" AND NOT "senior" AND NOT "lead" AND NOT "hardware" AND NOT "snr" AND NOT "Consultant" AND NOT "sales" AND NOT "director" AND NOT "therapist" AND NOT "account" AND NOT "business" AND NOT "volunteer" AND NOT "proofreader" AND NOT "embedded" AND NOT "principal" AND NOT "robotics" AND NOT "SAP" AND NOT "Customer" AND NOT "Architect" AND NOT "relations" AND NOT "security" AND NOT "verification")
+---
 
-Template Starter
-(software engineer OR qa OR AI OR Salesforce)
-((software engineer OR qa) AND NOT [insert here]) 
+## Output & Runs
 
-11/24/2025
-Been around since I've updated here – worked on automation task for Outlier which is pretty nice ~ :) 
-Was able get 4 hours of tasks done in half an our with the script running in the background. 
+Every script writes to a timestamped folder under `runs/`:
 
-02/10/26
-Uploaded a bunch of scrips 
+```
+runs/
+  greenhouse_apply_2026-04-07_18-27-51/
+    run.log       ← full execution log
+    jobs.json     ← all jobs with status, title, company, location, salary, skills
+    jobs.csv      ← same data as spreadsheet
+    job_urls.txt  ← raw URLs collected (Greenhouse only)
+```
 
-04/02/026
-Uploaded handshake scripts and archive much of email data.
-Planning to do full reset on this email scrapping and making it meaning and connecting it all at once and streamlining.
+---
+
+## Google Sheets Dashboard
+
+All scripts sync to a shared Google Sheet via `library/gsheets.py`.
+
+**Schema:**
+
+| Column | Description |
+|--------|-------------|
+| date_applied | ISO timestamp |
+| platform | LinkedIn / Handshake / Indeed / Greenhouse |
+| job_id | Platform-specific ID (dedup key) |
+| title | Job title |
+| company | Company name |
+| location | City/State or Remote |
+| remote_type | remote / hybrid / onsite |
+| url | Direct job URL |
+| employment_type | full-time / contract / internship |
+| salary_min / salary_max | Parsed salary range |
+| salary_unit | /yr or /hr |
+| skills_mentioned | Comma-separated tech skills found in description |
+| apply_type | easy_apply / full_form / external |
+| status | applied / skipped / error / dry_run |
+| days_since_posted | Age of posting in days |
+| notes | Skip reason or error message |
+
+**Dashboard:** Connect with [Looker Studio](https://lookerstudio.google.com) → New Report → Google Sheets data source.
+
+---
+
+## PythonAnywhere (Automated Scheduled Tasks)
+
+> See [`PythonAnywhere/setup_pythonanywhere.sh`](PythonAnywhere/setup_pythonanywhere.sh) for one-command setup.
+
+**Recommended scripts for PA (headless-compatible):**
+
+| Script | Schedule | What it does |
+|--------|----------|-------------|
+| `035_linkedin_easy_apply_pa.py` | Daily 08:00 | Applies to LinkedIn Easy Apply jobs |
+| `029_linkedIn_emails_script.py` | Daily 09:00 | Scrapes recruiter emails from LinkedIn |
+
+**Setup steps:**
+
+```bash
+# 1. SSH into PythonAnywhere Bash console
+# 2. Clone the repo
+git clone https://github.com/oscar-leung/verbose-octo-carnival.git
+cd verbose-octo-carnival
+
+# 3. Run setup
+bash PythonAnywhere/setup_pythonanywhere.sh
+
+# 4. Fill in .env with credentials
+nano .env
+
+# 5. Add scheduled tasks in PA Dashboard → Tasks
+#    Task 1: cd ~/verbose-octo-carnival && python3 035_linkedin_easy_apply_pa.py
+#    Task 2: cd ~/verbose-octo-carnival && python3 029_linkedIn_emails_script.py
+```
+
+**Note:** Handshake (036) is blocked by Cloudflare in headless mode — run locally instead. Indeed (037) requires manual Google OAuth — run locally.
+
+---
+
+## Run Results (April 7, 2026)
+
+| Platform | Jobs Found | Applied | Skipped | Notes |
+|----------|-----------|---------|---------|-------|
+| LinkedIn (headless) | 1,029 | 0 | 1,028 | Dry-run mode; 1,000+ jobs indexed |
+| Handshake | 79 | 28 | 51 | 26 already applied, 24 external |
+| Greenhouse | 20 | 7 (dry) | 13 | `skipped_no_button` = jobs needing login |
+| Indeed | 0 | 0 | 0 | Indeed blocked job card selectors |
+
+---
+
+## Project History
+
+| Date | Milestone |
+|------|-----------|
+| Nov 2023 | Started with Workday paystub scraper (001) |
+| Nov 2023 | First LinkedIn Easy Apply bot — 400+ applications |
+| Dec 2023 | Built more robust framework with IPython (003) |
+| Nov 2025 | Outlier task automation — 4hrs of work in 30 min |
+| Feb 2026 | Handshake ELO task scripts (032) |
+| Apr 2026 | Full job application suite: LinkedIn + Handshake + Indeed + Greenhouse |
+| Apr 2026 | Google Sheets dashboard + PythonAnywhere deployment |
+
+---
+
+## Tech Stack
+
+- **Python 3.12** + **Selenium 4** — browser automation
+- **ChromeDriver** — anti-detection (`--disable-blink-features=AutomationControlled`)
+- **gspread** + **google-auth** — Google Sheets sync
+- **python-dotenv** — credential management
+- **PythonAnywhere** — headless scheduled execution
+- **Looker Studio** — free dashboard frontend
+
+---
+
+*Automating the job hunt so I can focus on interview prep.*
