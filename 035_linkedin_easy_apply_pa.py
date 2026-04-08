@@ -78,10 +78,13 @@ KEYWORDS = [
     "React Developer",
     "Full Stack Engineer",
 ]
-PAGES_PER_KEYWORD = 10   # 25 jobs/page → 250 per keyword
+PAGES_PER_KEYWORD = 3    # 25 jobs/page → 75 per keyword (reduced to avoid detection)
 JOBS_PER_PAGE     = 25
 MODAL_MAX_STEPS   = 20
 WAIT_SEC          = 10
+MAX_APPLIES_PER_SESSION = 15   # Hard cap: stop after this many applications
+SESSION_BREAK_EVERY     = 5    # Take a longer break every N applications
+SESSION_BREAK_SECS      = (45, 90)   # Random break length in seconds
 
 # ── Run folder ────────────────────────────────────────────────────────────────
 RUN_ID  = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
@@ -542,7 +545,22 @@ def run():
                             url=meta["url"],
                             skills_mentioned=extract_skills(desc),
                         ))
-                        human_wait(0.8, 1.8)
+
+                        # ── Anti-detection: paced delays ──────────────────
+                        # Longer wait after each apply (looks human)
+                        if status == "applied":
+                            human_wait(8.0, 18.0)
+                            # Extra break every N applications
+                            if counts["applied"] % SESSION_BREAK_EVERY == 0:
+                                pause = random.uniform(*SESSION_BREAK_SECS)
+                                log.info(f"  [anti-detect] Session break {pause:.0f}s after {counts['applied']} applies")
+                                time.sleep(pause)
+                            # Hard cap
+                            if counts["applied"] >= MAX_APPLIES_PER_SESSION:
+                                log.info(f"  [anti-detect] Hit session cap ({MAX_APPLIES_PER_SESSION}) — stopping.")
+                                raise StopIteration
+                        else:
+                            human_wait(2.0, 4.5)
 
                     except InvalidSessionIdException:
                         raise
@@ -553,6 +571,8 @@ def run():
                         counts["error"] += 1
                         emergency_close(driver, wait)
 
+    except StopIteration:
+        log.info("  Session cap reached — wrapping up cleanly.")
     except (InvalidSessionIdException, Exception) as e:
         if not isinstance(e, InvalidSessionIdException):
             log.error(f"Fatal error: {e}")
