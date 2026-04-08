@@ -513,16 +513,34 @@ def run():
                 driver.get(url)
                 human_wait(2.0, 3.5)
 
-                # Wait for job cards
-                try:
-                    WebDriverWait(driver, WAIT_SEC).until(
-                        EC.presence_of_element_located((By.XPATH, "//div[@data-jk]"))
-                    )
-                except TimeoutException:
+                # Wait for job cards — Indeed uses li[@data-jk] or div[@data-jk]
+                CARD_XPATHS = [
+                    "//li[@data-jk]",
+                    "//div[@data-jk]",
+                    "//div[contains(@class,'job_seen_beacon')]",
+                    "//div[contains(@class,'resultContent')]",
+                ]
+                cards = []
+                found_cards = False
+                for card_xp in CARD_XPATHS:
+                    try:
+                        WebDriverWait(driver, 5).until(
+                            EC.presence_of_element_located((By.XPATH, card_xp))
+                        )
+                        cards = driver.find_elements(By.XPATH, card_xp)
+                        if cards:
+                            found_cards = True
+                            log.info(f"  Cards via: {card_xp}")
+                            break
+                    except TimeoutException:
+                        continue
+
+                if not found_cards:
                     log.info(f"  Page {page_num+1}: no jobs — next keyword.")
+                    # Screenshot for debugging
+                    driver.save_screenshot(os.path.join(RUN_DIR, f"no_jobs_{keyword.replace(' ','_')}_p{page_num+1}.png"))
                     break
 
-                cards = driver.find_elements(By.XPATH, "//div[@data-jk]")
                 log.info(f"  {len(cards)} cards")
 
                 for idx, card in enumerate(cards):
