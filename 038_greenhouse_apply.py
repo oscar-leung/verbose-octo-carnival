@@ -466,12 +466,20 @@ EXTERNAL_BTN = (
 SUBMIT_BTN = (
     "//button[normalize-space()='Submit Application'] | "
     "//button[normalize-space()='Submit'] | "
-    "//input[@type='submit' and contains(@value,'Submit')]"
+    "//input[@type='submit' and contains(@value,'Submit')] | "
+    "//button[contains(normalize-space(),'Submit Application')] | "
+    "//button[contains(normalize-space(),'Submit application')] | "
+    "//button[@data-qa='btn-submit'] | "
+    "//button[contains(@class,'submit')]"
 )
 NEXT_BTN = (
     "//button[normalize-space()='Next'] | "
     "//button[normalize-space()='Continue'] | "
-    "//input[@type='submit' and @value='Next']"
+    "//input[@type='submit' and @value='Next'] | "
+    "//button[contains(normalize-space(),'Next step')] | "
+    "//button[@data-qa='btn-next'] | "
+    "//button[contains(@class,'next-btn')] | "
+    "//button[contains(@class,'next') and @type='button']"
 )
 SUCCESS_XP = (
     "//*[contains(normalize-space(),'application has been submitted')] | "
@@ -517,6 +525,20 @@ def apply_to_job(driver, wait) -> tuple[str, str]:
             if el_exists(driver, NEXT_BTN, timeout=2):
                 safe_click(driver, wait, NEXT_BTN)
                 human_wait(0.8, 1.5)
+                continue
+
+            # Last resort: any visible submit-type button or input
+            fallback_btns = driver.find_elements(
+                By.XPATH,
+                "//button[@type='submit'] | //input[@type='submit'] | "
+                "//button[contains(@class,'btn-primary') or contains(@class,'btn-submit')]"
+            )
+            if fallback_btns:
+                log.info(f"    Fallback click on {fallback_btns[0].text.strip() or 'submit btn'}")
+                driver.execute_script(_JS_CLICK, fallback_btns[0])
+                human_wait(2.0, 3.0)
+                if el_exists(driver, SUCCESS_XP, timeout=5):
+                    return "applied", apply_type
                 continue
 
             log.warning(f"    No Next/Submit at step {step}")
