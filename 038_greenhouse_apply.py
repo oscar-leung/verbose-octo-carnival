@@ -1,15 +1,25 @@
 """
-Greenhouse Job Apply — my.greenhouse.io
-Searches for QA/SDET/SWE roles on Greenhouse's candidate portal and applies via
-the Quick Apply flow (one-click for jobs that support it, full form for the rest).
+Greenhouse Job Apply — boards.greenhouse.io via Google site: search
+────────────────────────────────────────────────────────────────────
+Strategy (from the LinkedIn tip):
+  Use Google's site: operator to find jobs posted directly on
+  boards.greenhouse.io that never appear on LinkedIn or Indeed.
 
-Run locally — Greenhouse uses Google OAuth so automated login is blocked headless.
-The script opens a visible browser, pauses for manual login if needed, then takes over.
+No Greenhouse account login needed to apply — each job has a public
+application form. my.greenhouse.io login (OTP) is only used once at
+the end to sync your applications to your profile.
+
+Flow:
+  1. Google search: site:boards.greenhouse.io inurl:/jobs/ <role> <location>
+  2. Collect all boards.greenhouse.io/*/jobs/* URLs from results
+  3. Navigate to each job page
+  4. Fill the Greenhouse application form (name, email, phone, resume, etc.)
+  5. Submit — or pause for OTP code if my.greenhouse.io quick-apply is triggered
 
 Usage:
   python 038_greenhouse_apply.py
-  python 038_greenhouse_apply.py --dry-run     # navigate + collect data, do not submit
-  python 038_greenhouse_apply.py --pages 3     # how many search result pages per keyword
+  python 038_greenhouse_apply.py --dry-run       # scrape + log, do not submit
+  python 038_greenhouse_apply.py --google-pages 5  # Google result pages (default 10)
 """
 
 import argparse
@@ -32,7 +42,6 @@ from selenium import webdriver
 from selenium.common.exceptions import (
     ElementClickInterceptedException,
     ElementNotInteractableException,
-    NoSuchElementException,
     StaleElementReferenceException,
     TimeoutException,
 )
@@ -46,38 +55,37 @@ load_dotenv()
 # ── CLI ───────────────────────────────────────────────────────────────────────
 parser = argparse.ArgumentParser()
 parser.add_argument("--dry-run", action="store_true", help="Collect data, do not submit")
-parser.add_argument("--pages", type=int, default=10, help="Result pages per keyword")
+parser.add_argument("--google-pages", type=int, default=10,
+                    help="Google result pages to scrape per query (default 10, ~100 jobs)")
 args = parser.parse_args()
 
 # ── Config ────────────────────────────────────────────────────────────────────
-FULL_NAME   = "Oscar Leung"
-EMAIL       = os.getenv("LINKIN_USERNAME") or os.getenv("handshake_email", "")
-PHONE       = os.getenv("PHONE_NUMBER", "")
+FULL_NAME    = "Oscar Leung"
+EMAIL        = os.getenv("LINKIN_USERNAME") or os.getenv("handshake_email", "")
+PHONE        = os.getenv("PHONE_NUMBER", "")
 LINKEDIN_URL = "https://www.linkedin.com/in/oscar-leung/"
-RESUME_PATH = os.getenv("RESUME_PDF_PATH", "")   # set in .env: RESUME_PDF_PATH=/abs/path/resume.pdf
+RESUME_PATH  = os.getenv("RESUME_PDF_PATH", "")   # RESUME_PDF_PATH=/abs/path/Oscar_Leung_Resume.pdf
 
-KEYWORDS = [
-    "QA Engineer",
-    "SDET",
-    "Software Engineer in Test",
-    "Automation Engineer",
-    "Software Engineer",
-    "Frontend Engineer",
-    "React Developer",
-    "Full Stack Engineer",
-    "QA Automation",
-]
+# Oscar's optimised Google site: search query
+GOOGLE_QUERY = (
+    'site:boards.greenhouse.io inurl:/jobs/ '
+    '(SDET OR "Software Engineer in Test" OR "QA Engineer" OR '
+    '"Test Automation Engineer" OR "Quality Engineer" OR "Software Quality Engineer") '
+    '(remote OR "San Francisco" OR "Bay Area" OR "San Jose" OR "Santa Clara" OR '
+    'Cupertino OR Sunnyvale OR "Mountain View" OR "Palo Alto" OR '
+    '"Redwood City" OR Fremont OR Milpitas OR Davis) '
+    '-staff -senior -principal -lead -manager -director -vp -head -architect -intern -internship'
+)
 
-# Title tokens that disqualify a job (case-insensitive)
+# Title tokens to skip at the application level (catches cases Google doesn't filter)
 TITLE_EXCLUDE = {
-    "founding", "sr.", " sr ", "sales", "senior", "product", "robotics",
-    "campus", "customer", "manager", "digital", "firmware", "lead", "field",
-    "principal", "director", "staff",
+    "senior", "sr.", " sr ", "staff", "principal", "lead", "manager", "director",
+    "vp ", "head of", "architect", "intern", "founding", "sales", "field",
 }
 
 WAIT_SEC       = 10
 MODAL_MAX_STEPS = 15
-BASE_URL = "https://my.greenhouse.io"
+RESULTS_PER_GOOGLE_PAGE = 10
 
 # ── Run folder ────────────────────────────────────────────────────────────────
 RUN_ID  = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
@@ -104,10 +112,9 @@ class GHJob:
     title:            str
     company:          str
     location:         str
-    keyword:          str
     status:           str       # applied | skipped | error | dry_run | skipped_external
     url:              str = ""
-    apply_type:       str = ""  # quick_apply | full_form | external | unknown
+    apply_type:       str = ""  # full_form | external | unknown
     platform:         str = "Greenhouse"
     remote_type:      str = ""
     employment_type:  str = ""
@@ -118,7 +125,7 @@ class GHJob:
     timestamp:        str = field(default_factory=lambda: datetime.now().isoformat())
 
 _records: list[GHJob] = []
-_seen_ids: set[str] = set()
+_seen_urls: set[str] = set()
 _JS_CLICK = "arguments[0].click();"
 
 def save_all():
@@ -130,7 +137,7 @@ def save_all():
         w.writeheader()
         w.writerows(rows)
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
+# ── Skill extraction ──────────────────────────────────────────────────────────
 SKILLS = [
     "python", "java", "javascript", "typescript", "react", "angular", "vue",
     "selenium", "playwright", "cypress", "appium", "testng", "junit",
@@ -147,6 +154,7 @@ def title_is_excluded(title: str) -> bool:
     low = title.lower()
     return any(tok in low for tok in TITLE_EXCLUDE)
 
+# ── Browser helpers ───────────────────────────────────────────────────────────
 def human_wait(min_s=0.5, max_s=1.5):
     time.sleep(random.uniform(min_s, max_s))
 
@@ -179,12 +187,8 @@ def safe_text(driver, xpath, timeout=3) -> str:
         return ""
 
 def dismiss_modal(driver):
-    for xp in [
-        "//button[@aria-label='Close']",
-        "//button[normalize-space()='Close']",
-        "//button[normalize-space()='Cancel']",
-        "//button[normalize-space()='Dismiss']",
-    ]:
+    for xp in ["//button[@aria-label='Close']", "//button[normalize-space()='Close']",
+               "//button[normalize-space()='Cancel']"]:
         if el_exists(driver, xp, timeout=1):
             try:
                 driver.find_element(By.XPATH, xp).click()
@@ -194,7 +198,6 @@ def dismiss_modal(driver):
                 pass
     try:
         driver.find_element(By.TAG_NAME, "body").send_keys(Keys.ESCAPE)
-        time.sleep(0.4)
     except Exception:
         pass
 
@@ -205,344 +208,217 @@ def init_driver() -> webdriver.Chrome:
     opts.add_experimental_option("excludeSwitches", ["enable-automation"])
     opts.add_experimental_option("useAutomationExtension", False)
     opts.add_argument("--start-maximized")
-    driver = webdriver.Chrome(options=opts)
-    driver.execute_cdp_cmd(
+    d = webdriver.Chrome(options=opts)
+    d.execute_cdp_cmd(
         "Page.addScriptToEvaluateOnNewDocument",
         {"source": "Object.defineProperty(navigator,'webdriver',{get:()=>undefined})"},
     )
-    return driver
+    return d
 
-# ── Login ─────────────────────────────────────────────────────────────────────
-def login(driver, wait):
+# ── Google site: search ───────────────────────────────────────────────────────
+def google_search_url(query: str, start: int) -> str:
+    """Build a Google search URL. start is 0-based (0, 10, 20 …)."""
+    return f"https://www.google.com/search?q={quote_plus(query)}&start={start}"
+
+def collect_greenhouse_urls(driver, wait) -> list[str]:
     """
-    Greenhouse login flow:
-      1. Enter email → click "Send security code"
-      2. Check your email for the OTP → script pauses, you type it in the browser
-      3. Script detects the redirect to /dashboard and continues automatically.
-
-    On subsequent runs within the same session the cookie is active and step 1-2 are skipped.
+    Scrape all boards.greenhouse.io/*/jobs/* URLs visible on the current Google results page.
+    Handles Google's CAPTCHA by waiting up to 60s for the user to solve it.
     """
-    driver.get(f"{BASE_URL}/dashboard")
-    time.sleep(3)
+    # Check for CAPTCHA
+    if el_exists(driver, "//form[@id='captcha-form'] | //div[@id='recaptcha']", timeout=2):
+        log.info("  Google CAPTCHA detected — solve it in the browser (60s).")
+        try:
+            WebDriverWait(driver, 60).until(
+                EC.presence_of_element_located((By.XPATH, "//div[@id='search']"))
+            )
+        except TimeoutException:
+            log.warning("  CAPTCHA not solved in time — skipping this page.")
+            return []
 
-    # Already logged in?
-    if "dashboard" in driver.current_url and "login" not in driver.current_url:
-        log.info("Already logged in to Greenhouse.")
-        driver.save_screenshot(os.path.join(RUN_DIR, "post_login.png"))
-        return
-
-    # Step 1 — enter email and request security code
-    email_xp = "//input[@type='email' or @id='email' or @name='email' or contains(@placeholder,'email')]"
-    try:
-        email_field = WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.XPATH, email_xp))
-        )
-        email_field.clear()
-        email_field.send_keys(EMAIL)
-        log.info(f"Entered email: {EMAIL}")
-    except TimeoutException:
-        log.warning("Could not find email field — check screenshot.")
-        driver.save_screenshot(os.path.join(RUN_DIR, "login_page.png"))
-        sys.exit(1)
-
-    # Click "Send security code"
-    send_code_xp = (
-        "//button[contains(normalize-space(),'Send security code')] | "
-        "//button[contains(normalize-space(),'Send code')] | "
-        "//input[@type='submit']"
-    )
-    safe_click(driver, wait, send_code_xp)
-    time.sleep(1)
-    driver.save_screenshot(os.path.join(RUN_DIR, "after_send_code.png"))
-
-    # Step 2 — wait for OTP entry and redirect to dashboard
-    log.info("=" * 60)
-    log.info("  CHECK YOUR EMAIL for the Greenhouse security code.")
-    log.info("  Enter it in the browser window — you have 120 seconds.")
-    log.info("=" * 60)
-
-    try:
-        WebDriverWait(driver, 120).until(EC.url_contains("/dashboard"))
-        log.info("Login successful.")
-    except TimeoutException:
-        log.warning("Login timeout. Check the browser and re-run.")
-        driver.save_screenshot(os.path.join(RUN_DIR, "login_timeout.png"))
-        sys.exit(1)
-
-    driver.save_screenshot(os.path.join(RUN_DIR, "post_login.png"))
-
-# ── Job search ────────────────────────────────────────────────────────────────
-def search_url(keyword: str, page: int) -> str:
-    """
-    Greenhouse job board search URL.
-    page is 1-based. Each page shows ~10 results.
-    """
-    return f"{BASE_URL}/job_board/search?keyword={quote_plus(keyword)}&page={page}"
-
-def get_job_cards(driver) -> list:
-    """Return all job card elements on the current search results page."""
-    # Greenhouse renders job cards as <div> with class containing 'job-result' or as <li> items
-    for xp in [
-        "//div[contains(@class,'job-result')]",
-        "//div[contains(@class,'job-post')]",
-        "//li[contains(@class,'job-result')]",
-        "//div[@data-job-id]",
-        "//div[contains(@class,'opening')]",
-    ]:
-        cards = driver.find_elements(By.XPATH, xp)
-        if cards:
-            return cards
-    return []
-
-def get_card_meta(card) -> dict:
-    """Extract job_id, title, company, location from a search result card."""
-    job_id = (
-        card.get_attribute("data-job-id") or
-        card.get_attribute("data-id") or
-        card.get_attribute("id") or ""
-    )
-    title = company = location = url = ""
-    try:
-        title = card.find_element(By.XPATH, ".//h2 | .//h3 | .//a[contains(@class,'title')]").text.strip()
-    except Exception:
-        pass
-    try:
-        company = card.find_element(
-            By.XPATH, ".//*[contains(@class,'company')] | .//*[contains(@class,'employer')]"
-        ).text.strip()
-    except Exception:
-        pass
-    try:
-        location = card.find_element(
-            By.XPATH, ".//*[contains(@class,'location')] | .//*[contains(@class,'city')]"
-        ).text.strip()
-    except Exception:
-        pass
-    try:
-        link = card.find_element(By.XPATH, ".//a[@href]")
-        href = link.get_attribute("href") or ""
-        url  = href if href.startswith("http") else f"{BASE_URL}{href}"
-        if not job_id:
-            m = re.search(r"/jobs/(\d+)|job_id=(\d+)", href)
+    urls = []
+    # Result links live in <a> tags inside #search
+    for a in driver.find_elements(By.XPATH, "//a[@href]"):
+        href = a.get_attribute("href") or ""
+        # Match boards.greenhouse.io/<company>/jobs/<id>
+        if re.search(r"boards\.greenhouse\.io/[^/]+/jobs/\d+", href):
+            # Strip Google redirect wrapper if present
+            m = re.search(r"(https://boards\.greenhouse\.io/[^&\"]+)", href)
             if m:
-                job_id = m.group(1) or m.group(2)
+                clean = m.group(1).split("#")[0]  # strip URL fragments (#:~:text=...)
+                if clean not in urls:
+                    urls.append(clean)
+    return urls
+
+# ── Job detail ────────────────────────────────────────────────────────────────
+def parse_job_page(driver) -> dict:
+    """Extract title, company, location, description from a boards.greenhouse.io job page."""
+    title = safe_text(driver, "//h1", timeout=5)
+
+    # Company name: try page title, DOM elements, then fall back to URL slug
+    company = ""
+    try:
+        t = driver.title
+        # "Job Title at Company | ..." or "Job Title - Company Careers"
+        if " at " in t:
+            company = t.split(" at ", 1)[-1].split("|")[0].split("-")[0].strip()
+        elif "|" in t:
+            company = t.split("|")[-1].strip()
+        elif " - " in t:
+            company = t.split(" - ")[-1].replace("Careers", "").strip()
     except Exception:
         pass
-    return {"job_id": job_id, "title": title, "company": company, "location": location, "url": url}
+    if not company:
+        company = safe_text(driver,
+            "//div[contains(@class,'company-name')] | "
+            "//a[contains(@class,'back')] | "
+            "//h2[contains(@class,'company')]", timeout=1)
+    if not company:
+        # Extract slug from current URL: boards.greenhouse.io/<slug>/jobs/<id>
+        slug_m = re.search(r"boards\.greenhouse\.io/([^/]+)/jobs/", driver.current_url)
+        if slug_m:
+            company = slug_m.group(1).replace("_", " ").replace("-", " ").title()
 
-# ── Job detail page ───────────────────────────────────────────────────────────
-def get_job_detail(driver) -> dict:
-    """Extract description, remote_type, employment_type, salary from the job detail page."""
+    location = safe_text(driver, "//div[contains(@class,'location')] | //*[@id='location']", timeout=2)
+
+    # Description
     desc = ""
     for xp in [
         "//div[@id='content']",
-        "//div[contains(@class,'job-post-description')]",
+        "//div[contains(@class,'job-description')]",
         "//div[contains(@class,'description')]",
-        "//section[contains(@class,'content')]",
+        "//section",
     ]:
         try:
             el = WebDriverWait(driver, 3).until(EC.presence_of_element_located((By.XPATH, xp)))
             desc = el.text.strip()
-            if len(desc) > 100:
+            if len(desc) > 200:
                 break
         except Exception:
             pass
 
     low = desc.lower()
-    if "remote" in low and ("hybrid" in low or "onsite" in low or "in-office" in low):
-        remote_type = "hybrid"
-    elif "remote" in low:
-        remote_type = "remote"
-    else:
-        remote_type = "onsite"
-
+    remote_type = (
+        "hybrid" if "remote" in low and ("hybrid" in low or "onsite" in low or "in-office" in low) else
+        "remote" if "remote" in low else "onsite"
+    )
     emp_type = (
         "full-time"  if "full-time" in low or "full time" in low else
-        "part-time"  if "part-time" in low or "part time" in low else
-        "internship" if "intern" in low or "co-op" in low else
+        "part-time"  if "part-time" in low else
+        "internship" if "intern" in low else
         "contract"   if "contract" in low else ""
     )
-
     salary_raw = ""
-    m = re.search(r"\$[\d,]+(?:\s*[–\-—]\s*\$[\d,]+)?(?:\s*/\s*(?:yr|hr|year|hour))?", desc)
+    m = re.search(r"\$[\d,]+(?:\s*[-–—]\s*\$[\d,]+)?(?:\s*/\s*(?:yr|hr|year|hour))?", desc)
     if m:
         salary_raw = m.group(0)
 
+    # Extract job ID from URL
+    job_id = ""
+    id_m = re.search(r"/jobs/(\d+)", driver.current_url)
+    if id_m:
+        job_id = id_m.group(1)
+
     return {
-        "description_full": desc[:8000],
-        "remote_type": remote_type,
-        "employment_type": emp_type,
-        "salary_raw": salary_raw,
+        "job_id": job_id, "title": title, "company": company, "location": location,
+        "description_full": desc[:8000], "remote_type": remote_type,
+        "employment_type": emp_type, "salary_raw": salary_raw,
         "skills_mentioned": extract_skills(desc),
     }
 
-# ── Apply flow ────────────────────────────────────────────────────────────────
+# ── Application form filler ───────────────────────────────────────────────────
+def fill_form(driver, wait):
+    """Fill standard Greenhouse public application form fields."""
 
-# Greenhouse quick apply button (profile-based one-click apply)
-QUICK_APPLY_BTN = (
-    "//button[contains(normalize-space(),'Quick apply')] | "
-    "//button[contains(normalize-space(),'quick apply')] | "
-    "//a[contains(normalize-space(),'Quick apply')]"
-)
-
-# Standard "Apply" button that opens the full application form
-FULL_APPLY_BTN = (
-    "//button[contains(normalize-space(),'Apply for this job')] | "
-    "//button[contains(normalize-space(),'Apply now')] | "
-    "//a[contains(normalize-space(),'Apply for this job')] | "
-    "//a[contains(normalize-space(),'Apply now')] | "
-    "//button[normalize-space()='Apply']"
-)
-
-# External apply redirects away from Greenhouse
-EXTERNAL_APPLY_BTN = (
-    "//a[contains(@href,'http') and ("
-    "  contains(normalize-space(),'Apply on company') or "
-    "  contains(normalize-space(),'Apply externally') or "
-    "  contains(normalize-space(),'Visit company site')"
-    ")]"
-)
-
-# Greenhouse full-form navigation buttons
-GH_NEXT_BTN   = (
-    "//button[normalize-space()='Next'] | "
-    "//button[normalize-space()='Continue'] | "
-    "//input[@type='submit' and @value='Next']"
-)
-GH_SUBMIT_BTN = (
-    "//button[normalize-space()='Submit Application'] | "
-    "//button[normalize-space()='Submit'] | "
-    "//input[@type='submit' and contains(@value,'Submit')]"
-)
-
-
-def detect_apply_type(driver) -> str:
-    if el_exists(driver, QUICK_APPLY_BTN, timeout=2):
-        return "quick_apply"
-    if el_exists(driver, EXTERNAL_APPLY_BTN, timeout=1):
-        return "external"
-    if el_exists(driver, FULL_APPLY_BTN, timeout=2):
-        return "full_form"
-    return "unknown"
-
-
-def fill_greenhouse_form(driver, wait):
-    """
-    Fill standard Greenhouse application form fields.
-    Handles: name, email, phone, LinkedIn, resume upload, cover letter,
-    education, work experience, and generic text/select inputs.
-    """
-    # ── Name ──────────────────────────────────────────────────────────────────
-    for xp in [
-        "//input[@id='first_name' or contains(@name,'first_name')]",
-        "//input[@placeholder='First name' or @placeholder='First Name']",
-    ]:
-        if el_exists(driver, xp, timeout=1):
-            el = driver.find_element(By.XPATH, xp)
-            if not el.get_attribute("value"):
-                el.send_keys(FULL_NAME.split()[0])
-            break
-
-    for xp in [
-        "//input[@id='last_name' or contains(@name,'last_name')]",
-        "//input[@placeholder='Last name' or @placeholder='Last Name']",
-    ]:
-        if el_exists(driver, xp, timeout=1):
-            el = driver.find_element(By.XPATH, xp)
-            if not el.get_attribute("value"):
-                el.send_keys(FULL_NAME.split()[-1])
-            break
-
-    # ── Email ──────────────────────────────────────────────────────────────────
-    for xp in [
-        "//input[@id='email' or contains(@name,'email')]",
-        "//input[@type='email']",
-    ]:
-        if el_exists(driver, xp, timeout=1):
-            el = driver.find_element(By.XPATH, xp)
-            if not el.get_attribute("value"):
-                el.send_keys(EMAIL)
-            break
-
-    # ── Phone ──────────────────────────────────────────────────────────────────
-    if PHONE:
-        for xp in [
-            "//input[@id='phone' or contains(@name,'phone')]",
-            "//input[@type='tel']",
-        ]:
+    def try_fill(xpaths: list[str], value: str):
+        for xp in xpaths:
             if el_exists(driver, xp, timeout=1):
-                el = driver.find_element(By.XPATH, xp)
-                if not el.get_attribute("value"):
-                    el.send_keys(PHONE)
-                break
+                try:
+                    el = driver.find_element(By.XPATH, xp)
+                    if not el.get_attribute("value"):
+                        el.clear()
+                        el.send_keys(value)
+                    return
+                except Exception:
+                    pass
 
-    # ── LinkedIn ───────────────────────────────────────────────────────────────
+    # Name
+    try_fill(["//input[@id='first_name']", "//input[@name='first_name']",
+              "//input[@autocomplete='given-name']"], FULL_NAME.split()[0])
+    try_fill(["//input[@id='last_name']", "//input[@name='last_name']",
+              "//input[@autocomplete='family-name']"], FULL_NAME.split()[-1])
+
+    # Email
+    try_fill(["//input[@id='email']", "//input[@type='email']",
+              "//input[@name='email']"], EMAIL)
+
+    # Phone
+    if PHONE:
+        try_fill(["//input[@id='phone']", "//input[@type='tel']",
+                  "//input[@name='phone']"], PHONE)
+
+    # LinkedIn
     for xp in [
         "//input[contains(@id,'linkedin') or contains(@name,'linkedin')]",
-        "//input[contains(@placeholder,'LinkedIn')]",
-        "//input[@id='job_application_answers_attributes_0_text_value']",
+        "//input[contains(translate(@placeholder,'LINKEDIN','linkedin'),'linkedin')]",
+        "//label[contains(translate(.,'LINKEDIN','linkedin'),'linkedin')]/following::input[1]",
     ]:
         if el_exists(driver, xp, timeout=1):
-            el = driver.find_element(By.XPATH, xp)
-            if not el.get_attribute("value"):
-                el.send_keys(LINKEDIN_URL)
-            break
+            try:
+                el = driver.find_element(By.XPATH, xp)
+                if not el.get_attribute("value"):
+                    el.send_keys(LINKEDIN_URL)
+                break
+            except Exception:
+                pass
 
-    # ── Resume upload ──────────────────────────────────────────────────────────
+    # Resume upload
     if RESUME_PATH and os.path.isfile(RESUME_PATH):
-        for xp in [
-            "//input[@type='file' and contains(@accept,'.pdf')]",
-            "//input[@type='file' and contains(@id,'resume')]",
-            "//input[@type='file']",
-        ]:
+        for xp in ["//input[@type='file'][1]"]:
             if el_exists(driver, xp, timeout=1):
                 try:
                     driver.find_element(By.XPATH, xp).send_keys(RESUME_PATH)
-                    time.sleep(1.5)   # wait for upload processing
+                    time.sleep(2.0)
                 except Exception:
                     pass
                 break
 
-    # ── Work authorization radio buttons ────────────────────────────────────────
-    # Greenhouse custom questions are rendered as radio groups
-    for radio_grp in driver.find_elements(By.XPATH, "//div[contains(@class,'field') and .//input[@type='radio']]"):
+    # Work auth radio buttons
+    for grp in driver.find_elements(By.XPATH,
+            "//div[contains(@class,'field') and .//input[@type='radio']]"):
         label_text = ""
         try:
-            label_text = radio_grp.find_element(By.XPATH, ".//label[not(@for)]").text.lower()
+            label_text = grp.find_element(By.XPATH, ".//*[not(self::input)]").text.lower()
         except Exception:
             pass
 
-        if any(kw in label_text for kw in ("sponsor", "visa", "authorized", "legally")):
-            # Work auth → Yes (authorized), sponsorship → No
-            answer = "no" if "sponsor" in label_text else "yes"
-            try:
-                radio = radio_grp.find_element(
-                    By.XPATH, f".//label[contains(translate(normalize-space(.),'YES','yes'),'{answer}')]"
-                )
-                driver.execute_script(_JS_CLICK, radio)
-            except Exception:
-                pass
+        if "sponsor" in label_text:
+            answer = "no"
+        elif any(kw in label_text for kw in ("authorized", "legally", "eligible", "right to work")):
+            answer = "yes"
         else:
-            # Generic — pick "Yes" if available, else first option
+            answer = "yes"  # default generic questions to Yes
+
+        try:
+            radio = grp.find_element(
+                By.XPATH,
+                f".//label[contains(translate(normalize-space(.),'YESNO','yesno'),'{answer}')]"
+            )
+            driver.execute_script(_JS_CLICK, radio)
+        except Exception:
             try:
-                yes = radio_grp.find_elements(
-                    By.XPATH, ".//label[contains(translate(normalize-space(.),'YES','yes'),'yes')]"
-                )
-                if yes:
-                    driver.execute_script(_JS_CLICK, yes[0])
-                    continue
-                first = radio_grp.find_elements(By.XPATH, ".//input[@type='radio']")
+                first = grp.find_elements(By.XPATH, ".//input[@type='radio']")
                 if first:
                     driver.execute_script(_JS_CLICK, first[0])
             except Exception:
                 pass
 
-    # ── Select dropdowns ─────────────────────────────────────────────────────
+    # Select dropdowns
     for sel_el in driver.find_elements(By.XPATH, "//select"):
         try:
             sel = Select(sel_el)
             if sel_el.get_attribute("value"):
-                continue    # already filled
+                continue
             try:
                 sel.select_by_visible_text("Yes")
             except Exception:
@@ -551,76 +427,96 @@ def fill_greenhouse_form(driver, wait):
         except Exception:
             pass
 
-    # ── Generic text inputs ────────────────────────────────────────────────────
-    for inp in driver.find_elements(By.XPATH, "//input[@type='text' and not(@value)]"):
+    # Generic website / portfolio inputs
+    for inp in driver.find_elements(By.XPATH,
+            "//input[@type='text' and (not(@value) or @value='')]"):
         try:
-            placeholder = (inp.get_attribute("placeholder") or "").lower()
-            if "website" in placeholder or "portfolio" in placeholder:
+            ph = (inp.get_attribute("placeholder") or "").lower()
+            label_for = inp.get_attribute("id") or ""
+            label_text = ""
+            try:
+                label_text = driver.find_element(
+                    By.XPATH, f"//label[@for='{label_for}']"
+                ).text.lower()
+            except Exception:
+                pass
+            combined = ph + label_text
+            if any(kw in combined for kw in ("website", "portfolio", "personal site")):
                 inp.send_keys(LINKEDIN_URL)
-            elif "salary" in placeholder or "compensation" in placeholder:
+            elif any(kw in combined for kw in ("salary", "compensation", "expected")):
                 inp.send_keys("100000")
         except Exception:
             pass
 
+# ── Apply flow ────────────────────────────────────────────────────────────────
+APPLY_BTN = (
+    "//button[contains(normalize-space(),'Apply for this job')] | "
+    "//a[contains(normalize-space(),'Apply for this job')] | "
+    "//button[contains(normalize-space(),'Apply now')] | "
+    "//a[contains(normalize-space(),'Apply now')] | "
+    "//button[normalize-space()='Apply'] | "
+    "//a[normalize-space()='Apply']"
+)
+EXTERNAL_BTN = (
+    "//a[contains(@href,'http') and ("
+    "contains(normalize-space(),'Apply on company') or "
+    "contains(normalize-space(),'Apply externally') or "
+    "contains(normalize-space(),'Visit job posting'))]"
+)
+SUBMIT_BTN = (
+    "//button[normalize-space()='Submit Application'] | "
+    "//button[normalize-space()='Submit'] | "
+    "//input[@type='submit' and contains(@value,'Submit')]"
+)
+NEXT_BTN = (
+    "//button[normalize-space()='Next'] | "
+    "//button[normalize-space()='Continue'] | "
+    "//input[@type='submit' and @value='Next']"
+)
+SUCCESS_XP = (
+    "//*[contains(normalize-space(),'application has been submitted')] | "
+    "//*[contains(normalize-space(),'successfully applied')] | "
+    "//*[contains(normalize-space(),'Thank you for applying')] | "
+    "//h1[contains(normalize-space(),'Thank you')]"
+)
 
-def run_quick_apply(driver, wait) -> str:
-    """One-click Quick Apply (Greenhouse profile-based)."""
-    if not safe_click(driver, wait, QUICK_APPLY_BTN):
-        return "error"
 
-    # Confirmation modal may appear
-    confirm_xp = (
-        "//button[contains(normalize-space(),'Confirm') or "
-        "normalize-space()='Submit' or normalize-space()='Apply']"
-    )
-    if el_exists(driver, confirm_xp, timeout=3):
-        safe_click(driver, wait, confirm_xp)
+def apply_to_job(driver, wait) -> tuple[str, str]:
+    """Navigate the apply flow. Returns (status, apply_type)."""
 
-    # Wait for success indicator
-    success_xp = (
-        "//div[contains(@class,'success')] | "
-        "//*[contains(normalize-space(),'application has been submitted')] | "
-        "//*[contains(normalize-space(),'successfully applied')] | "
-        "//*[contains(normalize-space(),'Thank you')]"
-    )
-    if el_exists(driver, success_xp, timeout=5):
-        return "applied"
+    # External redirect — skip
+    if el_exists(driver, EXTERNAL_BTN, timeout=1):
+        return "skipped_external", "external"
 
-    # Fallback: if confirmation appeared and we clicked it, assume success
-    return "applied"
+    if not el_exists(driver, APPLY_BTN, timeout=3):
+        return "skipped_no_button", "unknown"
 
+    apply_type = "full_form"
 
-def run_full_form_apply(driver, wait) -> str:
-    """Drive the multi-step Greenhouse application form."""
-    if not safe_click(driver, wait, FULL_APPLY_BTN):
-        return "error"
+    if args.dry_run:
+        return "dry_run", apply_type
+
+    # Click the Apply button
+    safe_click(driver, wait, APPLY_BTN)
     human_wait(1.0, 2.0)
 
     for step in range(1, MODAL_MAX_STEPS + 1):
         try:
-            fill_greenhouse_form(driver, wait)
+            fill_form(driver, wait)
             human_wait(0.5, 1.0)
 
-            # Submit?
-            if el_exists(driver, GH_SUBMIT_BTN, timeout=2):
-                safe_click(driver, wait, GH_SUBMIT_BTN)
-                human_wait(1.5, 2.5)
-                # Confirm success
-                success_xp = (
-                    "//*[contains(normalize-space(),'application has been submitted')] | "
-                    "//*[contains(normalize-space(),'successfully applied')] | "
-                    "//*[contains(normalize-space(),'Thank you for applying')] | "
-                    "//h1[contains(normalize-space(),'Thank you')]"
-                )
-                if el_exists(driver, success_xp, timeout=5):
+            if el_exists(driver, SUBMIT_BTN, timeout=2):
+                safe_click(driver, wait, SUBMIT_BTN)
+                human_wait(2.0, 3.0)
+                if el_exists(driver, SUCCESS_XP, timeout=5):
                     log.info(f"    Applied (step {step})")
-                    return "applied"
-                return "applied"   # page changed — assume success
+                    return "applied", apply_type
+                # Page changed — assume success
+                return "applied", apply_type
 
-            # Next page?
-            if el_exists(driver, GH_NEXT_BTN, timeout=2):
-                safe_click(driver, wait, GH_NEXT_BTN)
-                human_wait(0.5, 1.2)
+            if el_exists(driver, NEXT_BTN, timeout=2):
+                safe_click(driver, wait, NEXT_BTN)
+                human_wait(0.8, 1.5)
                 continue
 
             log.warning(f"    No Next/Submit at step {step}")
@@ -631,37 +527,14 @@ def run_full_form_apply(driver, wait) -> str:
             break
 
     dismiss_modal(driver)
-    return "error"
-
-
-def apply_to_job(driver, wait) -> tuple[str, str]:
-    """
-    Detect apply type and drive the correct flow.
-    Returns (status, apply_type).
-    """
-    apply_type = detect_apply_type(driver)
-
-    if apply_type == "external":
-        return "skipped_external", "external"
-
-    if apply_type == "unknown":
-        return "skipped_no_button", "unknown"
-
-    if args.dry_run:
-        return "dry_run", apply_type
-
-    if apply_type == "quick_apply":
-        status = run_quick_apply(driver, wait)
-    else:
-        status = run_full_form_apply(driver, wait)
-
-    return status, apply_type
+    return "error", apply_type
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 def run():
     mode = "DRY-RUN" if args.dry_run else "LIVE"
     log.info("=" * 60)
-    log.info(f"  Greenhouse Apply  |  {len(KEYWORDS)} keywords × {args.pages} pages  |  {mode}")
+    log.info(f"  Greenhouse via Google site: search  |  {args.google_pages} pages  |  {mode}")
+    log.info(f"  Query: {GOOGLE_QUERY[:80]}...")
     log.info(f"  Run folder: {RUN_DIR}")
     log.info("=" * 60)
 
@@ -669,114 +542,102 @@ def run():
     wait   = WebDriverWait(driver, WAIT_SEC)
     counts: dict[str, int] = {}
 
-    try:
-        login(driver, wait)
+    # ── Phase 1: collect all job URLs from Google ─────────────────────────────
+    log.info("\n[Phase 1] Collecting job URLs from Google...")
+    job_urls: list[str] = []
 
-        for keyword in KEYWORDS:
-            log.info(f"\n{'─'*60}")
-            log.info(f"  Keyword: {keyword}")
-            log.info(f"{'─'*60}")
+    for page_num in range(args.google_pages):
+        start = page_num * RESULTS_PER_GOOGLE_PAGE
+        gurl  = google_search_url(GOOGLE_QUERY, start)
+        log.info(f"  Google page {page_num+1}/{args.google_pages}  (start={start})")
 
-            for page_num in range(1, args.pages + 1):
-                url = search_url(keyword, page_num)
-                log.info(f"  Page {page_num}  →  {url}")
-                driver.get(url)
-                human_wait(2.0, 3.5)
-                driver.save_screenshot(os.path.join(RUN_DIR, f"search_{keyword.replace(' ','_')}_p{page_num}.png"))
+        driver.get(gurl)
+        human_wait(2.0, 4.0)
 
-                cards = get_job_cards(driver)
-                if not cards:
-                    log.info(f"  No job cards on page {page_num} — next keyword.")
-                    break
+        found = collect_greenhouse_urls(driver, wait)
+        new   = [u for u in found if u not in job_urls]
+        job_urls.extend(new)
+        log.info(f"  Found {len(found)} links ({len(new)} new) — total: {len(job_urls)}")
 
-                log.info(f"  {len(cards)} cards")
+        if not found:
+            log.info("  No results on this page — stopping search.")
+            break
 
-                for idx, card in enumerate(cards):
-                    try:
-                        meta   = get_card_meta(card)
-                        job_id = meta["job_id"] or meta["url"]
+        # Random pause between Google pages to avoid rate limiting
+        time.sleep(random.uniform(3.0, 6.0))
 
-                        if not job_id or job_id in _seen_ids:
-                            continue
-                        _seen_ids.add(job_id)
+    log.info(f"\n  Total unique Greenhouse job URLs: {len(job_urls)}")
+    # Save URL list for reference
+    with open(os.path.join(RUN_DIR, "job_urls.txt"), "w") as f:
+        f.write("\n".join(job_urls))
 
-                        if title_is_excluded(meta["title"]):
-                            log.info(f"  [{idx+1}] Title excluded: {meta['title']}")
-                            counts["skipped"] = counts.get("skipped", 0) + 1
-                            _records.append(GHJob(
-                                job_id=job_id, title=meta["title"], company=meta["company"],
-                                location=meta["location"], keyword=keyword,
-                                status="skipped", note="title_excluded", url=meta["url"],
-                            ))
-                            continue
+    if not job_urls:
+        log.warning("No job URLs found — Google may have blocked the search. "
+                    "Try running again or solve the CAPTCHA manually.")
+        driver.quit()
+        return
 
-                        log.info(f"  [{idx+1}/{len(cards)}] {meta['title']} @ {meta['company']}")
+    # ── Phase 2: apply to each job ────────────────────────────────────────────
+    log.info(f"\n[Phase 2] Applying to {len(job_urls)} jobs...")
 
-                        # Navigate to job detail page
-                        if meta["url"]:
-                            driver.get(meta["url"])
-                            human_wait(1.5, 2.5)
-                        else:
-                            driver.execute_script("arguments[0].scrollIntoView({block:'center'});", card)
-                            try:
-                                card.click()
-                            except Exception:
-                                driver.execute_script(_JS_CLICK, card)
-                            human_wait(1.5, 2.5)
+    for idx, url in enumerate(job_urls, 1):
+        if url in _seen_urls:
+            continue
+        _seen_urls.add(url)
 
-                        detail = get_job_detail(driver)
-                        status, apply_type = apply_to_job(driver, wait)
+        log.info(f"\n  [{idx}/{len(job_urls)}] {url}")
 
-                        log.info(f"    {apply_type} → {status}")
-                        counts[status] = counts.get(status, 0) + 1
-
-                        _records.append(GHJob(
-                            job_id=job_id,
-                            title=meta["title"],
-                            company=meta["company"],
-                            location=meta["location"],
-                            keyword=keyword,
-                            status=status,
-                            url=meta["url"],
-                            apply_type=apply_type,
-                            remote_type=detail["remote_type"],
-                            employment_type=detail["employment_type"],
-                            salary_raw=detail["salary_raw"],
-                            skills_mentioned=detail["skills_mentioned"],
-                            description_full=detail["description_full"],
-                        ))
-
-                        # Navigate back to search results
-                        driver.back()
-                        human_wait(1.5, 2.5)
-
-                    except StaleElementReferenceException:
-                        log.warning(f"  [{idx+1}] Stale element — re-fetching page")
-                        driver.refresh()
-                        human_wait(1.5, 2.0)
-                        break
-                    except Exception as e:
-                        log.error(f"  [{idx+1}] Error: {e}")
-                        counts["error"] = counts.get("error", 0) + 1
-                        dismiss_modal(driver)
-
-                save_all()
-                human_wait(1.5, 3.0)
-
-    except Exception as e:
-        log.error(f"Fatal: {e}")
-    finally:
-        save_all()
         try:
-            driver.quit()
-        except Exception:
-            pass
+            driver.get(url)
+            human_wait(1.5, 2.5)
 
-    log.info("=" * 60)
-    log.info(f"  DONE  |  {dict(counts)}")
-    log.info(f"  Total unique jobs seen: {len(_seen_ids)}")
+            detail = parse_job_page(driver)
 
-    # Status breakdown
+            log.info(f"  Title:   {detail['title']}")
+            log.info(f"  Company: {detail['company']}")
+            log.info(f"  Loc:     {detail['location']}  |  {detail['remote_type']}")
+
+            if title_is_excluded(detail["title"]):
+                log.info("  Title excluded — skip")
+                counts["skipped"] = counts.get("skipped", 0) + 1
+                _records.append(GHJob(
+                    job_id=detail["job_id"], title=detail["title"],
+                    company=detail["company"], location=detail["location"],
+                    status="skipped", url=url, note="title_excluded",
+                    remote_type=detail["remote_type"],
+                ))
+                save_all()
+                continue
+
+            status, apply_type = apply_to_job(driver, wait)
+            log.info(f"  → {apply_type}  |  {status}")
+            counts[status] = counts.get(status, 0) + 1
+
+            _records.append(GHJob(
+                job_id=detail["job_id"],
+                title=detail["title"],
+                company=detail["company"],
+                location=detail["location"],
+                status=status,
+                url=url,
+                apply_type=apply_type,
+                remote_type=detail["remote_type"],
+                employment_type=detail["employment_type"],
+                salary_raw=detail["salary_raw"],
+                skills_mentioned=detail["skills_mentioned"],
+                description_full=detail["description_full"],
+            ))
+            save_all()
+            human_wait(1.0, 2.5)
+
+        except Exception as e:
+            log.error(f"  Error on {url}: {e}")
+            counts["error"] = counts.get("error", 0) + 1
+            dismiss_modal(driver)
+
+    # ── Done ──────────────────────────────────────────────────────────────────
+    log.info("\n" + "=" * 60)
+    log.info("DONE")
     for status, cnt in sorted(counts.items()):
         log.info(f"  {status:<35} {cnt:>5}")
 
@@ -789,9 +650,15 @@ def run():
     except Exception as e:
         log.warning(f"  Google Sheets sync skipped: {e}")
 
-    log.info(f"  JSON → {JSON_FILE}")
-    log.info(f"  CSV  → {CSV_FILE}")
+    log.info(f"  JSON     → {JSON_FILE}")
+    log.info(f"  CSV      → {CSV_FILE}")
+    log.info(f"  URL list → {os.path.join(RUN_DIR, 'job_urls.txt')}")
     log.info("=" * 60)
+
+    try:
+        driver.quit()
+    except Exception:
+        pass
 
 
 if __name__ == "__main__":
