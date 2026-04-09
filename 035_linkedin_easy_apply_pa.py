@@ -457,11 +457,53 @@ def search_url(keyword: str, start: int) -> str:
 # ── Login ─────────────────────────────────────────────────────────────────────
 def login(driver, wait):
     driver.get("https://www.linkedin.com/login")
-    time.sleep(2)
-    driver.find_element(By.ID, "username").send_keys(USERNAME)
-    driver.find_element(By.ID, "password").send_keys(PASSWORD)
-    safe_click(driver, wait, "//button[@type='submit']")
+    time.sleep(3)
+
+    # LinkedIn uses id="username" on most regions but falls back to name/type selectors
+    EMAIL_XPATHS = [
+        "//input[@id='username']",
+        "//input[@name='session_key']",
+        "//input[@type='email']",
+        "//input[@autocomplete='username']",
+    ]
+    PWD_XPATHS = [
+        "//input[@id='password']",
+        "//input[@name='session_password']",
+        "//input[@type='password']",
+        "//input[@autocomplete='current-password']",
+    ]
+
+    email_field = None
+    for xp in EMAIL_XPATHS:
+        try:
+            email_field = WebDriverWait(driver, 4).until(
+                EC.presence_of_element_located((By.XPATH, xp))
+            )
+            break
+        except Exception:
+            continue
+
+    if not email_field:
+        driver.save_screenshot(os.path.join(RUN_DIR, "login_page.png"))
+        raise RuntimeError("Could not find LinkedIn email field — check login_page.png")
+
+    email_field.clear()
+    email_field.send_keys(USERNAME)
+    human_wait(0.5, 1.2)
+
+    for xp in PWD_XPATHS:
+        try:
+            pwd_field = driver.find_element(By.XPATH, xp)
+            pwd_field.clear()
+            pwd_field.send_keys(PASSWORD)
+            break
+        except Exception:
+            continue
+
+    human_wait(0.5, 1.0)
+    safe_click(driver, wait, "//button[@type='submit'] | //button[@data-litms-control-urn='login-submit']")
     time.sleep(4)
+
     if "feed" not in driver.current_url and "checkpoint" not in driver.current_url:
         log.warning("Login may have failed — check screenshot in run folder.")
         driver.save_screenshot(os.path.join(RUN_DIR, "login_check.png"))
