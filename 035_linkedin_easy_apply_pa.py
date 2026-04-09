@@ -604,7 +604,7 @@ def run():
                         else:
                             human_wait(2.0, 4.5)
 
-                    except InvalidSessionIdException:
+                    except (InvalidSessionIdException, StopIteration):
                         raise
                     except StaleElementReferenceException:
                         log.warning(f"  [{idx+1}] Stale element — skip")

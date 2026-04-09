@@ -504,12 +504,34 @@ def apply_to_job(driver, wait) -> tuple[str, str]:
     if args.dry_run:
         return "dry_run", apply_type
 
+    # Remember the main window handle before clicking Apply
+    main_window = driver.current_window_handle
+
     # Click the Apply button
     safe_click(driver, wait, APPLY_BTN)
     human_wait(1.0, 2.0)
 
+    # If Apply opened a new tab/popup, switch to it
+    all_handles = driver.window_handles
+    if len(all_handles) > 1:
+        for h in all_handles:
+            if h != main_window:
+                driver.switch_to.window(h)
+                log.info("    Switched to apply popup window")
+                break
+
     for step in range(1, MODAL_MAX_STEPS + 1):
         try:
+            # Re-focus main window if current window closed unexpectedly
+            try:
+                _ = driver.current_url  # probe — throws if window gone
+            except Exception:
+                remaining = driver.window_handles
+                if remaining:
+                    driver.switch_to.window(remaining[-1])
+                else:
+                    return "error", apply_type
+
             fill_form(driver, wait)
             human_wait(0.5, 1.0)
 
