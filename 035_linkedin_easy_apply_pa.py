@@ -66,25 +66,37 @@ FULL_NAME     = "Oscar Leung"
 LINKEDIN_URL  = "https://www.linkedin.com/in/oscar-leung/"
 HOME_CITY     = "Santa Clara"
 
+# ── Keywords matched to Oscar's resume ───────────────────────────────────────
+# Target: QA/SDET/Automation roles using Selenium, Python, Java, Salesforce,
+# pytest, Espresso, React — based on actual work history at Maxar + State of IL
 KEYWORDS = [
-    "QA Engineer",
+    "QA Automation Engineer",
     "SDET",
     "Software Engineer in Test",
-    "Automation Engineer",
-    "Test Automation Engineer",
-    "QA Automation",
-    "Software Engineer",
-    "Frontend Engineer",
-    "React Developer",
-    "Full Stack Engineer",
+    "QA Engineer Selenium",
+    "Test Automation Engineer Python",
+    "Software Quality Engineer",
+    "QA Engineer Salesforce",
+    "Automation Engineer Python",
 ]
-PAGES_PER_KEYWORD = 3    # 25 jobs/page → 75 per keyword (reduced to avoid detection)
+
+# Title tokens that don't match Oscar's level/background — skip on sight
+TITLE_EXCLUDE = {
+    "senior", " sr ", "sr.", "staff", "principal", "lead", "manager",
+    "director", "vp ", "head of", "architect", "intern", "founding",
+    "sales", "field", "hardware", "firmware", "embedded", "mechanical",
+    "electrical", "civil", "manufacturing", "supply chain", "customer success",
+    "account", "business analyst", "product manager", "data scientist",
+    "devops", "security engineer", "network", "database admin",
+}
+
+PAGES_PER_KEYWORD = 2    # 25 jobs/page → 50 per keyword — enough without over-scraping
 JOBS_PER_PAGE     = 25
 MODAL_MAX_STEPS   = 20
 WAIT_SEC          = 10
-MAX_APPLIES_PER_SESSION = 15   # Hard cap: stop after this many applications
-SESSION_BREAK_EVERY     = 5    # Take a longer break every N applications
-SESSION_BREAK_SECS      = (45, 90)   # Random break length in seconds
+MAX_APPLIES_PER_SESSION = 8    # Conservative cap — well under detection threshold
+SESSION_BREAK_EVERY     = 4    # Break every 4 applications
+SESSION_BREAK_SECS      = (60, 120)  # 1-2 min break (more human-like)
 
 # ── Run folder ────────────────────────────────────────────────────────────────
 RUN_ID  = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
@@ -576,6 +588,21 @@ def run():
                         seen_ids.add(job_id)
 
                         log.info(f"  [{idx+1}/{len(job_els)}] {meta['title']} @ {meta['company']}")
+
+                        # Skip titles that don't match Oscar's background
+                        title_low = meta["title"].lower()
+                        if any(tok in title_low for tok in TITLE_EXCLUDE):
+                            log.info("    Title excluded — skip")
+                            counts["skipped"] = counts.get("skipped", 0) + 1
+                            _records.append(JobRecord(
+                                job_id=job_id, title=meta["title"],
+                                company=meta["company"], location=meta["location"],
+                                keyword=keyword, status="skipped", url=meta["url"],
+                                note="title_excluded",
+                            ))
+                            human_wait(0.5, 1.0)
+                            continue
+
                         driver.execute_script("arguments[0].scrollIntoView({block:'center'});", job_el)
                         try:
                             job_el.click()
