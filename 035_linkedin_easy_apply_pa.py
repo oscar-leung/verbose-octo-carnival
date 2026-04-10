@@ -465,21 +465,26 @@ def login(driver, wait):
         "//input[@name='session_key']",
         "//input[@type='email']",
         "//input[@autocomplete='username']",
+        # New LinkedIn React login page — first visible text input
+        "(//input[@type='text'])[1]",
     ]
     PWD_XPATHS = [
         "//input[@id='password']",
         "//input[@name='session_password']",
-        "//input[@type='password']",
         "//input[@autocomplete='current-password']",
+        "//input[@type='password']",
     ]
 
     email_field = None
     for xp in EMAIL_XPATHS:
         try:
-            email_field = WebDriverWait(driver, 4).until(
-                EC.presence_of_element_located((By.XPATH, xp))
-            )
-            break
+            candidates = driver.find_elements(By.XPATH, xp)
+            for el in candidates:
+                if el.is_displayed() and el.is_enabled():
+                    email_field = el
+                    break
+            if email_field:
+                break
         except Exception:
             continue
 
@@ -487,15 +492,24 @@ def login(driver, wait):
         driver.save_screenshot(os.path.join(RUN_DIR, "login_page.png"))
         raise RuntimeError("Could not find LinkedIn email field — check login_page.png")
 
+    driver.execute_script("arguments[0].scrollIntoView({block:'center'});", email_field)
+    human_wait(0.3, 0.6)
     email_field.clear()
     email_field.send_keys(USERNAME)
     human_wait(0.5, 1.2)
 
     for xp in PWD_XPATHS:
         try:
-            pwd_field = driver.find_element(By.XPATH, xp)
-            pwd_field.clear()
-            pwd_field.send_keys(PASSWORD)
+            candidates = driver.find_elements(By.XPATH, xp)
+            for el in candidates:
+                if el.is_displayed() and el.is_enabled():
+                    driver.execute_script("arguments[0].scrollIntoView({block:'center'});", el)
+                    human_wait(0.2, 0.4)
+                    el.clear()
+                    el.send_keys(PASSWORD)
+                    break
+            else:
+                continue
             break
         except Exception:
             continue
