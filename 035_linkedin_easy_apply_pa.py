@@ -478,7 +478,7 @@ def search_url(keyword: str, start: int, location: str = "") -> str:
 # ── Login ─────────────────────────────────────────────────────────────────────
 def login(driver, wait):
     driver.get("https://www.linkedin.com/login")
-    time.sleep(3)
+    time.sleep(5)  # Give React login page extra time to hydrate
 
     # LinkedIn uses id="username" on most regions but falls back to name/type selectors
     EMAIL_XPATHS = [
@@ -488,6 +488,13 @@ def login(driver, wait):
         "//input[@autocomplete='username']",
         # New LinkedIn React login page — first visible text input
         "(//input[@type='text'])[1]",
+        # LinkedIn inputs may have no explicit type attr (defaults to text)
+        "//input[not(@type) or @type='text' or @type='email'][1]",
+        # Match by placeholder label
+        "//input[contains(@placeholder,'Email') or contains(@placeholder,'email') or contains(@placeholder,'phone')]",
+        # Absolute last resort: first input on page that isn't a button/checkbox/hidden
+        "(//input[@type!='password' and @type!='submit' and @type!='checkbox' and @type!='hidden'])[1]",
+        "(//input)[1]",
     ]
     PWD_XPATHS = [
         "//input[@id='password']",
