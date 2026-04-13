@@ -90,6 +90,14 @@ TITLE_EXCLUDE = {
     "devops", "security engineer", "network", "database admin",
 }
 
+# Location targeting — searches each keyword in each location
+# Empty string = LinkedIn default (all locations / remote-friendly)
+LOCATIONS = [
+    "",                  # general / remote
+    "Sacramento, CA",
+    "Davis, CA",
+]
+
 PAGES_PER_KEYWORD = 2    # 25 jobs/page → 50 per keyword — enough without over-scraping
 JOBS_PER_PAGE     = 25
 MODAL_MAX_STEPS   = 20
@@ -460,11 +468,12 @@ def get_job_meta(driver, job_el) -> dict:
     return {"job_id": job_id, "title": title, "company": company, "location": location, "url": url}
 
 # ── Search URL ────────────────────────────────────────────────────────────────
-def search_url(keyword: str, start: int) -> str:
+def search_url(keyword: str, start: int, location: str = "") -> str:
     from urllib.parse import quote_plus
     kw = quote_plus(keyword)
+    loc = f"&location={quote_plus(location)}" if location else ""
     # f_LF=f_AL filters for Easy Apply only
-    return f"https://www.linkedin.com/jobs/search/?keywords={kw}&f_LF=f_AL&start={start}"
+    return f"https://www.linkedin.com/jobs/search/?keywords={kw}&f_LF=f_AL{loc}&start={start}"
 
 # ── Login ─────────────────────────────────────────────────────────────────────
 def login(driver, wait):
@@ -541,7 +550,9 @@ def login(driver, wait):
 def run():
     mode = "DRY-RUN (no submissions)" if args.dry_run else "LIVE"
     log.info("=" * 60)
-    log.info(f"  LinkedIn Easy Apply PA  |  {len(KEYWORDS)} keywords × {PAGES_PER_KEYWORD} pages  |  {mode}")
+    loc_label = ", ".join(l if l else "general" for l in LOCATIONS)
+    log.info(f"  LinkedIn Easy Apply PA  |  {len(KEYWORDS)} keywords × {len(LOCATIONS)} locations × {PAGES_PER_KEYWORD} pages  |  {mode}")
+    log.info(f"  Locations: {loc_label}")
     log.info(f"  Run folder: {RUN_DIR}")
     log.info("=" * 60)
 
@@ -553,106 +564,108 @@ def run():
     try:
         login(driver, wait)
 
-        for keyword in KEYWORDS:
-            log.info(f"\n{'─'*60}")
-            log.info(f"  Keyword: {keyword}")
-            log.info(f"{'─'*60}")
+        for location in LOCATIONS:
+            for keyword in KEYWORDS:
+                loc_tag = f" [{location}]" if location else " [general]"
+                log.info(f"\n{'─'*60}")
+                log.info(f"  Keyword: {keyword}{loc_tag}")
+                log.info(f"{'─'*60}")
 
-            for page in range(PAGES_PER_KEYWORD):
-                start = page * JOBS_PER_PAGE
-                log.info(f"  Page {page+1} (start={start})")
-                try:
-                    driver.get(search_url(keyword, start))
-                    human_wait(2.0, 3.5)
-                except InvalidSessionIdException:
-                    log.error("Chrome session lost — exiting.")
-                    raise
-
-                try:
-                    WebDriverWait(driver, WAIT_SEC).until(
-                        EC.presence_of_element_located((By.XPATH, "//li[@data-occludable-job-id]"))
-                    )
-                except TimeoutException:
-                    log.info(f"  Page {page+1}: no jobs — stopping keyword.")
-                    break
-
-                job_els = driver.find_elements(By.XPATH, "//li[@data-occludable-job-id]")
-                log.info(f"  Page {page+1}: {len(job_els)} jobs")
-
-                for idx, job_el in enumerate(job_els):
+                for page in range(PAGES_PER_KEYWORD):
+                    start = page * JOBS_PER_PAGE
+                    log.info(f"  Page {page+1} (start={start})")
                     try:
-                        meta   = get_job_meta(driver, job_el)
-                        job_id = meta["job_id"]
-                        if not job_id or job_id in seen_ids:
-                            continue
-                        seen_ids.add(job_id)
-
-                        log.info(f"  [{idx+1}/{len(job_els)}] {meta['title']} @ {meta['company']}")
-
-                        # Skip titles that don't match Oscar's background
-                        title_low = meta["title"].lower()
-                        if any(tok in title_low for tok in TITLE_EXCLUDE):
-                            log.info("    Title excluded — skip")
-                            counts["skipped"] = counts.get("skipped", 0) + 1
-                            _records.append(JobRecord(
-                                job_id=job_id, title=meta["title"],
-                                company=meta["company"], location=meta["location"],
-                                keyword=keyword, status="skipped", url=meta["url"],
-                                note="title_excluded",
-                            ))
-                            human_wait(0.5, 1.0)
-                            continue
-
-                        driver.execute_script("arguments[0].scrollIntoView({block:'center'});", job_el)
-                        try:
-                            job_el.click()
-                        except Exception:
-                            driver.execute_script(_JS_CLICK, job_el)
-                        human_wait(1.0, 2.5)
-
-                        desc = get_job_description(driver)
-
-                        if not el_exists(driver, EASY_BTN):
-                            status = "skipped"
-                        else:
-                            status = run_easy_apply(driver, wait)
-
-                        counts[status] = counts.get(status, 0) + 1
-                        _records.append(JobRecord(
-                            job_id=job_id,
-                            title=meta["title"],
-                            company=meta["company"],
-                            location=meta["location"],
-                            keyword=keyword,
-                            status=status,
-                            url=meta["url"],
-                            skills_mentioned=extract_skills(desc),
-                        ))
-
-                        # ── Anti-detection: paced delays ──────────────────
-                        # Longer wait after each apply (looks human)
-                        if status == "applied":
-                            human_wait(8.0, 18.0)
-                            # Extra break every N applications
-                            if counts["applied"] % SESSION_BREAK_EVERY == 0:
-                                pause = random.uniform(*SESSION_BREAK_SECS)
-                                log.info(f"  [anti-detect] Session break {pause:.0f}s after {counts['applied']} applies")
-                                time.sleep(pause)
-                            # Hard cap
-                            if counts["applied"] >= MAX_APPLIES_PER_SESSION:
-                                log.info(f"  [anti-detect] Hit session cap ({MAX_APPLIES_PER_SESSION}) — stopping.")
-                                raise StopIteration
-                        else:
-                            human_wait(2.0, 4.5)
-
-                    except (InvalidSessionIdException, StopIteration):
+                        driver.get(search_url(keyword, start, location))
+                        human_wait(2.0, 3.5)
+                    except InvalidSessionIdException:
+                        log.error("Chrome session lost — exiting.")
                         raise
-                    except StaleElementReferenceException:
-                        log.warning(f"  [{idx+1}] Stale element — skip")
-                    except Exception as e:
-                        log.error(f"  [{idx+1}] Error: {e}")
-                        counts["error"] += 1
-                        emergency_close(driver, wait)
+
+                    try:
+                        WebDriverWait(driver, WAIT_SEC).until(
+                            EC.presence_of_element_located((By.XPATH, "//li[@data-occludable-job-id]"))
+                        )
+                    except TimeoutException:
+                        log.info(f"  Page {page+1}: no jobs — stopping keyword.")
+                        break
+
+                    job_els = driver.find_elements(By.XPATH, "//li[@data-occludable-job-id]")
+                    log.info(f"  Page {page+1}: {len(job_els)} jobs")
+
+                    for idx, job_el in enumerate(job_els):
+                        try:
+                            meta   = get_job_meta(driver, job_el)
+                            job_id = meta["job_id"]
+                            if not job_id or job_id in seen_ids:
+                                continue
+                            seen_ids.add(job_id)
+
+                            log.info(f"  [{idx+1}/{len(job_els)}] {meta['title']} @ {meta['company']}")
+
+                            # Skip titles that don't match Oscar's background
+                            title_low = meta["title"].lower()
+                            if any(tok in title_low for tok in TITLE_EXCLUDE):
+                                log.info("    Title excluded — skip")
+                                counts["skipped"] = counts.get("skipped", 0) + 1
+                                _records.append(JobRecord(
+                                    job_id=job_id, title=meta["title"],
+                                    company=meta["company"], location=meta["location"],
+                                    keyword=keyword, status="skipped", url=meta["url"],
+                                    note="title_excluded",
+                                ))
+                                human_wait(0.5, 1.0)
+                                continue
+
+                            driver.execute_script("arguments[0].scrollIntoView({block:'center'});", job_el)
+                            try:
+                                job_el.click()
+                            except Exception:
+                                driver.execute_script(_JS_CLICK, job_el)
+                            human_wait(1.0, 2.5)
+
+                            desc = get_job_description(driver)
+
+                            if not el_exists(driver, EASY_BTN):
+                                status = "skipped"
+                            else:
+                                status = run_easy_apply(driver, wait)
+
+                            counts[status] = counts.get(status, 0) + 1
+                            _records.append(JobRecord(
+                                job_id=job_id,
+                                title=meta["title"],
+                                company=meta["company"],
+                                location=meta["location"],
+                                keyword=keyword,
+                                status=status,
+                                url=meta["url"],
+                                skills_mentioned=extract_skills(desc),
+                            ))
+
+                            # ── Anti-detection: paced delays ──────────────────
+                            # Longer wait after each apply (looks human)
+                            if status == "applied":
+                                human_wait(8.0, 18.0)
+                                # Extra break every N applications
+                                if counts["applied"] % SESSION_BREAK_EVERY == 0:
+                                    pause = random.uniform(*SESSION_BREAK_SECS)
+                                    log.info(f"  [anti-detect] Session break {pause:.0f}s after {counts['applied']} applies")
+                                    time.sleep(pause)
+                                # Hard cap
+                                if counts["applied"] >= MAX_APPLIES_PER_SESSION:
+                                    log.info(f"  [anti-detect] Hit session cap ({MAX_APPLIES_PER_SESSION}) — stopping.")
+                                    raise StopIteration
+                            else:
+                                human_wait(2.0, 4.5)
+
+                        except (InvalidSessionIdException, StopIteration):
+                            raise
+                        except StaleElementReferenceException:
+                            log.warning(f"  [{idx+1}] Stale element — skip")
+                        except Exception as e:
+                            log.error(f"  [{idx+1}] Error: {e}")
+                            counts["error"] += 1
+                            emergency_close(driver, wait)
 
     except StopIteration:
         log.info("  Session cap reached — wrapping up cleanly.")
