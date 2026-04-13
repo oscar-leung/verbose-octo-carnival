@@ -55,18 +55,23 @@ PHONE     = os.getenv("PHONE_NUMBER", "")     # add PHONE_NUMBER=<your number> t
 RESUME_PATH = os.getenv("RESUME_PDF_PATH", "") # absolute path to your resume PDF
 
 KEYWORDS = [
+    # QA / Automation
     "QA Engineer",
     "SDET",
     "Software Engineer in Test",
     "Automation Engineer",
     "Test Automation",
     "QA Automation",
-    "Software Engineer",
-    "Frontend Engineer",
-    "React Developer",
+    # Software Engineering
+    "Software Engineer Python",
+    "Software Engineer Java",
+    "Backend Engineer",
+    "Full Stack Engineer",
+    "Software Developer",
 ]
-# Include remote jobs + Easy Apply filter
-LOCATION       = "Remote"
+# Search multiple locations — Remote + Sacramento area + Davis
+LOCATIONS = ["Remote", "Sacramento, CA", "Davis, CA"]
+LOCATION       = "Remote"  # kept for legacy search_url() calls; loop overrides this
 EASY_APPLY_FILTER = True    # &iafilter=1 adds "Easily Apply" filter on Indeed
 RESULTS_PER_PAGE  = 15      # Indeed shows 15 results per page
 WAIT_SEC          = 10
@@ -87,8 +92,9 @@ logging.basicConfig(
 )
 log = logging.getLogger(__name__)
 
-JSON_FILE = os.path.join(RUN_DIR, "jobs.json")
-CSV_FILE  = os.path.join(RUN_DIR, "jobs.csv")
+JSON_FILE   = os.path.join(RUN_DIR, "jobs.json")
+CSV_FILE    = os.path.join(RUN_DIR, "jobs.csv")
+GMASS_FILE  = os.path.join(RUN_DIR, "gmass_contacts.csv")
 
 # ── Data model ────────────────────────────────────────────────────────────────
 @dataclass
@@ -110,6 +116,7 @@ class IndeedJob:
     employment_type:  str = ""
     days_since_posted: Optional[int] = None
     skills_mentioned: str = ""
+    contact_email:    str = ""
     description_full: str = ""
     note:             str = ""
     timestamp:        str = field(default_factory=lambda: datetime.now().isoformat())
@@ -119,6 +126,17 @@ _seen_ids: set[str] = set()
 
 _JS_CLICK = "arguments[0].click();"
 
+_EMAIL_RE = re.compile(r"[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}", re.IGNORECASE)
+_EMAIL_BLOCKLIST = {"indeed.com", "linkedin.com", "example.com", "sentry.io", "w3.org", "schema.org"}
+
+def extract_email(text: str) -> str:
+    for m in _EMAIL_RE.finditer(text):
+        addr = m.group(0).lower()
+        domain = addr.split("@")[-1]
+        if domain not in _EMAIL_BLOCKLIST:
+            return addr
+    return ""
+
 def save_all():
     rows = [asdict(r) for r in _records]
     with open(JSON_FILE, "w", encoding="utf-8") as f:
@@ -127,6 +145,20 @@ def save_all():
         w = csv.DictWriter(f, fieldnames=list(IndeedJob.__dataclass_fields__.keys()))
         w.writeheader()
         w.writerows(rows)
+    gmass_rows = [
+        {"Email": r.contact_email, "First Name": "", "Last Name": "",
+         "Company": r.company, "Title": r.title, "Job URL": r.url,
+         "Location": r.location, "Skills": r.skills_mentioned}
+        for r in _records if r.contact_email
+    ]
+    if gmass_rows:
+        with open(GMASS_FILE, "w", newline="", encoding="utf-8") as f:
+            w = csv.DictWriter(f, fieldnames=list(gmass_rows[0].keys()))
+            w.writeheader()
+            w.writerows(gmass_rows)
+        log.info(f"  GMass contacts: {len(gmass_rows)} emails → {GMASS_FILE}")
+    else:
+        log.info("  GMass contacts: no emails found this run")
 
 # ── Parsing ───────────────────────────────────────────────────────────────────
 def parse_salary(raw: str) -> dict:
@@ -566,6 +598,9 @@ def run():
                         sal  = parse_salary(meta["salary_raw"])
                         remote_type = parse_location(meta["location"])
                         days        = parse_days_posted(meta["posted_raw"])
+                        contact_email = extract_email(desc)
+                        if contact_email:
+                            log.info(f"    Found email: {contact_email}")
 
                         status = run_indeed_apply(driver, wait)
                         counts[status] = counts.get(status, 0) + 1
@@ -585,6 +620,7 @@ def run():
                             remote_type=remote_type,
                             days_since_posted=days,
                             skills_mentioned=extract_skills(desc),
+                            contact_email=contact_email,
                             description_full=desc[:5000],
                         ))
                         human_wait(0.8, 1.8)

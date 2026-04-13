@@ -70,10 +70,12 @@ RESUME_PATH  = os.getenv("RESUME_PDF_PATH", "")   # RESUME_PDF_PATH=/abs/path/Os
 GOOGLE_QUERY = (
     'site:boards.greenhouse.io inurl:/jobs/ '
     '(SDET OR "Software Engineer in Test" OR "QA Engineer" OR '
-    '"Test Automation Engineer" OR "Quality Engineer" OR "Software Quality Engineer") '
+    '"Test Automation Engineer" OR "Quality Engineer" OR "Software Quality Engineer" OR '
+    '"Software Engineer" OR "Backend Engineer" OR "Full Stack Engineer" OR '
+    '"Software Developer") '
     '(remote OR "San Francisco" OR "Bay Area" OR "San Jose" OR "Santa Clara" OR '
     'Cupertino OR Sunnyvale OR "Mountain View" OR "Palo Alto" OR '
-    '"Redwood City" OR Fremont OR Milpitas OR Davis) '
+    '"Redwood City" OR Fremont OR Milpitas OR Davis OR Sacramento) '
     '-staff -senior -principal -lead -manager -director -vp -head -architect -intern -internship'
 )
 
@@ -102,8 +104,9 @@ logging.basicConfig(
 )
 log = logging.getLogger(__name__)
 
-JSON_FILE = os.path.join(RUN_DIR, "jobs.json")
-CSV_FILE  = os.path.join(RUN_DIR, "jobs.csv")
+JSON_FILE   = os.path.join(RUN_DIR, "jobs.json")
+CSV_FILE    = os.path.join(RUN_DIR, "jobs.csv")
+GMASS_FILE  = os.path.join(RUN_DIR, "gmass_contacts.csv")
 
 # ── Data model ────────────────────────────────────────────────────────────────
 @dataclass
@@ -120,6 +123,7 @@ class GHJob:
     employment_type:  str = ""
     salary_raw:       str = ""
     skills_mentioned: str = ""
+    contact_email:    str = ""
     description_full: str = ""
     note:             str = ""
     timestamp:        str = field(default_factory=lambda: datetime.now().isoformat())
@@ -127,6 +131,17 @@ class GHJob:
 _records: list[GHJob] = []
 _seen_urls: set[str] = set()
 _JS_CLICK = "arguments[0].click();"
+
+_EMAIL_RE = re.compile(r"[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}", re.IGNORECASE)
+_EMAIL_BLOCKLIST = {"greenhouse.io", "linkedin.com", "example.com", "sentry.io", "w3.org", "schema.org"}
+
+def extract_email(text: str) -> str:
+    for m in _EMAIL_RE.finditer(text):
+        addr = m.group(0).lower()
+        domain = addr.split("@")[-1]
+        if domain not in _EMAIL_BLOCKLIST:
+            return addr
+    return ""
 
 def save_all():
     rows = [asdict(r) for r in _records]
@@ -136,6 +151,20 @@ def save_all():
         w = csv.DictWriter(f, fieldnames=list(GHJob.__dataclass_fields__.keys()))
         w.writeheader()
         w.writerows(rows)
+    gmass_rows = [
+        {"Email": r.contact_email, "First Name": "", "Last Name": "",
+         "Company": r.company, "Title": r.title, "Job URL": r.url,
+         "Location": r.location, "Skills": r.skills_mentioned}
+        for r in _records if r.contact_email
+    ]
+    if gmass_rows:
+        with open(GMASS_FILE, "w", newline="", encoding="utf-8") as f:
+            w = csv.DictWriter(f, fieldnames=list(gmass_rows[0].keys()))
+            w.writeheader()
+            w.writerows(gmass_rows)
+        log.info(f"  GMass contacts: {len(gmass_rows)} emails → {GMASS_FILE}")
+    else:
+        log.info("  GMass contacts: no emails found this run")
 
 # ── Skill extraction ──────────────────────────────────────────────────────────
 SKILLS = [
@@ -657,6 +686,10 @@ def run():
             log.info(f"  → {apply_type}  |  {status}")
             counts[status] = counts.get(status, 0) + 1
 
+            contact_email = extract_email(detail["description_full"])
+            if contact_email:
+                log.info(f"  Found email: {contact_email}")
+
             _records.append(GHJob(
                 job_id=detail["job_id"],
                 title=detail["title"],
@@ -669,6 +702,7 @@ def run():
                 employment_type=detail["employment_type"],
                 salary_raw=detail["salary_raw"],
                 skills_mentioned=detail["skills_mentioned"],
+                contact_email=contact_email,
                 description_full=detail["description_full"],
             ))
             save_all()
