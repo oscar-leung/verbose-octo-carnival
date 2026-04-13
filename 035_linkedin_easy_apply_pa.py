@@ -70,6 +70,7 @@ HOME_CITY     = "Santa Clara"
 # Target: QA/SDET/Automation roles using Selenium, Python, Java, Salesforce,
 # pytest, Espresso, React — based on actual work history at Maxar + State of IL
 KEYWORDS = [
+    # QA / Automation
     "QA Automation Engineer",
     "SDET",
     "Software Engineer in Test",
@@ -78,6 +79,12 @@ KEYWORDS = [
     "Software Quality Engineer",
     "QA Engineer Salesforce",
     "Automation Engineer Python",
+    # Software Engineering
+    "Software Engineer Python",
+    "Software Engineer Java",
+    "Backend Engineer Python",
+    "Full Stack Engineer",
+    "Software Developer Python",
 ]
 
 # Title tokens that don't match Oscar's level/background — skip on sight
@@ -122,8 +129,9 @@ logging.basicConfig(
 )
 log = logging.getLogger(__name__)
 
-JSON_FILE = os.path.join(RUN_DIR, "jobs.json")
-CSV_FILE  = os.path.join(RUN_DIR, "jobs.csv")
+JSON_FILE   = os.path.join(RUN_DIR, "jobs.json")
+CSV_FILE    = os.path.join(RUN_DIR, "jobs.csv")
+GMASS_FILE  = os.path.join(RUN_DIR, "gmass_contacts.csv")
 
 # ── XPath selectors ───────────────────────────────────────────────────────────
 EASY_BTN    = "//button[@id='jobs-apply-button-id']"
@@ -147,6 +155,7 @@ class JobRecord:
     platform:         str = "LinkedIn"
     days_since_posted: Optional[int] = None
     skills_mentioned: str = ""
+    contact_email:    str = ""
     note:             str = ""
     timestamp:        str = field(default_factory=lambda: datetime.now().isoformat())
 
@@ -162,6 +171,30 @@ def save_all():
         w = csv.DictWriter(f, fieldnames=list(JobRecord.__dataclass_fields__.keys()))
         w.writeheader()
         w.writerows(rows)
+
+    # ── GMass-ready contacts CSV (only rows with a scraped email) ─────────────
+    # GMass expects: Email, First Name, Last Name, Company, Title, Job URL
+    gmass_rows = [
+        {
+            "Email":      r.contact_email,
+            "First Name": "",       # recruiter name unknown from job post
+            "Last Name":  "",
+            "Company":    r.company,
+            "Title":      r.title,
+            "Job URL":    r.url,
+            "Location":   r.location,
+            "Skills":     r.skills_mentioned,
+        }
+        for r in _records if r.contact_email
+    ]
+    if gmass_rows:
+        with open(GMASS_FILE, "w", newline="", encoding="utf-8") as f:
+            w = csv.DictWriter(f, fieldnames=list(gmass_rows[0].keys()))
+            w.writeheader()
+            w.writerows(gmass_rows)
+        log.info(f"  GMass contacts: {len(gmass_rows)} emails → {GMASS_FILE}")
+    else:
+        log.info("  GMass contacts: no emails found in job descriptions this run")
 
 # ── Driver ────────────────────────────────────────────────────────────────────
 def init_driver() -> webdriver.Chrome:
@@ -228,6 +261,19 @@ SKILLS = [
 def extract_skills(text: str) -> str:
     low = text.lower()
     return ", ".join(s for s in SKILLS if s in low)
+
+_EMAIL_RE = re.compile(r"[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}", re.IGNORECASE)
+# Domains to ignore — LinkedIn system addresses, image placeholders, etc.
+_EMAIL_BLOCKLIST = {"linkedin.com", "example.com", "sentry.io", "w3.org", "schema.org"}
+
+def extract_email(text: str) -> str:
+    """Return first recruiter/contact email found in job description text."""
+    for m in _EMAIL_RE.finditer(text):
+        addr = m.group(0).lower()
+        domain = addr.split("@")[-1]
+        if domain not in _EMAIL_BLOCKLIST:
+            return addr
+    return ""
 
 def get_job_description(driver) -> str:
     for xp in [
@@ -631,6 +677,9 @@ def run():
                             human_wait(1.0, 2.5)
 
                             desc = get_job_description(driver)
+                            contact_email = extract_email(desc)
+                            if contact_email:
+                                log.info(f"    Found email: {contact_email}")
 
                             if not el_exists(driver, EASY_BTN):
                                 status = "skipped"
@@ -647,6 +696,7 @@ def run():
                                 status=status,
                                 url=meta["url"],
                                 skills_mentioned=extract_skills(desc),
+                                contact_email=contact_email,
                             ))
 
                             # ── Anti-detection: paced delays ──────────────────
