@@ -1,3 +1,12 @@
+"""
+Branded Survey Platform Automation
+────────────────────────────────────
+Selenium bot for branded survey/market research platforms. Auto-fills
+profiling questions, navigates survey flows, and submits responses
+to earn rewards. Includes anti-detection measures.
+
+Usage: python 026_branded_scripts.py
+"""
 import logging
 import time
 from selenium import webdriver

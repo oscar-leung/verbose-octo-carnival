@@ -1,3 +1,12 @@
+"""
+Handshake Task Helper — Conversation-to-Response Quality Evaluation (Dec 2025)
+───────────────────────────────────────────────────────────────────────────────
+Evaluates AI chatbot response quality for Outlier.ai. Compares AI-generated
+responses on relevance, accuracy, and helpfulness metrics and submits
+head-to-head rankings to the Outlier training data pipeline.
+
+Usage: python 022_handshake_script_251210-conversations-to-response-h2h.py
+"""
 import os
 import random
 import time

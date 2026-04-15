@@ -1,3 +1,12 @@
+"""
+PrizeRebel Survey Automation — v1
+──────────────────────────────────
+Selenium bot that automates survey completion on PrizeRebel.com to
+earn points for gift cards. Detects survey type, fills forms, and
+handles redirects automatically.
+
+Usage: python 005_prize_rebel.py
+"""
 import logging
 import os
 import time

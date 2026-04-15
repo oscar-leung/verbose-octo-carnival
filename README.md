@@ -1,6 +1,6 @@
 # verbose-octo-carnival — Job Application Automation Suite
 
-A personal automation toolkit built with Python + Selenium that applies to jobs across LinkedIn, Handshake, Indeed, and Greenhouse — scrapes job data, logs every result, and syncs everything to a Google Sheets dashboard.
+A personal automation toolkit built with Python + Selenium that applies to jobs across LinkedIn, Handshake, Indeed, and Greenhouse — scrapes job data, logs every result, and syncs everything to a Google Sheets dashboard. **Scheduled to run automatically 5× per day** via macOS launchd.
 
 **Portfolio:** [oscar-leung.netlify.app](https://oscar-leung.netlify.app)
 **LinkedIn:** [linkedin.com/in/oscar-leung](https://www.linkedin.com/in/oscar-leung/)
@@ -16,30 +16,72 @@ A personal automation toolkit built with Python + Selenium that applies to jobs 
 4. **Logs every job** to CSV + JSON in a timestamped `runs/` folder
 5. **Syncs to Google Sheets** for a centralized dashboard (Huntr/Simplify-style)
 6. **Runs headlessly on PythonAnywhere** (LinkedIn + email scraper scheduled daily)
+7. **Follows 276+ employers** and active recruiters on Handshake for networking
+8. **Extracts emails** from LinkedIn and Handshake posts for direct outreach
+
+---
+
+## Daily Automation (`run_daily_jobs.sh`)
+
+The shell script `run_daily_jobs.sh` is scheduled via macOS launchd to run **5 times per day** at:
+**9 AM · 12 PM · 3 PM · 6 PM · 9 PM**
+
+Each session applies to a small cap of jobs to stay under platform radar:
+
+| Session | LinkedIn | Handshake | Daily Total |
+|---------|----------|-----------|-------------|
+| Per run | 4 apps   | 8 apps    | —           |
+| **Daily** | **~20**  | **~40**   | **~60 apps/day** |
+
+Logs are written to `runs/daily_logs/YYYY-MM-DD.log`.
 
 ---
 
 ## Scripts
 
-### Active Job Application Scripts
+### Active Job Hunt (035–040) — Core automation suite
 
-| # | Script | Platform | Mode | Notes |
-|---|--------|----------|------|-------|
-| 025 | `025_easy_apply.py` | LinkedIn | Local (visible) | Main LinkedIn Easy Apply loop |
-| 029 | `029_linkedIn_emails_script.py` | LinkedIn | Local/PA headless | Scrapes recruiter emails from job posts |
-| 033 | `033_handshake_applications.py` | Handshake | Local (visible) | Applies to all Easy Apply Handshake jobs |
-| 034 | `034_handshake_job_scraper.py` | Handshake | Local (visible) | Scrapes job listings without applying |
-| 035 | `035_linkedin_easy_apply_pa.py` | LinkedIn | **Headless / PA** | Best for PythonAnywhere scheduled tasks |
-| 036 | `036_handshake_apply_pa.py` | Handshake | Headless / PA | Cookie-based session to bypass Cloudflare |
-| 037 | `037_indeed_apply.py` | Indeed | Local (visible) | Manual Google OAuth login, then auto-apply |
-| 038 | `038_greenhouse_apply.py` | Greenhouse | Local (visible) | Google `site:boards.greenhouse.io` search → apply |
+| # | Script | Platform | Mode | What it does |
+|---|--------|----------|------|--------------|
+| 035 | `035_linkedin_easy_apply_pa.py` | LinkedIn | Headless | Headless Easy Apply — 4 apps/session, runs in launchd schedule |
+| 036 | `036_handshake_apply_pa.py` | Handshake | Visible UC | Easy Apply via undetected_chromedriver to bypass Cloudflare |
+| 037 | `037_indeed_apply.py` | Indeed | Local visible | Auto-applies to Indeed Easy Apply QA/SWE jobs |
+| 038 | `038_greenhouse_apply.py` | Greenhouse | Local visible | Google `site:boards.greenhouse.io` search → applies on the ATS |
+| 039 | `039_handshake_follow_employers.py` | Handshake | Visible UC | Follows 276+ tech/gov employers; updates student profile |
+| 040 | `040_handshake_people_jobs.py` | Handshake | Visible UC | Follows active recruiters/engineers, extracts emails, auto-applies |
 
-### Supporting Scripts
+### Email & Outreach
 
 | # | Script | Purpose |
 |---|--------|---------|
+| 029 | `029_linkedIn_emails_script.py` | Scrapes recruiter contact emails from LinkedIn posts and feeds |
+| `build_gmass_master.py` | — | Builds a deduplicated GMass email list from all runs |
+
+### Earlier Versions & Prototypes
+
+| # | Script | Purpose |
+|---|--------|---------|
+| 025 | `025_easy_apply.py` | Original LinkedIn Easy Apply loop (pre-PythonAnywhere) |
+| 033 | `033_handshake_applications.py` | Earlier Handshake apply script |
+| 034 | `034_handshake_job_scraper.py` | Handshake job listing scraper |
+| 028 | `028_linkedIn_emails_script.py` | Original LinkedIn email extractor (v1, superseded) |
+
+### Outlier AI Contractor Tasks (Oct 2025 – Feb 2026)
+
+Scripts 010–023 and 032 automate evaluation tasks from Outlier.ai contracting work:
+text-to-video, ASR transcription accuracy, perception labeling, ELO ranking, and more.
+
+### Other Automation
+
+| # | Script | Purpose |
+|---|--------|---------|
+| 001 | `001-installing-workday-paystubs.py` | Workday HR portal paystub downloader |
+| 002/003 | LinkedIn frameworks | LinkedIn automation prototypes (Nov 2023) |
+| 008 | `008_stake_script.py` | Stake.us daily bonus collection |
+| 009 | `009_samplicio.py` | Samplicio.us survey automation |
+| 024 | `024_nmls_script.py` | NMLS mortgage licensing registry lookup |
+| 026/027 | PrizeRebel scripts | Survey reward automation |
 | 031 | `031_linkedin_analytics.py` | LinkedIn profile analytics scraper |
-| 032 | `032_handshake_script_*.py` | Handshake ELO/omni task automation |
 
 ### Shared Library (`library/`)
 
@@ -207,6 +249,9 @@ nano .env
 | Feb 2026 | Handshake ELO task scripts (032) |
 | Apr 2026 | Full job application suite: LinkedIn + Handshake + Indeed + Greenhouse |
 | Apr 2026 | Google Sheets dashboard + PythonAnywhere deployment |
+| Apr 2026 | macOS launchd automation — 5×/day schedule, ~60 apps/day |
+| Apr 2026 | Followed 276+ tech/gov employers on Handshake (039) |
+| Apr 2026 | People follow + email extraction + recruiter outreach pipeline (040) |
 
 ---
 

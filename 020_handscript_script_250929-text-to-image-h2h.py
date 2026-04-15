@@ -1,3 +1,12 @@
+"""
+Handshake Task Helper — Text-to-Image Evaluation (Sep 2025)
+─────────────────────────────────────────────────────────────
+Evaluates AI-generated image outputs head-to-head on the Outlier
+platform. Scores image quality, prompt accuracy, and visual coherence,
+then submits rankings for AI training data.
+
+Usage: python 020_handscript_script_250929-text-to-image-h2h.py
+"""
 import os
 import time
 import sys

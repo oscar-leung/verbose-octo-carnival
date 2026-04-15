@@ -1,3 +1,12 @@
+"""
+PrizeRebel Survey Automation — v2
+──────────────────────────────────
+Improved PrizeRebel.com survey automation with better survey routing,
+dynamic question detection, and smarter answer selection. Earns
+points for gift card redemption.
+
+Usage: python 027_prizerebel_script.py
+"""
 import logging
 import time
 from selenium import webdriver

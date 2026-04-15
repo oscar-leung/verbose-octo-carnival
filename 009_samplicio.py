@@ -1,3 +1,12 @@
+"""
+Samplicio.us Survey Automation
+───────────────────────────────
+Selenium bot for Samplicio.us that auto-routes and completes online
+surveys to earn cash rewards. Handles screener questions, form fills,
+and completion confirmation pages.
+
+Usage: python 009_samplicio.py
+"""
 import time
 import random
 from selenium import webdriver

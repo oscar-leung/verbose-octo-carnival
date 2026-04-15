@@ -1,3 +1,12 @@
+"""
+NMLS Mortgage Licensing Registry Automation
+────────────────────────────────────────────
+Selenium script that automates lookup and data extraction from the
+Nationwide Multistate Licensing System (NMLS) registry. Used for
+verifying mortgage license statuses and pulling licensee information.
+
+Usage: python 024_nmls_script.py
+"""
 import os
 import random
 import time

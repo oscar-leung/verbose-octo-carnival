@@ -1,3 +1,12 @@
+"""
+LinkedIn Easy Apply — Original Prototype
+─────────────────────────────────────────
+Early Selenium-based bot that automates LinkedIn Easy Apply job applications.
+Logs in with credentials, searches for QA/SWE roles, and submits applications.
+Superseded by the more robust 035_linkedin_easy_apply_pa.py.
+
+Usage: python 002_linkedin_easy_apply.py
+"""
 from multiprocessing.connection import wait
 from selenium.common.exceptions import StaleElementReferenceException
 from selenium.common.exceptions import ElementClickInterceptedException

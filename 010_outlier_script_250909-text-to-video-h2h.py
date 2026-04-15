@@ -1,3 +1,12 @@
+"""
+Outlier AI Contractor Task — Text-to-Video Head-to-Head Evaluation (Sep 2025)
+──────────────────────────────────────────────────────────────────────────────
+Automated evaluation script for Outlier.ai AI training data work.
+Scores AI-generated video outputs side-by-side on quality criteria
+(coherence, visual accuracy, prompt adherence) and submits rankings.
+
+Usage: python 010_outlier_script_250909-text-to-video-h2h.py
+"""
 import os
 import time
 import random

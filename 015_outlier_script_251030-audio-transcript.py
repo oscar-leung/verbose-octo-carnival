@@ -1,3 +1,12 @@
+"""
+Outlier AI Contractor Task — Audio Transcript Evaluation (Oct 2025)
+────────────────────────────────────────────────────────────────────
+Evaluates AI-generated audio transcripts for Outlier.ai data labeling.
+Checks transcription quality, flags errors, and submits accuracy ratings
+through the Outlier task interface.
+
+Usage: python 015_outlier_script_251030-audio-transcript.py
+"""
 import os
 import time
 import random

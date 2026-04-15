@@ -1,3 +1,12 @@
+"""
+Outlier AI Contractor Task — ASR Transcript Accuracy Evaluation v2 (Nov 2025)
+──────────────────────────────────────────────────────────────────────────────
+Evaluates automatic speech recognition (ASR) transcript accuracy for
+Outlier.ai AI data labeling. Compares AI-generated transcripts against
+ground truth and submits quality scores.
+
+Usage: python 011_outliers_script_251121-asr-transcript-accuracy-v2.py
+"""
 import os
 import time
 import random

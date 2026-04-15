@@ -1,3 +1,12 @@
+"""
+LinkedIn Automation Framework — Base Library
+────────────────────────────────────────────
+Reusable Selenium helper module for LinkedIn bots: driver setup,
+login flow, session management, and common element interactions.
+Imported by other LinkedIn scripts as a shared utility layer.
+
+Usage: Imported as a module, not run directly.
+"""
 import logging
 import os
 import time

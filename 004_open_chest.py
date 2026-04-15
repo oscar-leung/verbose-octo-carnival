@@ -1,3 +1,12 @@
+"""
+Chest/Reward Opening Automation
+────────────────────────────────
+Selenium script that automates clicking reward chests or bonus buttons
+on a prize/gaming platform. Loops through available chests and collects
+rewards without manual interaction.
+
+Usage: python 004_open_chest.py
+"""
 import logging
 import os
 import time

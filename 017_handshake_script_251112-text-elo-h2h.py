@@ -1,3 +1,12 @@
+"""
+Handshake Task Helper — Text ELO Head-to-Head Evaluation (Nov 2025)
+────────────────────────────────────────────────────────────────────
+Runs ELO-style pairwise comparisons of AI text outputs and submits
+rankings to the Handshake Outlier task system. Used for ranking
+language model responses by quality.
+
+Usage: python 017_handshake_script_251112-text-elo-h2h.py
+"""
 import os
 import time
 import random

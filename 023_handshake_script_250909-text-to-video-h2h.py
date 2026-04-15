@@ -1,3 +1,12 @@
+"""
+Handshake Task Helper — Text-to-Video Pipeline (Sep 2025, Alternate Flow)
+──────────────────────────────────────────────────────────────────────────
+Third variant of the text-to-video human evaluation submission pipeline.
+Handles a different task batch configuration for the Outlier Sep 2025
+text-to-video evaluation campaign.
+
+Usage: python 023_handshake_script_250909-text-to-video-h2h.py
+"""
 import os
 import random
 import time

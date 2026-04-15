@@ -1,3 +1,18 @@
+"""
+LinkedIn Email Extractor — v2 (Active)
+───────────────────────────────────────
+Scrapes contact emails visible in LinkedIn posts, feeds, and profile
+bios using a headless Chrome session. Exports unique emails to CSV
+for outreach and networking campaigns.
+
+  - Authenticates via LinkedIn credentials in .env
+  - Scrolls through feed/search results collecting emails
+  - Deduplicates and exports to runs/linkedin_emails_*/emails.csv
+
+Usage:
+  python 029_linkedIn_emails_script.py
+  python 029_linkedIn_emails_script.py --max-emails 100
+"""
 import logging
 import os
 import random
@@ -10,7 +25,6 @@ from datetime import datetime
 from pathlib import Path
 from urllib.parse import urlparse, parse_qs, unquote_plus, quote_plus
 
-import pyautogui
 from dotenv import load_dotenv
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -39,8 +53,6 @@ EMAIL_RE = re.compile(r"(?i)\b[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}\b")
 JOB_URL_RE = re.compile(r"https?://(?:www\.)?linkedin\.com/jobs/view/\d+")
 POST_URL_RE = re.compile(r"https?://(?:www\.)?linkedin\.com/(?:feed/update|posts)/[^?\s]+")
 
-pyautogui.PAUSE = 0.05
-pyautogui.FAILSAFE = True
 
 
 # ============================================================
@@ -136,19 +148,12 @@ class SearchResult:
 # ============================================================
 # UI HELPERS (macOS)
 # ============================================================
-def zoom_out(times=5):
-    os.system('osascript -e \'tell application "Google Chrome" to activate\'')
-    time.sleep(0.25)
-    for _ in range(times):
-        pyautogui.hotkey("command", "-")
-        time.sleep(0.06)
+def zoom_out(*args, **kwargs):
+    pass  # no-op in headless mode
 
 
-def move_window_to_topright():
-    os.system('osascript -e \'tell application "Google Chrome" to activate\'')
-    time.sleep(0.15)
-    pyautogui.hotkey("ctrl", "option", "i")
-    time.sleep(0.25)
+def move_window_to_topright(*args, **kwargs):
+    pass  # no-op in headless mode
 
 
 # ============================================================
@@ -666,7 +671,14 @@ def main():
     logging.info(f"Searches : {len(SEARCH_URLS)}")
     logging.info("=" * 70)
 
-    driver = webdriver.Chrome()
+    opts = webdriver.ChromeOptions()
+    opts.add_argument("--headless=new")
+    opts.add_argument("--no-sandbox")
+    opts.add_argument("--disable-dev-shm-usage")
+    opts.add_argument("--disable-gpu")
+    opts.add_argument("--window-size=1920,1080")
+    opts.add_argument("--disable-blink-features=AutomationControlled")
+    driver = webdriver.Chrome(options=opts)
     wait = WebDriverWait(driver, 20)
 
     results: list[SearchResult] = []
@@ -682,6 +694,11 @@ def main():
         move_window_to_topright()
 
         logging.info("Typing credentials...")
+
+        try:
+            wait.until(EC.presence_of_element_located((By.ID, "username")))
+        except TimeoutException:
+            logging.warning("Login page did not load username field in time — LinkedIn may be showing a challenge page.")
 
         driver.find_element(By.ID, "username").clear()
         driver.find_element(By.ID, "username").send_keys(username)

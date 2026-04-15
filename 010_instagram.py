@@ -1,3 +1,12 @@
+"""
+Instagram Engagement Automation
+────────────────────────────────
+Selenium script for automating Instagram interactions: follows,
+likes, and story views based on hashtag or profile targeting.
+Includes rate-limiting to avoid bot detection.
+
+Usage: python 010_instagram.py
+"""
 import os
 import time
 import random

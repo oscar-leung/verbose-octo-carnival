@@ -237,6 +237,10 @@ def init_driver() -> webdriver.Chrome:
     opts.add_experimental_option("excludeSwitches", ["enable-automation"])
     opts.add_experimental_option("useAutomationExtension", False)
     opts.add_argument("--start-maximized")
+    opts.add_argument(
+        "user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+    )
     d = webdriver.Chrome(options=opts)
     d.execute_cdp_cmd(
         "Page.addScriptToEvaluateOnNewDocument",
@@ -256,9 +260,9 @@ def collect_greenhouse_urls(driver, wait) -> list[str]:
     """
     # Check for CAPTCHA
     if el_exists(driver, "//form[@id='captcha-form'] | //div[@id='recaptcha']", timeout=2):
-        log.info("  Google CAPTCHA detected — solve it in the browser (60s).")
+        log.info("  Google CAPTCHA detected — solve it in the browser (180s).")
         try:
-            WebDriverWait(driver, 60).until(
+            WebDriverWait(driver, 180).until(
                 EC.presence_of_element_located((By.XPATH, "//div[@id='search']"))
             )
         except TimeoutException:
@@ -615,6 +619,11 @@ def run():
     wait   = WebDriverWait(driver, WAIT_SEC)
     counts: dict[str, int] = {}
 
+    # ── Warm up: visit google.com first to look human ─────────────────────────
+    log.info("  Warming up — visiting google.com before search...")
+    driver.get("https://www.google.com")
+    time.sleep(random.uniform(3.0, 5.0))
+
     # ── Phase 1: collect all job URLs from Google ─────────────────────────────
     log.info("\n[Phase 1] Collecting job URLs from Google...")
     job_urls: list[str] = []
@@ -625,7 +634,7 @@ def run():
         log.info(f"  Google page {page_num+1}/{args.google_pages}  (start={start})")
 
         driver.get(gurl)
-        human_wait(2.0, 4.0)
+        human_wait(3.0, 6.0)
 
         found = collect_greenhouse_urls(driver, wait)
         new   = [u for u in found if u not in job_urls]

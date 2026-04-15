@@ -1,3 +1,12 @@
+"""
+Workday Paystub Downloader
+──────────────────────────
+Selenium automation that logs into a Workday HR portal and downloads
+paystub PDFs automatically. Reads employee credentials from config.json
+and iterates through available pay periods.
+
+Usage: python 001-installing-workday-paystubs.py
+"""
 import os
 import shutil
 import time

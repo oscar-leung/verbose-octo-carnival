@@ -1,3 +1,12 @@
+"""
+Outlier AI Contractor Task — Perception Label Annotation (Nov 2025)
+────────────────────────────────────────────────────────────────────
+Labels AI model outputs with perception quality tags for Outlier.ai
+training data. Evaluates visual or audio outputs on perceptual dimensions
+and submits structured label data.
+
+Usage: python 014_outlier_script_251119-add-perception-labels.py
+"""
 import os
 import time
 import random

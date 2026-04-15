@@ -1,3 +1,12 @@
+"""
+Handshake Task Creator — Outlier Task Initialization (Sep 2025)
+────────────────────────────────────────────────────────────────
+Creates and initializes new evaluation tasks on the Handshake Outlier
+contractor platform. Sets up task parameters, assigns batches, and
+prepares the queue for evaluation scripts to process.
+
+Usage: python 019_handshake_script_250925-create-task.py
+"""
 import os
 import time
 import random

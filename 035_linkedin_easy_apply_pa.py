@@ -57,6 +57,7 @@ load_dotenv()
 # ── CLI ───────────────────────────────────────────────────────────────────────
 parser = argparse.ArgumentParser()
 parser.add_argument("--dry-run", action="store_true", help="Scrape only, do not submit")
+parser.add_argument("--max-applies", type=int, default=None, help="Override MAX_APPLIES_PER_SESSION")
 args = parser.parse_args()
 
 # ── Config ────────────────────────────────────────────────────────────────────
@@ -109,7 +110,7 @@ PAGES_PER_KEYWORD = 2    # 25 jobs/page → 50 per keyword — enough without ov
 JOBS_PER_PAGE     = 25
 MODAL_MAX_STEPS   = 20
 WAIT_SEC          = 10
-MAX_APPLIES_PER_SESSION = 8    # Conservative cap — well under detection threshold
+MAX_APPLIES_PER_SESSION = args.max_applies if args.max_applies is not None else 8    # Conservative cap — well under detection threshold
 SESSION_BREAK_EVERY     = 4    # Break every 4 applications
 SESSION_BREAK_SECS      = (60, 120)  # 1-2 min break (more human-like)
 

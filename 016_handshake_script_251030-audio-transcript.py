@@ -1,3 +1,11 @@
+"""
+Handshake Task Helper — Audio Transcript Submission (Oct 2025)
+───────────────────────────────────────────────────────────────
+Submits audio transcript evaluation results to the Handshake Outlier
+platform. Pairs with script 015 to complete the audio evaluation pipeline.
+
+Usage: python 016_handshake_script_251030-audio-transcript.py
+"""
 import os
 import time
 import random

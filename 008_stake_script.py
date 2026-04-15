@@ -1,3 +1,12 @@
+"""
+Stake.us Bonus Chest Automation
+────────────────────────────────
+Selenium script that auto-clicks daily bonus chests and free spin
+rewards on Stake.us. Logs in, navigates to the bonus section, and
+collects available rewards on a schedule.
+
+Usage: python 008_stake_script.py
+"""
 import logging
 import time
 from selenium import webdriver

@@ -1,3 +1,12 @@
+"""
+Handshake Task Helper — ASR Transcript Accuracy (Nov 2025)
+────────────────────────────────────────────────────────────
+Handshake platform automation that submits ASR evaluation results
+from script 011 back to the Outlier task queue. Pairs with the
+corresponding Outlier script for end-to-end task completion.
+
+Usage: python 012_handshake_script_251121-asr-transcript-accuracy-v2.py
+"""
 import os
 import time
 import random

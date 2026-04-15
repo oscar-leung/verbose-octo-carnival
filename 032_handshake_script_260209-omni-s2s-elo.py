@@ -1,3 +1,12 @@
+"""
+Handshake Task Helper — Omni S2S ELO Evaluation (Feb 2026)
+────────────────────────────────────────────────────────────
+Evaluates Omni speech-to-speech (S2S) AI model outputs head-to-head
+using ELO ranking methodology. Submits quality rankings to the
+Outlier Handshake contractor platform for AI model training data.
+
+Usage: python 032_handshake_script_260209-omni-s2s-elo.py
+"""
 import os
 import random
 import time

@@ -1,3 +1,12 @@
+"""
+LinkedIn Easy Apply — Comprehensive Original
+────────────────────────────────────────────
+Large-scale LinkedIn Easy Apply automation with full job filtering,
+multi-question form handling, and CSV result logging. The original
+production version before the PythonAnywhere rewrite (035).
+
+Usage: python 006_easy_apply_jobs.py
+"""
 import logging
 import time
 from selenium import webdriver

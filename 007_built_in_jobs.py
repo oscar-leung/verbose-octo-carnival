@@ -1,3 +1,12 @@
+"""
+Job Board Automation — Utility Helpers
+───────────────────────────────────────
+Helper utilities for job search automation: browser setup,
+login flows, and common form-filling patterns shared across
+early job application scripts.
+
+Usage: python 007_built_in_jobs.py
+"""
 import logging
 import time
 from selenium import webdriver

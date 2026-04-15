@@ -1,3 +1,12 @@
+"""
+Handshake Task Helper — Video Scene Expansion Evaluation (Dec 2025)
+─────────────────────────────────────────────────────────────────────
+Evaluates AI-generated video scene expansions for Outlier.ai training
+data. Scores continuity, coherence, and visual quality of extended
+scenes and submits results to the Handshake task platform.
+
+Usage: python 021_handshake_script_251211-video-scene-expansion.py
+"""
 import os
 import time
 import sys

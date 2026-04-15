@@ -1,3 +1,12 @@
+"""
+LinkedIn Email Extractor — v1 (Superseded)
+───────────────────────────────────────────
+Original script for scraping contact emails from LinkedIn posts, feeds,
+and profile pages. Exports results to CSV for outreach campaigns.
+Superseded by the improved version 029_linkedIn_emails_script.py.
+
+Usage: python 028_linkedIn_emails_script.py
+"""
 import logging
 import random
 import re

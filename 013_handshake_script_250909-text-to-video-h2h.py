@@ -1,3 +1,12 @@
+"""
+Handshake Task Helper — Text-to-Video Evaluation (Sep 2025)
+────────────────────────────────────────────────────────────
+Submits text-to-video human evaluation scores to the Handshake
+Outlier task platform. Works alongside script 010 to complete
+the full evaluation and submission pipeline.
+
+Usage: python 013_handshake_script_250909-text-to-video-h2h.py
+"""
 import os
 import time
 import random
