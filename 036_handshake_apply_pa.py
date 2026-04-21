@@ -69,8 +69,8 @@ SEARCH_KEYWORDS = [
     "Software Engineer",
 ]
 
-# Accepted locations — job must match one of these (or be remote) to be applied to
-LOCATION_ACCEPT = {"sacramento", "davis", "remote", "anywhere", "nationwide"}
+# Accepted locations — job must match one of these (or be remote/hybrid) to be applied to
+LOCATION_ACCEPT = {"sacramento", "davis", "remote", "hybrid", "anywhere", "nationwide"}
 
 # Titles to skip
 TITLE_EXCLUDE = {
@@ -244,11 +244,25 @@ def extract_skills(text: str) -> str:
     return ", ".join(s for s in SKILLS if s in low)
 
 # ── Driver ────────────────────────────────────────────────────────────────────
+CHROME_PROFILE = os.path.expanduser("~/.chrome-handshake-profile")
+
 def init_driver() -> uc.Chrome:
+    # Clear Chrome singleton lock files so a fresh session can start even if
+    # a previous Chrome instance was killed mid-run.
+    for lock in ["SingletonLock", "SingletonCookie", "SingletonSocket"]:
+        p = os.path.join(CHROME_PROFILE, lock)
+        if os.path.exists(p) or os.path.islink(p):
+            try:
+                os.remove(p)
+            except Exception:
+                pass
     opts = uc.ChromeOptions()
     opts.add_argument("--no-sandbox")
     opts.add_argument("--disable-dev-shm-usage")
     opts.add_argument("--window-size=1920,1080")
+    # Use persistent profile — preserves Cloudflare fingerprint + logged-in
+    # session so we never have to re-do the Cloudflare challenge.
+    opts.add_argument(f"--user-data-dir={CHROME_PROFILE}")
     # NOT headless — Cloudflare Turnstile blocks headless browsers
     return uc.Chrome(options=opts, use_subprocess=True)
 
@@ -342,13 +356,27 @@ def collect_job_data(index: int, page: int, apply_type: str = "unknown") -> dict
     job_id = get_job_id()
     url    = f"https://app.joinhandshake.com/jobs/{job_id}" if job_id else driver.current_url
 
-    title       = safe_text("//h1[contains(@class,'job-title')] | //h1[contains(@class,'dmTfkw')]")
-    company     = safe_text("//div[contains(@class,'gBthqB')] | //*[contains(@data-hook,'employer-name')]")
-    industry    = safe_text("//div[contains(@class,'hrTUzH')] | //*[contains(@data-hook,'employer-industry')]")
-    posted_raw  = safe_text("//*[contains(@class,'fsLGJY')] | //*[contains(@data-hook,'posted-date')]")
-    salary_raw  = safe_text("//*[contains(@class,'dVnqLS')][1]")
-    location_raw = safe_text("//*[contains(@class,'dVnqLS')][2]")
-    job_type    = safe_text("//*[contains(@class,'dVnqLS')][3]")
+    # Title: try stable selectors first, fall back to any h1 on the page
+    title = (
+        safe_text("//*[contains(@data-hook,'job-title')] | //h1[contains(@class,'job-title')]", timeout=2)
+        or safe_text("//h1", timeout=2)
+        or safe_text("//h2[contains(translate(@class,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'title')]", timeout=1)
+    )
+    # Company: data-hook is more stable than obfuscated CSS class names
+    company = (
+        safe_text("//*[contains(@data-hook,'employer-name')]", timeout=2)
+        or safe_text("//*[contains(@data-hook,'company-name')]", timeout=1)
+        or safe_text("//a[contains(@href,'/employers/')]", timeout=1)
+    )
+    industry    = safe_text("//*[contains(@data-hook,'employer-industry')]", timeout=1)
+    posted_raw  = safe_text("//*[contains(@data-hook,'posted-date')] | //*[contains(normalize-space(),'Posted')]", timeout=2)
+    # Salary/location: use exact data-hook matches (Handshake's obfuscated CSS classes
+    # change frequently; data-hook attributes are more stable but still not guaranteed).
+    # location_raw left empty if we can't reliably detect it — location_ok() treats
+    # empty as "accept" so we don't accidentally reject valid remote jobs.
+    salary_raw   = safe_text("//*[@data-hook='salary'] | //*[@data-hook='compensation']", timeout=1)
+    location_raw = safe_text("//*[@data-hook='location'] | //*[@data-hook='job-location']", timeout=1)
+    job_type     = safe_text("//*[@data-hook='job-type'] | //*[@data-hook='employment-type']", timeout=1)
 
     work_auth_raw      = safe_text("//*[@data-hook='work-auth-title']", timeout=1)
     work_auth_required = "yes" if "required" in work_auth_raw.lower() else "no" if work_auth_raw else ""
@@ -438,43 +466,24 @@ def run():
     password = os.getenv("handshake_password")
 
     driver = init_driver()
-    wait   = WebDriverWait(driver, 5)
 
-    COOKIE_FILE = "handshake_cookies.json"
+    # ── Session restore via persistent Chrome profile ─────────────────────────
+    # The persistent profile keeps the Cloudflare fingerprint + session cookies
+    # so we rarely need to log in again. If the session did expire, do a fresh
+    # login and it will be persisted for next time.
+    def is_logged_in() -> bool:
+        return el_exists("//nav | //a[contains(@href,'/jobs')] | //a[contains(@href,'/explore')]", timeout=5)
 
-    # ── Session cookie restore (bypasses Cloudflare on headless runs) ────────
-    # First run: no cookie file → do full login once, save cookies.
-    # Subsequent runs: load saved cookies and skip the login page entirely.
-    def save_cookies():
-        with open(COOKIE_FILE, "w") as f:
-            json.dump(driver.get_cookies(), f)
-        logging.info("Session cookies saved.")
-
-    def load_cookies() -> bool:
-        if not os.path.exists(COOKIE_FILE):
-            return False
-        driver.get("https://app.joinhandshake.com")
-        time.sleep(2)
-        with open(COOKIE_FILE) as f:
-            for cookie in json.load(f):
-                try:
-                    driver.add_cookie(cookie)
-                except Exception:
-                    pass
-        driver.get("https://app.joinhandshake.com/job-search/")
+    def ensure_logged_in():
+        driver.get("https://app.joinhandshake.com/explore")
         time.sleep(3)
-        if "job-search" in driver.current_url or "jobs" in driver.current_url:
-            logging.info("Restored session from cookies.")
-            return True
-        logging.info("Cookies expired — falling back to full login.")
-        return False
-
-    if not load_cookies():
+        if is_logged_in():
+            logging.info("Session active (persistent profile).")
+            return
+        logging.info("Not logged in — doing fresh login.")
         driver.get("https://app.joinhandshake.com/login?requested_authentication_method=standard")
         time.sleep(3)
         driver.save_screenshot(os.path.join(RUN_DIR, "login_page.png"))
-
-        # Cloudflare challenge — wait up to 20s for it to auto-pass
         WebDriverWait(driver, 20).until(
             EC.presence_of_element_located((By.ID, "email-address-identifier"))
         ).send_keys(username)
@@ -485,9 +494,10 @@ def run():
             EC.presence_of_element_located((By.ID, "password"))
         ).send_keys(password)
         fast_click("//button[normalize-space()='Log in']")
-        time.sleep(4)
-        save_cookies()
+        time.sleep(5)
+        logging.info("Logged in.")
 
+    ensure_logged_in()
     driver.save_screenshot(os.path.join(RUN_DIR, "post_login.png"))
 
     def process_card(idx, page, n):
@@ -532,18 +542,40 @@ def run():
             if jid:
                 seen_ids.add(jid)
 
+            title   = job_data.get("title", "") or "???"
+            company = job_data.get("company", "") or "???"
+            loc_str = job_data.get("location_raw", "") or "location unknown"
+            sal_str = job_data.get("salary_raw", "")
+            sal_tag = f"  💰{sal_str[:18]}" if sal_str else ""
+
+            # Determine outcome tag for the log line
+            if not title_ok(title):
+                outcome = "SKIP:title"
+            elif not location_ok(loc_str):
+                outcome = f"SKIP:location({loc_str[:20]})"
+            elif el_exists(ALREADY_APPLIED_XPATH, timeout=1):
+                outcome = "SKIP:already_applied"
+            elif apply_type == "external":
+                outcome = "SKIP:external"
+            elif apply_type != "easy_apply":
+                outcome = "SKIP:no_button"
+            elif args.dry_run:
+                outcome = "DRY_RUN"
+            else:
+                outcome = f"✓ APPLY ({apply_type})"
+
             logging.info(
-                f"  [{idx+1:02}/{n}] {job_data['title'][:38]:<38} | "
-                f"{job_data['company'][:20]:<20} | {apply_type}"
+                f"  [{idx+1:02}/{n}] {title[:36]:<36} | {company[:18]:<18} | "
+                f"{loc_str[:20]:<20} | {outcome}{sal_tag}"
             )
 
-            if not title_ok(job_data.get("title", "")):
+            # Now execute the outcome
+            if not title_ok(title):
                 job_data["status"] = "skipped_title"
                 record_job(job_data)
                 return "skipped_title"
 
-            if not location_ok(job_data.get("location_raw", "")):
-                logging.info(f"    Location {job_data.get('location_raw','?')!r} — skip")
+            if not location_ok(loc_str):
                 job_data["status"] = "skipped_location"
                 record_job(job_data)
                 return "skipped_location"
@@ -576,7 +608,7 @@ def run():
             time.sleep(0.3)
 
             if not el_exists(SUBMIT_XPATH, timeout=3):
-                logging.warning("    No Submit button — closing")
+                logging.warning("    No Submit button — closing modal")
                 close_modal()
                 job_data["status"] = "skipped_no_submit_button"
                 record_job(job_data)
@@ -585,7 +617,7 @@ def run():
             fast_click(SUBMIT_XPATH)
             time.sleep(random.uniform(APPLY_PAUSE_MIN, APPLY_PAUSE_MAX))
             dismiss_post_submit()
-            logging.info("    Applied!")
+            logging.info(f"    ✓ Applied to {title[:40]} @ {company[:25]}")
             job_data["status"] = "applied"
             record_job(job_data)
             return "applied"
@@ -656,8 +688,11 @@ def run():
             logging.info(f"  {n} cards on page {page}")
 
             for idx in range(n):
-                applied_count = Counter(j["status"] for j in all_jobs).get("applied", 0)
-                if applied_count >= MAX_APPLIES:
+                # Cap counts both "applied" (live) and "dry_run" so --max-applies
+                # limits iterations the same way in both modes.
+                processed = Counter(j["status"] for j in all_jobs)
+                action_count = processed.get("applied", 0) + processed.get("dry_run", 0)
+                if action_count >= MAX_APPLIES:
                     return True  # cap hit
                 process_card(idx, page, n)
 
@@ -669,8 +704,9 @@ def run():
         return False
 
     for search_kw in SEARCH_KEYWORDS:
-        applied_count = Counter(j["status"] for j in all_jobs).get("applied", 0)
-        if applied_count >= MAX_APPLIES:
+        processed = Counter(j["status"] for j in all_jobs)
+        action_count = processed.get("applied", 0) + processed.get("dry_run", 0)
+        if action_count >= MAX_APPLIES:
             logging.info(f"  Session cap ({MAX_APPLIES}) reached — stopping.")
             break
         cap_hit = run_search(search_kw, "")
@@ -685,10 +721,28 @@ def run():
         pass
 
     logging.info("\n" + "=" * 60)
-    logging.info("DONE")
+    logging.info("  RUN SUMMARY")
+    logging.info("=" * 60)
     counts = Counter(j["status"] for j in all_jobs)
-    for status, cnt in sorted(counts.items()):
-        logging.info(f"  {status:<35} {cnt:>5}")
+    total   = len(all_jobs)
+    applied = counts.get("applied", 0)
+    skipped = sum(v for k, v in counts.items() if k.startswith("skipped"))
+    errors  = counts.get("error", 0)
+    logging.info(f"  Total processed : {total}")
+    logging.info(f"  Applied         : {applied}")
+    logging.info(f"  Skipped         : {skipped}")
+    logging.info(f"  Errors          : {errors}")
+    logging.info("")
+    logging.info("  Breakdown by status:")
+    for status, cnt in sorted(counts.items(), key=lambda x: -x[1]):
+        bar = "█" * min(cnt, 20)
+        logging.info(f"    {status:<35} {cnt:>4}  {bar}")
+    if applied > 0:
+        logging.info("")
+        logging.info("  Jobs applied to:")
+        for j in all_jobs:
+            if j.get("status") == "applied":
+                logging.info(f"    ✓ {j.get('title','?')[:40]:<40} @ {j.get('company','?')[:25]:<25}  {j.get('location_raw','')[:20]}")
 
     # ── Sync to Google Sheets ──────────────────────────────────────────────────
     try:

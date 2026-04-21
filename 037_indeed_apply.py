@@ -71,7 +71,6 @@ KEYWORDS = [
 ]
 # Search multiple locations — Remote + Sacramento area + Davis
 LOCATIONS = ["Remote", "Sacramento, CA", "Davis, CA"]
-LOCATION       = "Remote"  # kept for legacy search_url() calls; loop overrides this
 EASY_APPLY_FILTER = True    # &iafilter=1 adds "Easily Apply" filter on Indeed
 RESULTS_PER_PAGE  = 15      # Indeed shows 15 results per page
 WAIT_SEC          = 10
@@ -281,9 +280,9 @@ def dismiss_modal(driver, wait):
         pass
 
 # ── Search URL builder ────────────────────────────────────────────────────────
-def search_url(keyword: str, start: int) -> str:
+def search_url(keyword: str, location: str, start: int) -> str:
     kw  = quote_plus(keyword)
-    loc = quote_plus(LOCATION)
+    loc = quote_plus(location)
     url = f"https://www.indeed.com/jobs?q={kw}&l={loc}&start={start}"
     if EASY_APPLY_FILTER:
         url += "&iafilter=1"   # "Easily Apply" filter
@@ -532,108 +531,107 @@ def run():
     try:
         login(driver, wait)
 
-        for keyword in KEYWORDS:
-            log.info(f"\n{'─'*60}")
-            log.info(f"  Keyword: {keyword}")
-            log.info(f"{'─'*60}")
+        for location in LOCATIONS:
+            for keyword in KEYWORDS:
+                log.info(f"\n{'─'*60}")
+                log.info(f"  Keyword: {keyword}  |  Location: {location}")
+                log.info(f"{'─'*60}")
 
-            for page_num in range(args.pages):
-                start = page_num * RESULTS_PER_PAGE
-                url   = search_url(keyword, start)
-                log.info(f"  Page {page_num+1}  (start={start})")
+                for page_num in range(args.pages):
+                    start = page_num * RESULTS_PER_PAGE
+                    url   = search_url(keyword, location, start)
+                    log.info(f"  Page {page_num+1}  (start={start})")
 
-                driver.get(url)
-                human_wait(2.0, 3.5)
+                    driver.get(url)
+                    human_wait(2.0, 3.5)
 
-                # Wait for job cards — Indeed uses li[@data-jk] or div[@data-jk]
-                CARD_XPATHS = [
-                    "//li[@data-jk]",
-                    "//div[@data-jk]",
-                    "//div[contains(@class,'job_seen_beacon')]",
-                    "//div[contains(@class,'resultContent')]",
-                ]
-                cards = []
-                found_cards = False
-                for card_xp in CARD_XPATHS:
-                    try:
-                        WebDriverWait(driver, 5).until(
-                            EC.presence_of_element_located((By.XPATH, card_xp))
-                        )
-                        cards = driver.find_elements(By.XPATH, card_xp)
-                        if cards:
-                            found_cards = True
-                            log.info(f"  Cards via: {card_xp}")
-                            break
-                    except TimeoutException:
-                        continue
-
-                if not found_cards:
-                    log.info(f"  Page {page_num+1}: no jobs — next keyword.")
-                    # Screenshot for debugging
-                    driver.save_screenshot(os.path.join(RUN_DIR, f"no_jobs_{keyword.replace(' ','_')}_p{page_num+1}.png"))
-                    break
-
-                log.info(f"  {len(cards)} cards")
-
-                for idx, card in enumerate(cards):
-                    try:
-                        meta   = get_job_meta(driver, card)
-                        job_id = meta["job_id"]
-
-                        if not job_id or job_id in _seen_ids:
-                            continue
-                        _seen_ids.add(job_id)
-
-                        log.info(f"  [{idx+1}/{len(cards)}] {meta['title']} @ {meta['company']}")
-
-                        # Click card to load detail panel
-                        driver.execute_script("arguments[0].scrollIntoView({block:'center'});", card)
+                    CARD_XPATHS = [
+                        "//li[@data-jk]",
+                        "//div[@data-jk]",
+                        "//div[contains(@class,'job_seen_beacon')]",
+                        "//div[contains(@class,'resultContent')]",
+                        "//li[.//h2[contains(@class,'jobTitle')]]",
+                    ]
+                    cards = []
+                    found_cards = False
+                    for card_xp in CARD_XPATHS:
                         try:
-                            card.click()
-                        except Exception:
-                            driver.execute_script(_JS_CLICK, card)
-                        human_wait(1.2, 2.5)
+                            WebDriverWait(driver, 5).until(
+                                EC.presence_of_element_located((By.XPATH, card_xp))
+                            )
+                            cards = driver.find_elements(By.XPATH, card_xp)
+                            if cards:
+                                found_cards = True
+                                log.info(f"  Cards via: {card_xp}")
+                                break
+                        except TimeoutException:
+                            continue
 
-                        desc = get_job_description(driver)
-                        sal  = parse_salary(meta["salary_raw"])
-                        remote_type = parse_location(meta["location"])
-                        days        = parse_days_posted(meta["posted_raw"])
-                        contact_email = extract_email(desc)
-                        if contact_email:
-                            log.info(f"    Found email: {contact_email}")
+                    if not found_cards:
+                        log.info(f"  Page {page_num+1}: no jobs — next keyword.")
+                        driver.save_screenshot(os.path.join(RUN_DIR, f"no_jobs_{keyword.replace(' ','_')}_p{page_num+1}.png"))
+                        break
 
-                        status = run_indeed_apply(driver, wait)
-                        counts[status] = counts.get(status, 0) + 1
+                    log.info(f"  {len(cards)} cards")
 
-                        _records.append(IndeedJob(
-                            job_id=job_id,
-                            title=meta["title"],
-                            company=meta["company"],
-                            location=meta["location"],
-                            keyword=keyword,
-                            status=status,
-                            url=meta["url"],
-                            salary_raw=meta["salary_raw"],
-                            salary_min=sal["salary_min"],
-                            salary_max=sal["salary_max"],
-                            salary_unit=sal["salary_unit"] or "",
-                            remote_type=remote_type,
-                            days_since_posted=days,
-                            skills_mentioned=extract_skills(desc),
-                            contact_email=contact_email,
-                            description_full=desc[:5000],
-                        ))
-                        human_wait(0.8, 1.8)
+                    for idx, card in enumerate(cards):
+                        try:
+                            meta   = get_job_meta(driver, card)
+                            job_id = meta["job_id"]
 
-                    except StaleElementReferenceException:
-                        log.warning(f"  [{idx+1}] Stale element")
-                    except Exception as e:
-                        log.error(f"  [{idx+1}] Error: {e}")
-                        counts["error"] = counts.get("error", 0) + 1
-                        dismiss_modal(driver, wait)
+                            if not job_id or job_id in _seen_ids:
+                                continue
+                            _seen_ids.add(job_id)
 
-                save_all()
-                human_wait(1.5, 3.0)
+                            log.info(f"  [{idx+1}/{len(cards)}] {meta['title']} @ {meta['company']}")
+
+                            driver.execute_script("arguments[0].scrollIntoView({block:'center'});", card)
+                            try:
+                                card.click()
+                            except Exception:
+                                driver.execute_script(_JS_CLICK, card)
+                            human_wait(1.2, 2.5)
+
+                            desc = get_job_description(driver)
+                            sal  = parse_salary(meta["salary_raw"])
+                            remote_type = parse_location(meta["location"])
+                            days        = parse_days_posted(meta["posted_raw"])
+                            contact_email = extract_email(desc)
+                            if contact_email:
+                                log.info(f"    Found email: {contact_email}")
+
+                            status = run_indeed_apply(driver, wait)
+                            counts[status] = counts.get(status, 0) + 1
+
+                            _records.append(IndeedJob(
+                                job_id=job_id,
+                                title=meta["title"],
+                                company=meta["company"],
+                                location=meta["location"],
+                                keyword=keyword,
+                                status=status,
+                                url=meta["url"],
+                                salary_raw=meta["salary_raw"],
+                                salary_min=sal["salary_min"],
+                                salary_max=sal["salary_max"],
+                                salary_unit=sal["salary_unit"] or "",
+                                remote_type=remote_type,
+                                days_since_posted=days,
+                                skills_mentioned=extract_skills(desc),
+                                contact_email=contact_email,
+                                description_full=desc[:5000],
+                            ))
+                            human_wait(0.8, 1.8)
+
+                        except StaleElementReferenceException:
+                            log.warning(f"  [{idx+1}] Stale element")
+                        except Exception as e:
+                            log.error(f"  [{idx+1}] Error: {e}")
+                            counts["error"] = counts.get("error", 0) + 1
+                            dismiss_modal(driver, wait)
+
+                    save_all()
+                    human_wait(1.5, 3.0)
 
     except Exception as e:
         log.error(f"Fatal: {e}")

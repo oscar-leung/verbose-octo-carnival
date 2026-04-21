@@ -654,12 +654,17 @@ def run():
                                 continue
                             seen_ids.add(job_id)
 
-                            log.info(f"  [{idx+1}/{len(job_els)}] {meta['title']} @ {meta['company']}")
+                            title_low = meta["title"].lower()
+                            loc_str   = meta.get("location", "") or "?"
+                            title_skip = any(tok in title_low for tok in TITLE_EXCLUDE)
+                            log.info(
+                                f"  [{idx+1:02}/{len(job_els)}] {meta['title'][:38]:<38} | "
+                                f"{meta['company'][:18]:<18} | {loc_str[:22]:<22} | "
+                                f"{'SKIP:title' if title_skip else '→ checking'}"
+                            )
 
                             # Skip titles that don't match Oscar's background
-                            title_low = meta["title"].lower()
-                            if any(tok in title_low for tok in TITLE_EXCLUDE):
-                                log.info("    Title excluded — skip")
+                            if title_skip:
                                 counts["skipped"] = counts.get("skipped", 0) + 1
                                 _records.append(JobRecord(
                                     job_id=job_id, title=meta["title"],
@@ -738,8 +743,30 @@ def run():
             pass
 
     log.info("=" * 60)
-    log.info(f"  DONE  |  {dict(counts)}")
-    log.info(f"  Total unique jobs seen: {len(seen_ids)}")
+    log.info("  RUN SUMMARY")
+    log.info("=" * 60)
+    log.info(f"  Applied  : {counts['applied']}")
+    log.info(f"  Skipped  : {counts['skipped']}")
+    log.info(f"  Errors   : {counts['error']}")
+    log.info(f"  Dry-run  : {counts.get('dry_run', 0)}")
+    log.info(f"  Unique jobs seen: {len(seen_ids)}")
+    if _records:
+        applied_recs = [r for r in _records if r.status == "applied"]
+        if applied_recs:
+            log.info("")
+            log.info("  Jobs applied to:")
+            for r in applied_recs:
+                log.info(f"    ✓ {r.title[:40]:<40} @ {r.company[:25]:<25}  {r.location[:20]}")
+        skipped_by_reason: dict = {}
+        for r in _records:
+            if r.status == "skipped":
+                reason = r.note or "unknown"
+                skipped_by_reason[reason] = skipped_by_reason.get(reason, 0) + 1
+        if skipped_by_reason:
+            log.info("")
+            log.info("  Skipped reasons:")
+            for reason, cnt in sorted(skipped_by_reason.items(), key=lambda x: -x[1]):
+                log.info(f"    {reason:<30} {cnt:>4}")
 
     # ── Sync to Google Sheets ──────────────────────────────────────────────────
     try:

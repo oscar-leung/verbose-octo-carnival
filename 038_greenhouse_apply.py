@@ -250,15 +250,30 @@ def init_driver() -> webdriver.Chrome:
 
 # ── Google site: search ───────────────────────────────────────────────────────
 def google_search_url(query: str, start: int) -> str:
-    """Build a Google search URL. start is 0-based (0, 10, 20 …)."""
     return f"https://www.google.com/search?q={quote_plus(query)}&start={start}"
+
+def bing_search_url(query: str, first: int) -> str:
+    return f"https://www.bing.com/search?q={quote_plus(query)}&first={first}"
+
+_GH_PATTERN = re.compile(r"boards\.greenhouse\.io/[^/]+/jobs/\d+")
+
+def _extract_urls_from_page(driver) -> list[str]:
+    urls = []
+    for a in driver.find_elements(By.XPATH, "//a[@href]"):
+        href = a.get_attribute("href") or ""
+        if _GH_PATTERN.search(href):
+            m = re.search(r"(https://boards\.greenhouse\.io/[^&\"]+)", href)
+            if m:
+                clean = m.group(1).split("#")[0]
+                if clean not in urls:
+                    urls.append(clean)
+    return urls
 
 def collect_greenhouse_urls(driver, wait) -> list[str]:
     """
-    Scrape all boards.greenhouse.io/*/jobs/* URLs visible on the current Google results page.
-    Handles Google's CAPTCHA by waiting up to 60s for the user to solve it.
+    Scrape boards.greenhouse.io job URLs from the current search results page.
+    Handles Google CAPTCHA by waiting 180s; falls back to Bing if Google yields nothing.
     """
-    # Check for CAPTCHA
     if el_exists(driver, "//form[@id='captcha-form'] | //div[@id='recaptcha']", timeout=2):
         log.info("  Google CAPTCHA detected — solve it in the browser (180s).")
         try:
@@ -269,19 +284,24 @@ def collect_greenhouse_urls(driver, wait) -> list[str]:
             log.warning("  CAPTCHA not solved in time — skipping this page.")
             return []
 
-    urls = []
-    # Result links live in <a> tags inside #search
-    for a in driver.find_elements(By.XPATH, "//a[@href]"):
-        href = a.get_attribute("href") or ""
-        # Match boards.greenhouse.io/<company>/jobs/<id>
-        if re.search(r"boards\.greenhouse\.io/[^/]+/jobs/\d+", href):
-            # Strip Google redirect wrapper if present
-            m = re.search(r"(https://boards\.greenhouse\.io/[^&\"]+)", href)
-            if m:
-                clean = m.group(1).split("#")[0]  # strip URL fragments (#:~:text=...)
-                if clean not in urls:
-                    urls.append(clean)
-    return urls
+    return _extract_urls_from_page(driver)
+
+def collect_greenhouse_urls_bing(driver, wait, query: str, pages: int) -> list[str]:
+    """Fallback: scrape Greenhouse job URLs from Bing search results."""
+    log.info("  Switching to Bing search as fallback...")
+    all_urls: list[str] = []
+    for page_num in range(pages):
+        first = page_num * 10
+        driver.get(bing_search_url(query, first))
+        human_wait(3.0, 5.0)
+        found = _extract_urls_from_page(driver)
+        new = [u for u in found if u not in all_urls]
+        all_urls.extend(new)
+        log.info(f"  Bing page {page_num+1}: {len(found)} links ({len(new)} new) — total: {len(all_urls)}")
+        if not found:
+            break
+        time.sleep(random.uniform(3.0, 5.0))
+    return all_urls
 
 # ── Job detail ────────────────────────────────────────────────────────────────
 def parse_job_page(driver) -> dict:
@@ -654,8 +674,11 @@ def run():
         f.write("\n".join(job_urls))
 
     if not job_urls:
-        log.warning("No job URLs found — Google may have blocked the search. "
-                    "Try running again or solve the CAPTCHA manually.")
+        log.warning("Google returned no results — trying Bing as fallback.")
+        job_urls = collect_greenhouse_urls_bing(driver, wait, GOOGLE_QUERY, args.google_pages)
+
+    if not job_urls:
+        log.warning("No job URLs found from Google or Bing. Exiting.")
         driver.quit()
         return
 

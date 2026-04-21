@@ -152,11 +152,38 @@ TITLE_EXCLUDE = {
     "senior", " sr ", "sr.", "staff", "principal", "lead", "manager",
     "director", "vp ", "head of", "architect", "intern", "internship",
     "founding", "sales", "field", "hardware", "firmware", "embedded",
+    # non-tech roles
+    "teacher", "nurse", "therapist", "counselor", "social worker",
+    "accountant", "paralegal", "lawyer", "attorney", "recruiter",
+    "forward deployed", "solutions engineer", "customer success",
+    "business development", "growth", "operations", "hr ", "finance",
+}
+
+# Tech keywords — at least one must appear in the title
+TITLE_REQUIRE_ANY = {
+    "engineer", "developer", "software", "qa", "quality", "test",
+    "sdet", "data", "cloud", "platform", "devops", "security",
+    "backend", "frontend", "full stack", "fullstack", "mobile",
+    "machine learning", "ml ", " ai ", "infrastructure", "sre",
+    "automation", "python", "java", "javascript", "react",
 }
 
 def job_title_ok(title: str) -> bool:
     low = title.lower()
-    return not any(tok in low for tok in TITLE_EXCLUDE)
+    if any(tok in low for tok in TITLE_EXCLUDE):
+        return False
+    # Must contain at least one tech keyword
+    return any(tok in low for tok in TITLE_REQUIRE_ANY)
+
+# Accepted locations — remote, hybrid, Davis CA, or Sacramento CA only
+LOCATION_ACCEPT = {"sacramento", "davis", "remote", "hybrid", "anywhere", "nationwide"}
+
+def location_ok(location_raw: str) -> bool:
+    """Accept remote, hybrid, Sacramento, or Davis jobs. Empty = assume remote-friendly."""
+    if not location_raw:
+        return True
+    low = location_raw.lower()
+    return any(tok in low for tok in LOCATION_ACCEPT)
 
 # ── Data models ────────────────────────────────────────────────────────────────
 @dataclass
@@ -481,15 +508,51 @@ def try_apply_to_job(job_url: str) -> str:
     driver.get(job_url)
     time.sleep(random.uniform(2.0, 3.5))
 
-    title    = safe_text("//h1[contains(@class,'job-title')] | //h1", timeout=5)
-    company  = safe_text("//*[contains(@data-hook,'employer-name')] | //h2", timeout=3)
-    location = safe_text("//*[contains(@class,'dVnqLS')][2]", timeout=2)
+    # Use data-hook attributes (stable) then fall back to generic heading tags
+    title = (
+        safe_text("//*[contains(@data-hook,'job-title')]", timeout=3)
+        or safe_text("//h1", timeout=3)
+        or ""
+    )
+    company = (
+        safe_text("//*[contains(@data-hook,'employer-name')]", timeout=2)
+        or safe_text("//*[contains(@data-hook,'company-name')]", timeout=1)
+        or safe_text("//a[contains(@href,'/employers/')]", timeout=1)
+        or ""
+    )
+    # Use exact data-hook attribute matches to avoid picking up nav/skip-link text.
+    # Empty location = treated as acceptable by location_ok() (assume remote-friendly).
+    location = safe_text("//*[@data-hook='location'] | //*[@data-hook='job-location']", timeout=1)
+
+    # Determine outcome for inline log
+    if not job_title_ok(title):
+        outcome = "SKIP:title"
+    elif not location_ok(location):
+        outcome = f"SKIP:location({location[:20]})"
+    elif el_exists(ALREADY_APPLIED_XPATH, timeout=2):
+        outcome = "SKIP:already_applied"
+    elif el_exists(EXTERNAL_XPATH, timeout=2):
+        outcome = "SKIP:external"
+    elif not el_exists(APPLY_XPATH, timeout=3):
+        outcome = "SKIP:no_button"
+    elif args.dry_run:
+        outcome = "DRY_RUN"
+    else:
+        outcome = "→ applying"
+
+    log.info(
+        f"    {title[:38]:<38} | {company[:18]:<18} | {location[:20]:<20} | {outcome}"
+    )
 
     if not job_title_ok(title):
-        log.info(f"    Skip (title): {title}")
         job_records.append(Job(title=title, company=company, location=location,
                                url=job_url, status="skipped_title"))
         return "skipped_title"
+
+    if not location_ok(location):
+        job_records.append(Job(title=title, company=company, location=location,
+                               url=job_url, status="skipped_location"))
+        return "skipped_location"
 
     if el_exists(ALREADY_APPLIED_XPATH, timeout=2):
         job_records.append(Job(title=title, company=company, location=location,
@@ -506,8 +569,6 @@ def try_apply_to_job(job_url: str) -> str:
                                url=job_url, status="skipped_no_button"))
         return "skipped_no_button"
 
-    log.info(f"    Applying: {title} @ {company}")
-
     if args.dry_run:
         job_records.append(Job(title=title, company=company, location=location,
                                url=job_url, status="dry_run"))
@@ -521,7 +582,7 @@ def try_apply_to_job(job_url: str) -> str:
     time.sleep(0.3)
 
     if not el_exists(SUBMIT_XPATH, timeout=3):
-        log.warning("    No Submit button — closing")
+        log.warning("    No Submit button — closing modal")
         close_modal()
         job_records.append(Job(title=title, company=company, location=location,
                                url=job_url, status="skipped_no_submit"))
@@ -529,13 +590,12 @@ def try_apply_to_job(job_url: str) -> str:
 
     fast_click(SUBMIT_XPATH)
     time.sleep(random.uniform(1.2, 2.5))
-    # Dismiss post-submit modal
     for xp in ["//button[normalize-space()='Done']", "//button[@aria-label='Close']"]:
         if el_exists(xp, timeout=3):
             fast_click(xp)
             break
 
-    log.info(f"    ✓ Applied!")
+    log.info(f"    ✓ Applied to {title[:40]} @ {company[:25]}")
     job_records.append(Job(title=title, company=company, location=location,
                            url=job_url, status="applied"))
     return "applied"
@@ -579,17 +639,14 @@ def run_jobs_and_emails():
 
             log.info(f"    Page {page}: {len(cards)} jobs")
 
+            # Collect all hrefs + card text BEFORE any navigation to avoid stale refs
+            page_jobs = []
             for card in cards:
-                if applies >= args.max_applies:
-                    break
                 try:
-                    # Get job URL from card — use JS to find any <a href> regardless of path
                     href = driver.execute_script("""
                         let card = arguments[0];
-                        // Direct anchor inside card
                         let a = card.querySelector('a[href]');
                         if (a) return a.href;
-                        // Card itself or ancestor might be the link
                         let el = card;
                         for (let i = 0; i < 6; i++) {
                             if (!el) break;
@@ -598,28 +655,32 @@ def run_jobs_and_emails():
                         }
                         return '';
                     """, card)
-                    if not href or href in job_urls:
-                        continue
-                    # Only follow internal Handshake job links
-                    if "joinhandshake.com" not in href and not href.startswith("/"):
-                        continue
-                    job_urls.add(href)
-
-                    # Extract email from card text (some cards show contact email)
                     card_text = card.text or ""
-                    emails = extract_emails_from_text(card_text)
-                    session_emails.update(emails)
+                    if href:
+                        page_jobs.append((href, card_text))
+                except Exception:
+                    pass
 
-                    status = try_apply_to_job(href)
-                    if status in ("applied", "dry_run"):
-                        applies += 1
+            # Now navigate + apply using the collected URLs (no stale refs)
+            for href, card_text in page_jobs:
+                if applies >= args.max_applies:
+                    break
+                if not href or href in job_urls:
+                    continue
+                if "joinhandshake.com" not in href and not href.startswith("/"):
+                    continue
+                job_urls.add(href)
 
-                    # Go back to results
-                    driver.back()
-                    time.sleep(random.uniform(1.5, 2.5))
+                emails = extract_emails_from_text(card_text)
+                session_emails.update(emails)
 
-                except Exception as e:
-                    log.error(f"    Job card error: {e}")
+                status = try_apply_to_job(href)
+                if status in ("applied", "dry_run"):
+                    applies += 1
+
+                # Go back to results
+                driver.back()
+                time.sleep(random.uniform(1.5, 2.5))
 
             # Next page
             next_xp = f"//button[@value='{page + 1}' and not(@aria-current='page')]"
@@ -678,14 +739,30 @@ def run():
 
     # ── Summary ────────────────────────────────────────────────────────────────
     log.info("\n" + "=" * 60)
-    log.info("DONE")
-    log.info(f"  People followed:  {total_follows}")
-    log.info(f"  Jobs applied:     {total_applies}")
-    log.info(f"  Emails found:     {len(session_emails)} ({len(new_emails)} new)")
-    log.info(f"  Emails file:      {EMAILS_FILE}")
-    log.info(f"  Master emails:    {MASTER_EMAILS_FILE}")
-    log.info(f"  Jobs CSV:         {JOBS_FILE}")
-    log.info(f"  People CSV:       {PEOPLE_FILE}")
+    log.info("  RUN SUMMARY")
+    log.info("=" * 60)
+    log.info(f"  People followed  : {total_follows}")
+    log.info(f"  Jobs applied     : {total_applies}")
+    log.info(f"  Emails found     : {len(session_emails)} ({len(new_emails)} new)")
+    if job_records:
+        from collections import Counter
+        status_counts = Counter(j.status for j in job_records)
+        log.info("")
+        log.info("  Job status breakdown:")
+        for status, cnt in sorted(status_counts.items(), key=lambda x: -x[1]):
+            bar = "█" * min(cnt, 20)
+            log.info(f"    {status:<35} {cnt:>4}  {bar}")
+        applied_jobs = [j for j in job_records if j.status == "applied"]
+        if applied_jobs:
+            log.info("")
+            log.info("  Jobs applied to:")
+            for j in applied_jobs:
+                log.info(f"    ✓ {j.title[:40]:<40} @ {j.company[:25]:<25}  {j.location[:20]}")
+    log.info("")
+    log.info(f"  Emails file      : {EMAILS_FILE}")
+    log.info(f"  Master emails    : {MASTER_EMAILS_FILE}")
+    log.info(f"  Jobs CSV         : {JOBS_FILE}")
+    log.info(f"  People CSV       : {PEOPLE_FILE}")
 
     people_counts = Counter(p.status for p in people_records)
     job_counts    = Counter(j.status for j in job_records)
