@@ -104,6 +104,10 @@ LOCATIONS = [
     "",                  # general / remote
     "Sacramento, CA",
     "Davis, CA",
+    "San Francisco, CA",
+    "San Jose, CA",
+    "Santa Clara, CA",
+    "Sunnyvale, CA",
 ]
 
 PAGES_PER_KEYWORD = 2    # 25 jobs/page → 50 per keyword — enough without over-scraping
