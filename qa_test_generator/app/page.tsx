@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 type Category =
   | "happy_path"
@@ -23,10 +23,23 @@ type TestCase = {
   expected_result: string;
 };
 
+type QuotaStatus = {
+  subscribed: boolean;
+  used: number;
+  limit: number | "Infinity";
+  remaining: number | "Infinity";
+  resetAtIso: string;
+};
+
 type GenerateResponse = {
   feature_summary: string;
   test_cases: TestCase[];
+  quota?: QuotaStatus;
 };
+
+type UsageResponse = QuotaStatus & { stripeConfigured: boolean };
+
+type ExportFormat = "json" | "csv" | "jira" | "xray" | "testrail";
 
 const CATEGORY_COLORS: Record<Category, string> = {
   happy_path: "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300",
@@ -44,11 +57,34 @@ const PRIORITY_COLORS: Record<Priority, string> = {
   low: "bg-neutral-500/20 text-neutral-700 dark:text-neutral-300",
 };
 
+const EXPORT_OPTIONS: { value: ExportFormat; label: string }[] = [
+  { value: "csv", label: "Generic CSV" },
+  { value: "json", label: "JSON" },
+  { value: "jira", label: "Jira CSV" },
+  { value: "xray", label: "Xray CSV (Jira app)" },
+  { value: "testrail", label: "TestRail CSV" },
+];
+
 export default function Page() {
   const [feature, setFeature] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<GenerateResponse | null>(null);
+  const [usage, setUsage] = useState<UsageResponse | null>(null);
+  const [upgrading, setUpgrading] = useState(false);
+
+  async function refreshUsage() {
+    try {
+      const res = await fetch("/api/usage", { cache: "no-store" });
+      if (res.ok) setUsage(await res.json());
+    } catch {
+      // ignore
+    }
+  }
+
+  useEffect(() => {
+    refreshUsage();
+  }, []);
 
   async function handleGenerate() {
     setLoading(true);
@@ -63,55 +99,74 @@ export default function Page() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Request failed");
       setResult(data);
+      if (data.quota) setUsage((prev) => (prev ? { ...prev, ...data.quota } : data.quota));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Unknown error");
+      refreshUsage();
     } finally {
       setLoading(false);
     }
   }
 
-  function downloadJSON() {
+  async function handleUpgrade() {
+    setUpgrading(true);
+    try {
+      const res = await fetch("/api/checkout", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok || !data.url) throw new Error(data.error ?? "Could not start checkout.");
+      window.location.href = data.url as string;
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not start checkout");
+      setUpgrading(false);
+    }
+  }
+
+  function downloadAs(format: ExportFormat) {
     if (!result) return;
-    const blob = new Blob([JSON.stringify(result, null, 2)], { type: "application/json" });
+    const { content, filename, mime } = buildExportClientSide(result, format);
+    const blob = new Blob([content], { type: mime });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "test_cases.json";
+    a.download = filename;
     a.click();
     URL.revokeObjectURL(url);
   }
 
-  function downloadCSV() {
-    if (!result) return;
-    const header = ["id", "title", "category", "priority", "preconditions", "steps", "expected_result"];
-    const rows = result.test_cases.map((tc) => [
-      tc.id,
-      tc.title,
-      tc.category,
-      tc.priority,
-      tc.preconditions.join(" | "),
-      tc.steps.map((s, i) => `${i + 1}. ${s}`).join(" | "),
-      tc.expected_result,
-    ]);
-    const escape = (v: string) => `"${v.replace(/"/g, '""')}"`;
-    const csv = [header, ...rows].map((r) => r.map(escape).join(",")).join("\n");
-    const blob = new Blob([csv], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "test_cases.csv";
-    a.click();
-    URL.revokeObjectURL(url);
-  }
+  const quotaLabel = (() => {
+    if (!usage) return null;
+    if (usage.subscribed) return "Unlimited · Pro";
+    const remaining = typeof usage.remaining === "number" ? usage.remaining : 0;
+    const limit = typeof usage.limit === "number" ? usage.limit : 0;
+    return `${remaining}/${limit} free generations left today`;
+  })();
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-10">
-      <header className="mb-8">
-        <h1 className="text-3xl font-semibold tracking-tight">QA Test Case Generator</h1>
-        <p className="mt-2 text-sm text-neutral-600 dark:text-neutral-400">
-          Paste a feature description. Get structured test cases covering happy paths, edge cases,
-          negative scenarios, boundaries, security, and accessibility.
-        </p>
+      <header className="mb-8 flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-semibold tracking-tight">QA Test Case Generator</h1>
+          <p className="mt-2 text-sm text-neutral-600 dark:text-neutral-400">
+            Paste a feature description. Get structured test cases covering happy paths, edge cases,
+            negative scenarios, boundaries, security, and accessibility.
+          </p>
+        </div>
+        <div className="flex shrink-0 flex-col items-end gap-2">
+          {quotaLabel && (
+            <span className="rounded-full bg-neutral-200 px-3 py-1 text-xs font-medium dark:bg-neutral-800">
+              {quotaLabel}
+            </span>
+          )}
+          {usage && !usage.subscribed && usage.stripeConfigured && (
+            <button
+              onClick={handleUpgrade}
+              disabled={upgrading}
+              className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-500 disabled:opacity-50"
+            >
+              {upgrading ? "Redirecting…" : "Upgrade to Pro"}
+            </button>
+          )}
+        </div>
       </header>
 
       <section className="space-y-3">
@@ -122,7 +177,7 @@ export default function Page() {
           placeholder="e.g. Users can reset their password by entering their email; we send a one-time link valid for 15 minutes. After 5 failed attempts, the account is locked for 30 minutes..."
           className="w-full rounded-lg border border-neutral-300 bg-white p-4 text-sm shadow-sm focus:border-neutral-900 focus:outline-none dark:border-neutral-700 dark:bg-neutral-900 dark:focus:border-neutral-200"
         />
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <button
             onClick={handleGenerate}
             disabled={loading || feature.trim().length < 10}
@@ -131,20 +186,18 @@ export default function Page() {
             {loading ? "Generating…" : "Generate test cases"}
           </button>
           {result && (
-            <>
-              <button
-                onClick={downloadCSV}
-                className="rounded-lg border border-neutral-300 px-3 py-2 text-sm dark:border-neutral-700"
-              >
-                Export CSV
-              </button>
-              <button
-                onClick={downloadJSON}
-                className="rounded-lg border border-neutral-300 px-3 py-2 text-sm dark:border-neutral-700"
-              >
-                Export JSON
-              </button>
-            </>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs text-neutral-500">Export as:</span>
+              {EXPORT_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => downloadAs(opt.value)}
+                  className="rounded-md border border-neutral-300 px-2.5 py-1 text-xs hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800"
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
           )}
         </div>
         {error && (
@@ -222,4 +275,124 @@ export default function Page() {
       )}
     </main>
   );
+}
+
+// Client-side rebuild of the exporters so we don't round-trip large payloads.
+function buildExportClientSide(
+  result: GenerateResponse,
+  format: ExportFormat,
+): { content: string; filename: string; mime: string } {
+  const escape = (v: string) => `"${String(v).replace(/"/g, '""')}"`;
+  const toCsv = (rows: string[][]) => rows.map((r) => r.map(escape).join(",")).join("\r\n");
+  const prioLabel: Record<Priority, string> = { high: "High", medium: "Medium", low: "Low" };
+
+  if (format === "json") {
+    return {
+      content: JSON.stringify(result, null, 2),
+      filename: "test_cases.json",
+      mime: "application/json",
+    };
+  }
+
+  if (format === "csv") {
+    const rows = [
+      ["id", "title", "category", "priority", "preconditions", "steps", "expected_result"],
+      ...result.test_cases.map((tc) => [
+        tc.id,
+        tc.title,
+        tc.category,
+        tc.priority,
+        tc.preconditions.join(" | "),
+        tc.steps.map((s, i) => `${i + 1}. ${s}`).join(" | "),
+        tc.expected_result,
+      ]),
+    ];
+    return { content: toCsv(rows), filename: "test_cases.csv", mime: "text/csv" };
+  }
+
+  if (format === "jira") {
+    const rows = [
+      ["Summary", "Issue Type", "Priority", "Labels", "Description"],
+      ...result.test_cases.map((tc) => {
+        const desc = [
+          `*Category:* ${tc.category}`,
+          tc.preconditions.length
+            ? `*Preconditions:*\n${tc.preconditions.map((p) => `- ${p}`).join("\n")}`
+            : "",
+          `*Steps:*\n${tc.steps.map((s) => `# ${s}`).join("\n")}`,
+          `*Expected Result:*\n${tc.expected_result}`,
+        ]
+          .filter(Boolean)
+          .join("\n\n");
+        return [
+          tc.title,
+          "Test",
+          prioLabel[tc.priority],
+          `${tc.category} qa-generated id-${tc.id}`,
+          desc,
+        ];
+      }),
+    ];
+    return { content: toCsv(rows), filename: "test_cases_jira.csv", mime: "text/csv" };
+  }
+
+  if (format === "xray") {
+    const rows: string[][] = [
+      ["TCID", "Summary", "Priority", "Labels", "Test Type", "Action", "Data", "Result"],
+    ];
+    for (const tc of result.test_cases) {
+      const preconditions = tc.preconditions.join(" | ");
+      if (tc.steps.length === 0) {
+        rows.push([
+          tc.id,
+          tc.title,
+          prioLabel[tc.priority],
+          `${tc.category} qa-generated`,
+          "Manual",
+          "",
+          preconditions,
+          tc.expected_result,
+        ]);
+        continue;
+      }
+      tc.steps.forEach((step, i) => {
+        rows.push([
+          tc.id,
+          i === 0 ? tc.title : "",
+          i === 0 ? prioLabel[tc.priority] : "",
+          i === 0 ? `${tc.category} qa-generated` : "",
+          i === 0 ? "Manual" : "",
+          step,
+          i === 0 ? preconditions : "",
+          i === tc.steps.length - 1 ? tc.expected_result : "",
+        ]);
+      });
+    }
+    return { content: toCsv(rows), filename: "test_cases_xray.csv", mime: "text/csv" };
+  }
+
+  // testrail
+  const typeMap: Record<Category, string> = {
+    happy_path: "Functional",
+    edge_case: "Functional",
+    negative: "Functional",
+    boundary: "Functional",
+    security: "Security",
+    performance: "Performance",
+    accessibility: "Accessibility",
+  };
+  const rows = [
+    ["ID", "Title", "Section", "Priority", "Type", "Preconditions", "Steps", "Expected Result"],
+    ...result.test_cases.map((tc) => [
+      tc.id,
+      tc.title,
+      tc.category,
+      prioLabel[tc.priority],
+      typeMap[tc.category],
+      tc.preconditions.join("\n"),
+      tc.steps.map((s, i) => `${i + 1}. ${s}`).join("\n"),
+      tc.expected_result,
+    ]),
+  ];
+  return { content: toCsv(rows), filename: "test_cases_testrail.csv", mime: "text/csv" };
 }

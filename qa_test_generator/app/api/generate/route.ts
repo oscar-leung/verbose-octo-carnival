@@ -1,5 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest, NextResponse } from "next/server";
+import { getOrCreateUserId } from "@/lib/session";
+import { consumeQuota } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -110,6 +112,20 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  const { id: userId } = getOrCreateUserId();
+  const { allowed, status } = await consumeQuota(userId);
+
+  if (!allowed) {
+    return NextResponse.json(
+      {
+        error:
+          "Daily free-tier limit reached. Upgrade for unlimited generations, or try again after midnight UTC.",
+        quota: status,
+      },
+      { status: 402 },
+    );
+  }
+
   const client = new Anthropic();
 
   try {
@@ -145,21 +161,21 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    return NextResponse.json(parsed);
+    return NextResponse.json({ ...(parsed as object), quota: status });
   } catch (err) {
     if (err instanceof Anthropic.RateLimitError) {
       return NextResponse.json(
-        { error: "Rate limited. Please retry in a moment." },
+        { error: "Rate limited. Please retry in a moment.", quota: status },
         { status: 429 },
       );
     }
     if (err instanceof Anthropic.APIError) {
       return NextResponse.json(
-        { error: `Upstream error (${err.status}): ${err.message}` },
+        { error: `Upstream error (${err.status}): ${err.message}`, quota: status },
         { status: 502 },
       );
     }
     const message = err instanceof Error ? err.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: message, quota: status }, { status: 500 });
   }
 }
