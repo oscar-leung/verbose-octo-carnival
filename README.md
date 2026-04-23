@@ -2,6 +2,8 @@
 
 A personal automation toolkit built with Python + Selenium that applies to jobs across LinkedIn, Handshake, Indeed, and Greenhouse — scrapes job data, logs every result, and syncs everything to a Google Sheets dashboard. **Scheduled to run automatically 5× per day** via macOS launchd.
 
+> **v5 (Playwright) is live** — the LinkedIn scraper has been ported from Selenium to Playwright (Node.js) with upgraded anti-detection and a modular output pipeline. See [`v5/README.md`](v5/README.md). Run: `npm run v5:scrape`.
+
 **Portfolio:** [oscar-leung.netlify.app](https://oscar-leung.netlify.app)
 **LinkedIn:** [linkedin.com/in/oscar-leung](https://www.linkedin.com/in/oscar-leung/)
 **PythonAnywhere:** [pythonanywhere.com/user/holymushy](https://www.pythonanywhere.com/user/holymushy/)
