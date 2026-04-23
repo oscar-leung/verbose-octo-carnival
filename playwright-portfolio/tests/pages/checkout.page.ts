@@ -17,11 +17,11 @@ export class CheckoutPage extends BasePage {
 
   constructor(page: Page) {
     super(page);
-    this.firstName = page.locator('[data-test="firstName"]');
-    this.lastName = page.locator('[data-test="lastName"]');
-    this.postalCode = page.locator('[data-test="postalCode"]');
-    this.continueButton = page.locator('[data-test="continue"]');
-    this.finishButton = page.locator('[data-test="finish"]');
+    this.firstName = page.locator('#first-name');
+    this.lastName = page.locator('#last-name');
+    this.postalCode = page.locator('#postal-code');
+    this.continueButton = page.locator('#continue');
+    this.finishButton = page.locator('#finish');
     this.errorMessage = page.locator('[data-test="error"]');
     this.successHeader = page.locator('.complete-header');
     this.subtotalLabel = page.locator('.summary_subtotal_label');

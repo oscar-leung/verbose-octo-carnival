@@ -3,7 +3,7 @@
 A production-shaped Playwright + TypeScript test framework exercised against two live public systems under test:
 
 - **E2E UI** — [`saucedemo.com`](https://www.saucedemo.com) (Sauce Labs' public training app)
-- **API** — [`reqres.in`](https://reqres.in) (public REST sandbox)
+- **API** — [`jsonplaceholder.typicode.com`](https://jsonplaceholder.typicode.com) (public REST sandbox)
 
 Built to show the patterns hiring managers actually look for: Page Object Model, typed fixtures, tagged suites, cross-browser + mobile projects, API + UI under one runner, and CI artifacts (HTML report, JUnit, traces, videos, screenshots).
 
@@ -47,7 +47,7 @@ playwright-portfolio/
 │   │   ├── cart.spec.ts
 │   │   └── checkout.spec.ts
 │   └── api/                      # 7 API tests, browser-free
-│       └── reqres.spec.ts
+│       └── jsonplaceholder.spec.ts
 └── .github/workflows/playwright.yml (at repo root)
 ```
 
@@ -92,15 +92,15 @@ BASE_URL=https://staging.example.com npm test
 - **Cart** — items persist from inventory, remove-in-cart updates badge, continue-shopping returns to inventory, empty cart state
 - **Checkout** — happy-path order with subtotal + tax = total assertion, required first name, required last name, required postal code
 
-**API (reqres.in)** — 7 tests
+**API (jsonplaceholder.typicode.com)** — 7 tests
 
-- `GET /api/users?page=2` paginated list with schema assertions on each user
-- `GET /api/users/:id` single user
-- `GET /api/users/:id` → 404 for unknown ids
-- `POST /api/users` create with body echo + `id` + `createdAt`
-- `PUT /api/users/:id` update with `updatedAt`
-- `DELETE /api/users/:id` → 204
-- `POST /api/login` without password → 400
+- `GET /users` full list with schema assertions on each user
+- `GET /users/:id` single user
+- `GET /users/:id` → 404 for unknown ids
+- `GET /posts?userId=1` filter by relation
+- `POST /posts` create with body echo + generated `id`
+- `PUT /posts/:id` replace
+- `DELETE /posts/:id` → 200
 
 **Tags**: `@smoke` (critical path), `@regression` (full suite), `@api`, `@mobile` (reserved for the `mobile-chrome` project).
 
@@ -138,4 +138,4 @@ BASE_URL=https://staging.example.com npm test
 ## Notes
 
 - The sibling `qa_portfolio/` directory in this repo is the Selenium + pytest counterpart to this framework, same SUT — useful for a before/after comparison of the two dominant UI automation stacks.
-- reqres.in's free tier requires the header `x-api-key: reqres-free-v1`; it's sent explicitly in the API spec so the tests don't regress when the policy changes.
+- The API suite targets JSONPlaceholder because it's the most stable public REST sandbox available — no API key, no rate ceiling for CI volumes, no schema drift.

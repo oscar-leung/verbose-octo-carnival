@@ -13,8 +13,8 @@ export class CartPage extends BasePage {
     super(page);
     this.cartItems = page.locator('.cart_item');
     this.itemNames = page.locator('.inventory_item_name');
-    this.checkoutButton = page.locator('[data-test="checkout"]');
-    this.continueButton = page.locator('[data-test="continue-shopping"]');
+    this.checkoutButton = page.locator('#checkout');
+    this.continueButton = page.locator('#continue-shopping');
   }
 
   async itemNameList(): Promise<string[]> {

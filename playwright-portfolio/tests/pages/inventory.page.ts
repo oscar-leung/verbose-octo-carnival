@@ -22,7 +22,7 @@ export class InventoryPage extends BasePage {
     this.items = page.locator('.inventory_item');
     this.itemNames = page.locator('.inventory_item_name');
     this.itemPrices = page.locator('.inventory_item_price');
-    this.sortDropdown = page.locator('[data-test="product-sort-container"]');
+    this.sortDropdown = page.locator('.product_sort_container');
     this.cartBadge = page.locator('.shopping_cart_badge');
     this.cartLink = page.locator('.shopping_cart_link');
     this.burgerMenu = page.locator('#react-burger-menu-btn');

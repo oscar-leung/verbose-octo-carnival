@@ -52,9 +52,9 @@ jobs:
           curl -sL -o /tmp/sd.html -w 'HTTP %{http_code} | size %{size_download} | time %{time_total}s\n' https://www.saucedemo.com/ || true
           head -c 500 /tmp/sd.html; echo
           echo
-          echo "=== reqres.in GET /api/users/2 ==="
-          curl -s -o /tmp/rq.json -w 'HTTP %{http_code} | size %{size_download}\n' -H 'x-api-key: reqres-free-v1' https://reqres.in/api/users/2 || true
-          head -c 500 /tmp/rq.json; echo
+          echo "=== jsonplaceholder GET /users/1 ==="
+          curl -s -o /tmp/jp.json -w 'HTTP %{http_code} | size %{size_download}\n' https://jsonplaceholder.typicode.com/users/1 || true
+          head -c 500 /tmp/jp.json; echo
 
       - name: Install Playwright browsers
         if: matrix.project != 'api'
