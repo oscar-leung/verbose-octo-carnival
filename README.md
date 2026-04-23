@@ -39,7 +39,7 @@ Logs are written to `runs/daily_logs/YYYY-MM-DD.log`.
 
 ## Scripts
 
-### Active Job Hunt (035–040) — Core automation suite
+### Active Job Hunt (035–042) — Core automation suite
 
 | # | Script | Platform | Mode | What it does |
 |---|--------|----------|------|--------------|
@@ -49,13 +49,49 @@ Logs are written to `runs/daily_logs/YYYY-MM-DD.log`.
 | 038 | `038_greenhouse_apply.py` | Greenhouse | Local visible | Google `site:boards.greenhouse.io` search → applies on the ATS |
 | 039 | `039_handshake_follow_employers.py` | Handshake | Visible UC | Follows 276+ tech/gov employers; updates student profile |
 | 040 | `040_handshake_people_jobs.py` | Handshake | Visible UC | Follows active recruiters/engineers, extracts emails, auto-applies |
+| 041 | `041_calcareers_monitor.py` | CalCareers | Headless HTTP | Monitors calcareers.ca.gov for new QA/SWE state-job postings |
+| 042 | `042_unified_pipeline.py` | Orchestrator | — | Chains Handshake apply → CalCareers monitor → GMass contact build |
+
+### Unified Pipeline (042)
+
+`042_unified_pipeline.py` is a single runner that chains the three
+discovery-and-outreach stages together, so a launchd/cron entry fires one
+command instead of three:
+
+```
+┌────────────────────┐   ┌──────────────────────┐   ┌──────────────────────────┐
+│ 036 Handshake      │ → │ 041 CalCareers       │ → │ build_gmass_master.py    │
+│ Easy Apply         │   │ new-posting monitor  │   │ (+ optional sheet push)  │
+└────────────────────┘   └──────────────────────┘   └──────────────────────────┘
+```
+
+Each stage runs as a subprocess — a failure in one does not abort the others.
+Per-stage logs and a `summary.json` land under `runs/unified_<timestamp>/`.
+
+```bash
+# Full run (logs + summary under runs/unified_<ts>/)
+python3 042_unified_pipeline.py
+
+# Forward dry-run to every stage
+python3 042_unified_pipeline.py --dry-run
+
+# Skip one stage, or run only one
+python3 042_unified_pipeline.py --skip handshake
+python3 042_unified_pipeline.py --only gmass
+
+# Also push new GMass contacts to the GMassContacts sheet tab
+python3 042_unified_pipeline.py --gmass-push-sheet
+```
+
+For launchd/cron, use `run_unified_pipeline.sh` — reads `HANDSHAKE_MAX` and
+`CALCAREERS_PAGES` from the environment and tees to `runs/daily_logs/`.
 
 ### Email & Outreach
 
 | # | Script | Purpose |
 |---|--------|---------|
 | 029 | `029_linkedIn_emails_script.py` | Scrapes recruiter contact emails from LinkedIn posts and feeds |
-| `build_gmass_master.py` | — | Builds a deduplicated GMass email list from all runs |
+| `build_gmass_master.py` | — | Builds a deduplicated GMass email list; `--push-sheet` appends new contacts to the `GMassContacts` sheet tab so GMass sequences pick them up on their next cycle |
 
 ### Earlier Versions & Prototypes
 
@@ -128,6 +164,8 @@ PHONE_NUMBER=+14155551234
 RESUME_PDF_PATH=/absolute/path/to/Oscar_Leung_Resume.pdf
 GOOGLE_SERVICE_ACCOUNT_JSON=/absolute/path/to/service_account.json
 GOOGLE_SHEET_ID=your_google_sheet_id
+# Optional — separate sheet for the GMass sequence (falls back to GOOGLE_SHEET_ID)
+GMASS_SHEET_ID=your_gmass_sheet_id
 ```
 
 ### Run a script
