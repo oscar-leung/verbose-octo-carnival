@@ -61,4 +61,6 @@ playwright.yml
 !playwright-portfolio/package.json
 !playwright-portfolio/package-lock.json
 !playwright-portfolio/tsconfig.json
+!playwright-portfolio/tests/data/
+!playwright-portfolio/tests/data/*.ts
 !.github/workflows/playwright.yml
