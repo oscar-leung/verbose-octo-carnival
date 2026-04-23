@@ -15,7 +15,7 @@ HS_LOG=$(ls -t "$SCRIPT_DIR/runs/handshake_apply_pa_"*/run.log 2>/dev/null | hea
 P40_LOG=$(ls -t "$SCRIPT_DIR/runs/handshake_people_"*/run.log 2>/dev/null | head -1)
 
 if [[ "$1" == "--run" ]]; then
-  CMD4="cd '$SCRIPT_DIR' && source venv/bin/activate && python 040_handshake_people_jobs.py --skip-people --max-applies 20"
+  CMD4="cd '$SCRIPT_DIR' && source venv/bin/activate && python scripts/040_handshake_people_jobs.py --skip-people --max-applies 20"
 else
   CMD4="echo '=== Latest 040 Run ===' && tail -f '$P40_LOG'"
 fi
