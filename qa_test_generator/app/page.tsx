@@ -82,6 +82,25 @@ const EXPORT_OPTIONS: { value: ExportFormat; label: string }[] = [
   { value: "testrail", label: "TestRail CSV" },
 ];
 
+const SAMPLE_FEATURES: { label: string; text: string }[] = [
+  {
+    label: "Password reset",
+    text: `Users can reset their password from the login page by entering their email. We send a one-time reset link valid for 15 minutes. After 5 failed login attempts within an hour, the account is locked for 30 minutes and the user is notified by email. The reset page requires a new password of at least 12 characters including one uppercase letter, one number, and one symbol. Reset links expire after first use. Locked accounts still receive reset emails but clicking the link shows a "contact support" page.`,
+  },
+  {
+    label: "Checkout + payment",
+    text: `Users add items to a cart from any product page. The cart persists across sessions for 30 days. At checkout, users enter a shipping address, choose a shipping method (Standard $5 / Express $12 / Overnight $25), enter payment via credit card (Stripe) or PayPal, then confirm. Inventory is reserved for 15 minutes during checkout; if it expires, the user is returned to the cart. If payment fails, the user stays on the payment step with a specific error. On success we show an order confirmation page with a unique order ID and send a receipt email. Guest checkout is allowed; optional account creation on the confirmation page.`,
+  },
+  {
+    label: "Profile photo upload",
+    text: `Authenticated users can upload a profile photo up to 5 MB. Supported formats: PNG, JPEG, WebP. Upload shows percentage progress and allows cancel. On success the image is resized server-side to 512×512 and displayed in the header within 2 seconds. Files over 5 MB or in an unsupported format show a specific error. Anonymous users see a "sign in to upload" prompt. Existing photo is retained until the new upload succeeds. The feature is available on web, iOS, and Android.`,
+  },
+  {
+    label: "Rate-limited API",
+    text: `POST /api/messages accepts JSON body {text: string (1-2000 chars), recipient_id: string}. Authentication via Bearer token in the Authorization header. Rate limit: 60 requests per minute per authenticated user, returning 429 with a Retry-After header when exceeded. Returns 201 with {message_id, created_at} on success, 400 on invalid body shape, 401 on missing or invalid token, 403 if the token lacks the messages:write scope, 404 when recipient_id does not exist, 413 when the body exceeds the 2000 character limit. All responses include an X-Request-Id header.`,
+  },
+];
+
 async function dataUrlToScreenshot(dataUrl: string, name: string): Promise<Screenshot> {
   const img = await new Promise<HTMLImageElement>((resolve, reject) => {
     const el = new Image();
@@ -327,12 +346,16 @@ export default function Page() {
   return (
     <main className="mx-auto max-w-5xl px-4 py-10">
       <header className="mb-8 flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-semibold tracking-tight">QA Test Case Generator</h1>
-          <p className="mt-2 text-sm text-neutral-600 dark:text-neutral-400">
-            Describe a feature, drop in screenshots of your app or website, or both. Get
-            structured test cases covering happy paths, edge cases, negatives, boundaries,
-            security, and accessibility.
+        <div className="max-w-2xl">
+          <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
+            Paste a feature spec.{" "}
+            <span className="text-indigo-600 dark:text-indigo-400">Get 15+ test cases</span> in
+            30 seconds.
+          </h1>
+          <p className="mt-3 text-sm text-neutral-600 dark:text-neutral-400">
+            Happy paths, edge cases, negatives, boundaries, security, and accessibility.
+            Exportable to Jira, Xray, TestRail, or plain CSV. Built for SDETs, QA leads, and
+            devs shipping to prod without a dedicated QA team.
           </p>
         </div>
         <div className="flex shrink-0 flex-col items-end gap-2">
@@ -355,9 +378,27 @@ export default function Page() {
 
       <section className="space-y-4">
         <div>
-          <label className="mb-1 block text-xs font-semibold uppercase text-neutral-500">
-            Feature description (optional if screenshots provided)
-          </label>
+          <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+            <label className="text-xs font-semibold uppercase text-neutral-500">
+              Feature description (optional if screenshots provided)
+            </label>
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-xs text-neutral-500">Try a sample:</span>
+              {SAMPLE_FEATURES.map((s) => (
+                <button
+                  key={s.label}
+                  type="button"
+                  onClick={() => {
+                    setFeature(s.text);
+                    setError(null);
+                  }}
+                  className="rounded-full border border-neutral-300 px-2.5 py-0.5 text-xs text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+                >
+                  {s.label}
+                </button>
+              ))}
+            </div>
+          </div>
           <textarea
             value={feature}
             onChange={(e) => setFeature(e.target.value)}
@@ -592,6 +633,56 @@ export default function Page() {
           </div>
         </section>
       )}
+
+      {usage && !usage.subscribed && usage.stripeConfigured && (
+        <section id="pricing" className="mt-16">
+          <h2 className="text-center text-2xl font-semibold tracking-tight">Pricing</h2>
+          <p className="mt-2 text-center text-sm text-neutral-600 dark:text-neutral-400">
+            Free to try. Upgrade when 3 generations a day stops cutting it.
+          </p>
+          <div className="mx-auto mt-8 grid max-w-3xl gap-4 sm:grid-cols-2">
+            <div className="rounded-xl border border-neutral-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900">
+              <div className="text-sm font-medium text-neutral-500">Free</div>
+              <div className="mt-1 text-3xl font-semibold">$0</div>
+              <div className="text-xs text-neutral-500">no card required</div>
+              <ul className="mt-4 space-y-2 text-sm">
+                <li>· 3 generations per UTC day</li>
+                <li>· Text, screenshots, and URL capture</li>
+                <li>· All export formats (CSV, JSON, Jira, Xray, TestRail)</li>
+                <li>· Claude Opus 4.7 with adaptive thinking</li>
+              </ul>
+            </div>
+            <div className="rounded-xl border-2 border-indigo-500 bg-white p-6 dark:bg-neutral-900">
+              <div className="text-sm font-medium text-indigo-600 dark:text-indigo-400">Pro</div>
+              <div className="mt-1 text-3xl font-semibold">
+                $9<span className="text-base font-normal text-neutral-500">/mo</span>
+              </div>
+              <div className="text-xs text-neutral-500">cancel anytime</div>
+              <ul className="mt-4 space-y-2 text-sm">
+                <li>· <strong>Unlimited</strong> generations</li>
+                <li>· Everything in Free</li>
+                <li>· Priority model access</li>
+                <li>· Support the roadmap (mobile crawl, direct Jira/Xray push)</li>
+              </ul>
+              <button
+                onClick={handleUpgrade}
+                disabled={upgrading}
+                className="mt-6 w-full rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-50"
+              >
+                {upgrading ? "Redirecting…" : "Upgrade to Pro"}
+              </button>
+            </div>
+          </div>
+          <p className="mx-auto mt-6 max-w-2xl text-center text-xs text-neutral-500">
+            Enterprise (teams, SSO, self-hosted)? Email us and we&apos;ll sort you out.
+          </p>
+        </section>
+      )}
+
+      <footer className="mt-20 border-t border-neutral-200 pt-6 text-center text-xs text-neutral-500 dark:border-neutral-800">
+        Made with Claude Opus 4.7 · Test cases are suggestions; always review before
+        merging to your suite.
+      </footer>
     </main>
   );
 }
