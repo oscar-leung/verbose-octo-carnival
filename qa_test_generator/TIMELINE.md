@@ -52,10 +52,10 @@ Paste a public URL → server screenshots it → vision pipeline runs as Phase 1
 
 | Item | Status | Commit |
 |---|---|---|
-| URL input + desktop/mobile viewport toggle | ✅ | `TBD` |
-| `lib/screenshot.ts` — ScreenshotOne adapter | ✅ | `TBD` |
-| `/api/screenshot` route (URL validation, viewport, full-page capture) | ✅ | `TBD` |
-| Shared client-side resize pipeline (`dataUrlToScreenshot`) | ✅ | `TBD` |
+| URL input + desktop/mobile viewport toggle | ✅ | `8f90a1c` |
+| `lib/screenshot.ts` — ScreenshotOne adapter | ✅ | `8f90a1c` |
+| `/api/screenshot` route (URL validation, viewport, full-page capture) | ✅ | `8f90a1c` |
+| Shared client-side resize pipeline (`dataUrlToScreenshot`) | ✅ | `8f90a1c` |
 | Multi-page crawl (login → dashboard → settings) | ⏳ v2.1 | — |
 | Auth'd screenshots (cookies / OTP / SSO) | ⏳ v3 | — |
 
