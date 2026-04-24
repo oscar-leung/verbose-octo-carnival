@@ -74,6 +74,42 @@ const PRIORITY_COLORS: Record<Priority, string> = {
   low: "bg-neutral-500/20 text-neutral-700 dark:text-neutral-300",
 };
 
+const HISTORY_KEY = "qa_history_v1";
+const HISTORY_MAX = 10;
+
+type HistoryEntry = {
+  id: string;
+  feature: string;
+  screenshotCount: number;
+  result: GenerateResponse;
+  createdAt: string;
+};
+
+function loadHistory(): HistoryEntry[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(HISTORY_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter(
+      (e): e is HistoryEntry =>
+        e && typeof e.id === "string" && typeof e.feature === "string" && e.result,
+    );
+  } catch {
+    return [];
+  }
+}
+
+function saveHistory(entries: HistoryEntry[]) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(HISTORY_KEY, JSON.stringify(entries.slice(0, HISTORY_MAX)));
+  } catch {
+    // quota exceeded — drop silently; history is best-effort.
+  }
+}
+
 const EXPORT_OPTIONS: { value: ExportFormat; label: string }[] = [
   { value: "csv", label: "Generic CSV" },
   { value: "json", label: "JSON" },
@@ -175,6 +211,8 @@ export default function Page() {
   const [feedbackDraft, setFeedbackDraft] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState<TestCase | null>(null);
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   async function refreshUsage() {
     try {
@@ -187,6 +225,7 @@ export default function Page() {
 
   useEffect(() => {
     refreshUsage();
+    setHistory(loadHistory());
   }, []);
 
   const ingestFiles = useCallback(
@@ -309,12 +348,55 @@ export default function Page() {
       setResult(data);
       setGeneratedContext({ feature, screenshots });
       if (data.quota) setUsage((prev) => (prev ? { ...prev, ...data.quota } : data.quota));
+      // Persist to history (without screenshot bytes — they're large + quota-bounded).
+      const entry: HistoryEntry = {
+        id: crypto.randomUUID(),
+        feature,
+        screenshotCount: screenshots.length,
+        result: data,
+        createdAt: new Date().toISOString(),
+      };
+      setHistory((prev) => {
+        const next = [entry, ...prev].slice(0, HISTORY_MAX);
+        saveHistory(next);
+        return next;
+      });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Unknown error");
       refreshUsage();
     } finally {
       setLoading(false);
     }
+  }
+
+  function restoreFromHistory(entry: HistoryEntry) {
+    setFeature(entry.feature);
+    setResult(entry.result);
+    // We don't persist screenshot bytes, so clear the screenshots state.
+    setScreenshots([]);
+    // Regenerate needs the original context. If there were no screenshots in the
+    // original, we can still regenerate. If there were, mark context with 0
+    // screenshots so regenerate still works (model falls back to text only).
+    setGeneratedContext({ feature: entry.feature, screenshots: [] });
+    setHistoryOpen(false);
+    setError(null);
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }
+
+  function deleteFromHistory(id: string) {
+    setHistory((prev) => {
+      const next = prev.filter((e) => e.id !== id);
+      saveHistory(next);
+      return next;
+    });
+  }
+
+  function clearHistory() {
+    setHistory([]);
+    saveHistory([]);
+    setHistoryOpen(false);
   }
 
   function startEdit(tc: TestCase) {
@@ -452,17 +534,85 @@ export default function Page() {
               {quotaLabel}
             </span>
           )}
-          {usage && !usage.subscribed && usage.stripeConfigured && (
-            <button
-              onClick={handleUpgrade}
-              disabled={upgrading}
-              className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-500 disabled:opacity-50"
-            >
-              {upgrading ? "Redirecting…" : "Upgrade to Pro"}
-            </button>
-          )}
+          <div className="flex items-center gap-2">
+            {history.length > 0 && (
+              <button
+                onClick={() => setHistoryOpen((v) => !v)}
+                className="rounded-lg border border-neutral-300 px-3 py-1.5 text-xs font-medium hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800"
+              >
+                {historyOpen ? "Hide" : "Recent"} ({history.length})
+              </button>
+            )}
+            {usage && !usage.subscribed && usage.stripeConfigured && (
+              <button
+                onClick={handleUpgrade}
+                disabled={upgrading}
+                className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-500 disabled:opacity-50"
+              >
+                {upgrading ? "Redirecting…" : "Upgrade to Pro"}
+              </button>
+            )}
+          </div>
         </div>
       </header>
+
+      {historyOpen && history.length > 0 && (
+        <section className="mb-6 rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-sm font-medium">Recent generations (stored locally in your browser)</h2>
+            <button
+              onClick={clearHistory}
+              className="text-xs text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-100"
+            >
+              Clear all
+            </button>
+          </div>
+          <ul className="space-y-2">
+            {history.map((entry) => {
+              const preview =
+                entry.feature.length > 120
+                  ? entry.feature.slice(0, 120) + "…"
+                  : entry.feature || "(screenshots only)";
+              const when = new Date(entry.createdAt);
+              const whenLabel = when.toLocaleString(undefined, {
+                dateStyle: "short",
+                timeStyle: "short",
+              });
+              return (
+                <li
+                  key={entry.id}
+                  className="flex items-start gap-3 rounded-md border border-neutral-200 p-2 hover:bg-neutral-50 dark:border-neutral-800 dark:hover:bg-neutral-800"
+                >
+                  <button
+                    onClick={() => restoreFromHistory(entry)}
+                    className="flex-1 text-left"
+                  >
+                    <div className="text-xs text-neutral-500">
+                      {whenLabel} · {entry.result.test_cases.length} tests
+                      {entry.screenshotCount > 0
+                        ? ` · ${entry.screenshotCount} screenshot${entry.screenshotCount === 1 ? "" : "s"}`
+                        : ""}
+                    </div>
+                    <div className="text-sm">{preview}</div>
+                  </button>
+                  <button
+                    onClick={() => deleteFromHistory(entry.id)}
+                    aria-label="Delete"
+                    className="text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100"
+                  >
+                    ×
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+          <p className="mt-3 text-xs text-neutral-500">
+            Screenshots are not stored to keep your history under browser quota — the feature text
+            and test cases are. Restoring an entry lets you export or regenerate against the
+            text-only context.
+          </p>
+        </section>
+      )}
 
       <section className="space-y-4">
         <div>
