@@ -46,19 +46,24 @@ Read screenshots of an app/website → generate test cases for the observed UI.
 
 ---
 
-## Phase 2 — URL crawl (⏳ Up next)
+## Phase 2 — URL crawl (✅ Shipped v1; multi-page + auth pending)
 
 Paste a public URL → server screenshots it → vision pipeline runs as Phase 1.
 
-| Item | Approach |
-|---|---|
-| URL input box | Trivial UI |
-| Server-side screenshot | Hosted API (urlbox / screenshotone — free tier, ~1s) **or** `@sparticuz/chromium` on Vercel (heavier, 30s cold start) |
-| Multi-page crawl (login → dashboard → settings) | Optional v2.1 — Playwright Cloud, scope to depth=2 |
+| Item | Status | Commit |
+|---|---|---|
+| URL input + desktop/mobile viewport toggle | ✅ | `TBD` |
+| `lib/screenshot.ts` — ScreenshotOne adapter | ✅ | `TBD` |
+| `/api/screenshot` route (URL validation, viewport, full-page capture) | ✅ | `TBD` |
+| Shared client-side resize pipeline (`dataUrlToScreenshot`) | ✅ | `TBD` |
+| Multi-page crawl (login → dashboard → settings) | ⏳ v2.1 | — |
+| Auth'd screenshots (cookies / OTP / SSO) | ⏳ v3 | — |
 
-**Target:** 2 weeks (2026-05-15). Single-page first. Multi-page if first version sticks.
+**Decision points still open (user owns):**
+- [ ] Sign up at screenshotone.com (100 free/month, $9/mo for 1k)
+- [ ] Add `SCREENSHOTONE_ACCESS_KEY` to `.env.local` and Vercel env
 
-**Risk:** Authenticated apps need a session cookie / login flow. v2 = "screenshot any public URL"; v3 = "log in for me." Most paying customers will need v3.
+**Risk:** Authenticated apps need a session cookie / login flow. v2.1 = multi-page (follow links at depth=2); v3 = "log in for me." Most paying customers will need v3 — start sales conversations to learn which auth modes matter first (Google SSO vs Okta vs basic email/password).
 
 ---
 

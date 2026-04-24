@@ -82,17 +82,7 @@ const EXPORT_OPTIONS: { value: ExportFormat; label: string }[] = [
   { value: "testrail", label: "TestRail CSV" },
 ];
 
-async function fileToScreenshot(file: File): Promise<Screenshot> {
-  if (!ALLOWED_MIME.includes(file.type as AllowedMime)) {
-    throw new Error(`Unsupported image type: ${file.type || "unknown"}`);
-  }
-  const dataUrl = await new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = () => reject(reader.error ?? new Error("Failed to read file."));
-    reader.readAsDataURL(file);
-  });
-
+async function dataUrlToScreenshot(dataUrl: string, name: string): Promise<Screenshot> {
   const img = await new Promise<HTMLImageElement>((resolve, reject) => {
     const el = new Image();
     el.onload = () => resolve(el);
@@ -120,12 +110,25 @@ async function fileToScreenshot(file: File): Promise<Screenshot> {
 
   return {
     id: crypto.randomUUID(),
-    name: file.name || "screenshot.jpg",
+    name,
     mediaType: RESIZE_MIME,
     base64,
     previewUrl: outputDataUrl,
     bytes,
   };
+}
+
+async function fileToScreenshot(file: File): Promise<Screenshot> {
+  if (!ALLOWED_MIME.includes(file.type as AllowedMime)) {
+    throw new Error(`Unsupported image type: ${file.type || "unknown"}`);
+  }
+  const dataUrl = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(reader.error ?? new Error("Failed to read file."));
+    reader.readAsDataURL(file);
+  });
+  return dataUrlToScreenshot(dataUrl, file.name || "screenshot.jpg");
 }
 
 export default function Page() {
@@ -138,6 +141,9 @@ export default function Page() {
   const [usage, setUsage] = useState<UsageResponse | null>(null);
   const [upgrading, setUpgrading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+  const [urlInput, setUrlInput] = useState("");
+  const [urlViewport, setUrlViewport] = useState<"desktop" | "mobile">("desktop");
+  const [capturingUrl, setCapturingUrl] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   async function refreshUsage() {
@@ -186,6 +192,47 @@ export default function Page() {
     },
     [screenshots.length],
   );
+
+  async function captureUrl() {
+    const url = urlInput.trim();
+    if (!url) {
+      setError("Enter a URL first.");
+      return;
+    }
+    if (screenshots.length >= MAX_SCREENSHOTS) {
+      setError(`Maximum ${MAX_SCREENSHOTS} screenshots reached.`);
+      return;
+    }
+    setError(null);
+    setCapturingUrl(true);
+    try {
+      const res = await fetch("/api/screenshot", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url, viewport: urlViewport }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Screenshot failed");
+      const dataUrl = `data:${data.mediaType};base64,${data.base64}`;
+      const hostname = (() => {
+        try {
+          return new URL(url).hostname;
+        } catch {
+          return "url-screenshot";
+        }
+      })();
+      const shot = await dataUrlToScreenshot(
+        dataUrl,
+        `${hostname} (${urlViewport}).jpg`,
+      );
+      setScreenshots((prev) => [...prev, shot]);
+      setUrlInput("");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not capture URL");
+    } finally {
+      setCapturingUrl(false);
+    }
+  }
 
   // Paste-from-clipboard support: listen on document.
   useEffect(() => {
@@ -318,6 +365,46 @@ export default function Page() {
             placeholder="e.g. Users can reset their password by entering their email; we send a one-time link valid for 15 minutes..."
             className="w-full rounded-lg border border-neutral-300 bg-white p-4 text-sm shadow-sm focus:border-neutral-900 focus:outline-none dark:border-neutral-700 dark:bg-neutral-900 dark:focus:border-neutral-200"
           />
+        </div>
+
+        <div>
+          <label className="mb-1 block text-xs font-semibold uppercase text-neutral-500">
+            Capture from URL (public pages only — no auth yet)
+          </label>
+          <div className="flex flex-wrap items-stretch gap-2">
+            <input
+              type="url"
+              value={urlInput}
+              onChange={(e) => setUrlInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !capturingUrl && urlInput.trim()) {
+                  e.preventDefault();
+                  void captureUrl();
+                }
+              }}
+              placeholder="https://example.com/pricing"
+              className="min-w-[240px] flex-1 rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm focus:border-neutral-900 focus:outline-none dark:border-neutral-700 dark:bg-neutral-900 dark:focus:border-neutral-200"
+            />
+            <select
+              value={urlViewport}
+              onChange={(e) => setUrlViewport(e.target.value as "desktop" | "mobile")}
+              className="rounded-lg border border-neutral-300 bg-white px-2 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-900"
+            >
+              <option value="desktop">Desktop 1440×900</option>
+              <option value="mobile">Mobile 390×844</option>
+            </select>
+            <button
+              onClick={captureUrl}
+              disabled={
+                capturingUrl ||
+                urlInput.trim().length === 0 ||
+                screenshots.length >= MAX_SCREENSHOTS
+              }
+              className="rounded-lg bg-neutral-900 px-3 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-40 dark:bg-neutral-100 dark:text-neutral-900"
+            >
+              {capturingUrl ? "Capturing…" : "Capture"}
+            </button>
+          </div>
         </div>
 
         <div>
