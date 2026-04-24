@@ -55,3 +55,12 @@ data/
 
 # workflows
 playwright.yml
+
+# Un-ignore files that belong to the playwright-portfolio SDET framework
+# (the global *.json / playwright.yml rules above exclude them otherwise)
+!playwright-portfolio/package.json
+!playwright-portfolio/package-lock.json
+!playwright-portfolio/tsconfig.json
+!playwright-portfolio/tests/data/
+!playwright-portfolio/tests/data/*.ts
+!.github/workflows/playwright.yml

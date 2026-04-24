@@ -6,6 +6,10 @@ A personal automation toolkit built with Python + Selenium that applies to jobs 
 **LinkedIn:** [linkedin.com/in/oscar-leung](https://www.linkedin.com/in/oscar-leung/)
 **PythonAnywhere:** [pythonanywhere.com/user/holymushy](https://www.pythonanywhere.com/user/holymushy/)
 
+**SDET portfolio pieces in this repo:**
+- [`playwright-portfolio/`](./playwright-portfolio/) — TypeScript + Playwright framework (POM, fixtures, cross-browser, API + UI, GitHub Actions CI)
+- [`qa_portfolio/`](./qa_portfolio/) — Python + Selenium + pytest framework (same SUT, alternate stack)
+
 ---
 
 ## What it does
