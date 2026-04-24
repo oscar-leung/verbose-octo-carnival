@@ -31,7 +31,7 @@ from dataclasses import dataclass, asdict, field
 from datetime import datetime
 from collections import Counter
 
-import sys as _sys, os as _os; _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+import sys as _sys, os as _os; _sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
 import library.uc_compat  # noqa: F401
 import undetected_chromedriver as uc
 from dotenv import load_dotenv
@@ -229,7 +229,7 @@ def init_driver() -> uc.Chrome:
     opts.add_argument("--disable-dev-shm-usage")
     opts.add_argument("--window-size=1440,900")
     opts.add_argument(f"--user-data-dir={CHROME_PROFILE}")
-    return uc.Chrome(options=opts, use_subprocess=True)
+    return uc.Chrome(options=opts, use_subprocess=True, version_main=147)
 
 driver: uc.Chrome = None
 

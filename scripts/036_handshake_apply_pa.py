@@ -26,7 +26,7 @@ from dataclasses import asdict
 from datetime import datetime, timedelta
 
 from dotenv import load_dotenv
-import sys as _sys, os as _os; _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+import sys as _sys, os as _os; _sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
 import library.uc_compat  # noqa: F401
 import undetected_chromedriver as uc
 from selenium import webdriver
@@ -266,7 +266,7 @@ def init_driver() -> uc.Chrome:
     # session so we never have to re-do the Cloudflare challenge.
     opts.add_argument(f"--user-data-dir={CHROME_PROFILE}")
     # NOT headless — Cloudflare Turnstile blocks headless browsers
-    return uc.Chrome(options=opts, use_subprocess=True)
+    return uc.Chrome(options=opts, use_subprocess=True, version_main=147)
 
 # ── Browser helpers ───────────────────────────────────────────────────────────
 driver: webdriver.Chrome = None   # set in main

@@ -28,7 +28,7 @@ from typing import Optional
 from urllib.parse import quote_plus
 
 from dotenv import load_dotenv
-import sys, os as _os; sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+import sys, os as _os; sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
 import library.uc_compat  # noqa: F401 — patches distutils for Python 3.12+
 import undetected_chromedriver as uc
 from selenium.common.exceptions import (
@@ -224,8 +224,11 @@ def init_driver() -> uc.Chrome:
     opts.add_argument("--no-sandbox")
     opts.add_argument("--disable-dev-shm-usage")
     opts.add_argument("--window-size=1440,900")
-    opts.add_argument(f"--user-data-dir={CHROME_PROFILE}")
-    return uc.Chrome(options=opts, use_subprocess=True)
+    opts.add_argument("--disable-blink-features=AutomationControlled")
+    # Use persistent profile when available, fall back to fresh session
+    if os.path.isdir(os.path.dirname(CHROME_PROFILE)):
+        opts.add_argument(f"--user-data-dir={CHROME_PROFILE}")
+    return uc.Chrome(options=opts, version_main=147)
 
 driver: uc.Chrome = None
 
