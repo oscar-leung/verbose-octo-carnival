@@ -164,6 +164,15 @@ export default function Page() {
   const [urlViewport, setUrlViewport] = useState<"desktop" | "mobile">("desktop");
   const [capturingUrl, setCapturingUrl] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // Snapshot of inputs at generate time so regenerate uses the original context
+  // even if the user edits the textarea or screenshots afterward.
+  const [generatedContext, setGeneratedContext] = useState<{
+    feature: string;
+    screenshots: Screenshot[];
+  } | null>(null);
+  const [regeneratingId, setRegeneratingId] = useState<string | null>(null);
+  const [feedbackDraftId, setFeedbackDraftId] = useState<string | null>(null);
+  const [feedbackDraft, setFeedbackDraft] = useState("");
 
   async function refreshUsage() {
     try {
@@ -296,12 +305,56 @@ export default function Page() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Request failed");
       setResult(data);
+      setGeneratedContext({ feature, screenshots });
       if (data.quota) setUsage((prev) => (prev ? { ...prev, ...data.quota } : data.quota));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Unknown error");
       refreshUsage();
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleRegenerate(testCase: TestCase, instruction: string) {
+    if (!generatedContext) return;
+    setRegeneratingId(testCase.id);
+    setError(null);
+    try {
+      const res = await fetch("/api/regenerate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          feature: generatedContext.feature,
+          screenshots: generatedContext.screenshots.map((s) => ({
+            mediaType: s.mediaType,
+            data: s.base64,
+          })),
+          testCase,
+          instruction,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Regenerate failed");
+      if (data.testCase) {
+        setResult((prev) =>
+          prev
+            ? {
+                ...prev,
+                test_cases: prev.test_cases.map((tc) =>
+                  tc.id === testCase.id ? (data.testCase as TestCase) : tc,
+                ),
+              }
+            : prev,
+        );
+      }
+      if (data.quota) setUsage((prev) => (prev ? { ...prev, ...data.quota } : data.quota));
+      setFeedbackDraftId(null);
+      setFeedbackDraft("");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not regenerate");
+      refreshUsage();
+    } finally {
+      setRegeneratingId(null);
     }
   }
 
@@ -626,6 +679,54 @@ export default function Page() {
                       Expected result
                     </div>
                     <p className="mt-1 text-sm">{tc.expected_result}</p>
+                  </div>
+
+                  <div className="mt-4 border-t border-neutral-100 pt-3 dark:border-neutral-800">
+                    {feedbackDraftId === tc.id ? (
+                      <div className="space-y-2">
+                        <textarea
+                          value={feedbackDraft}
+                          onChange={(e) => setFeedbackDraft(e.target.value)}
+                          rows={2}
+                          placeholder="What's wrong with this test case? e.g. 'expected result should include the exact error text', 'steps skip the email verification step'"
+                          className="w-full rounded-md border border-neutral-300 bg-white p-2 text-xs focus:border-neutral-900 focus:outline-none dark:border-neutral-700 dark:bg-neutral-900 dark:focus:border-neutral-200"
+                          autoFocus
+                        />
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleRegenerate(tc, feedbackDraft.trim())}
+                            disabled={regeneratingId === tc.id}
+                            className="rounded-md bg-indigo-600 px-3 py-1 text-xs font-medium text-white hover:bg-indigo-500 disabled:opacity-50"
+                          >
+                            {regeneratingId === tc.id ? "Regenerating…" : "Regenerate"}
+                          </button>
+                          <button
+                            onClick={() => {
+                              setFeedbackDraftId(null);
+                              setFeedbackDraft("");
+                            }}
+                            disabled={regeneratingId === tc.id}
+                            className="rounded-md border border-neutral-300 px-3 py-1 text-xs hover:bg-neutral-100 disabled:opacity-50 dark:border-neutral-700 dark:hover:bg-neutral-800"
+                          >
+                            Cancel
+                          </button>
+                          <span className="text-xs text-neutral-500">
+                            Leave blank for a generic improvement pass.
+                          </span>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => {
+                          setFeedbackDraftId(tc.id);
+                          setFeedbackDraft("");
+                        }}
+                        disabled={regeneratingId !== null}
+                        className="text-xs text-indigo-600 hover:text-indigo-500 disabled:opacity-50 dark:text-indigo-400"
+                      >
+                        ↻ Regenerate with feedback
+                      </button>
+                    )}
                   </div>
                 </li>
               ))}
