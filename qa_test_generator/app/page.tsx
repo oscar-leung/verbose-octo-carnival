@@ -198,6 +198,7 @@ export default function Page() {
   const [dragOver, setDragOver] = useState(false);
   const [urlInput, setUrlInput] = useState("");
   const [urlViewport, setUrlViewport] = useState<"desktop" | "mobile">("desktop");
+  const [urlMode, setUrlMode] = useState<"single" | "crawl">("single");
   const [capturingUrl, setCapturingUrl] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   // Snapshot of inputs at generate time so regenerate uses the original context
@@ -213,6 +214,18 @@ export default function Page() {
   const [editDraft, setEditDraft] = useState<TestCase | null>(null);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [jiraOpen, setJiraOpen] = useState(false);
+  const [jiraCreds, setJiraCreds] = useState({
+    domain: "",
+    email: "",
+    apiToken: "",
+    projectKey: "",
+    issueType: "Test",
+  });
+  const [jiraPushing, setJiraPushing] = useState(false);
+  const [jiraResults, setJiraResults] = useState<
+    { id: string; key?: string; url?: string; error?: string }[] | null
+  >(null);
 
   async function refreshUsage() {
     try {
@@ -226,7 +239,64 @@ export default function Page() {
   useEffect(() => {
     refreshUsage();
     setHistory(loadHistory());
+    // Restore non-secret Jira fields (domain / email / projectKey / issueType).
+    // API tokens are NEVER persisted — user must re-enter each session.
+    try {
+      const raw = window.localStorage.getItem("qa_jira_config_v1");
+      if (raw) {
+        const saved = JSON.parse(raw) as Partial<typeof jiraCreds>;
+        setJiraCreds((prev) => ({
+          ...prev,
+          domain: saved.domain ?? "",
+          email: saved.email ?? "",
+          projectKey: saved.projectKey ?? "",
+          issueType: saved.issueType ?? "Test",
+        }));
+      }
+    } catch {
+      // ignore
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  async function pushToJira() {
+    if (!result) return;
+    const { domain, email, apiToken, projectKey } = jiraCreds;
+    if (!domain || !email || !apiToken || !projectKey) {
+      setError("Fill in Jira domain, email, API token, and project key.");
+      return;
+    }
+    setError(null);
+    setJiraPushing(true);
+    setJiraResults(null);
+    try {
+      // Persist non-secret fields so users don't retype them.
+      window.localStorage.setItem(
+        "qa_jira_config_v1",
+        JSON.stringify({
+          domain,
+          email,
+          projectKey,
+          issueType: jiraCreds.issueType || "Test",
+        }),
+      );
+      const res = await fetch("/api/integrations/jira", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          creds: jiraCreds,
+          testCases: result.test_cases,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Jira push failed");
+      setJiraResults(data.results ?? []);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not push to Jira");
+    } finally {
+      setJiraPushing(false);
+    }
+  }
 
   const ingestFiles = useCallback(
     async (files: FileList | File[]) => {
@@ -261,6 +331,67 @@ export default function Page() {
     },
     [screenshots.length],
   );
+
+  async function crawlSite() {
+    const url = urlInput.trim();
+    if (!url) {
+      setError("Enter a URL first.");
+      return;
+    }
+    const slotsLeft = MAX_SCREENSHOTS - screenshots.length;
+    if (slotsLeft <= 0) {
+      setError(`Maximum ${MAX_SCREENSHOTS} screenshots reached.`);
+      return;
+    }
+    setError(null);
+    setCapturingUrl(true);
+    try {
+      const maxPages = Math.min(slotsLeft, 5);
+      const res = await fetch("/api/crawl", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url, viewport: urlViewport, maxPages }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Crawl failed");
+      const captures: Array<{ url: string; mediaType: string; base64: string }> =
+        data.captures ?? [];
+      const skipped: Array<{ url: string; reason: string }> = data.skipped ?? [];
+
+      for (const cap of captures) {
+        if (screenshots.length + 1 > MAX_SCREENSHOTS) break;
+        const dataUrl = `data:${cap.mediaType};base64,${cap.base64}`;
+        let hostname = "crawled-page";
+        let path = "";
+        try {
+          const u = new URL(cap.url);
+          hostname = u.hostname;
+          path = u.pathname === "/" ? "" : u.pathname;
+        } catch {
+          // keep defaults
+        }
+        const name = `${hostname}${path} (${urlViewport}).jpg`;
+        const shot = await dataUrlToScreenshot(dataUrl, name);
+        // Append one at a time since setState is async; use functional update.
+        setScreenshots((prev) =>
+          prev.length >= MAX_SCREENSHOTS ? prev : [...prev, shot],
+        );
+      }
+
+      setUrlInput("");
+      if (captures.length === 0 && skipped.length > 0) {
+        setError(`Crawl found 0 pages. ${skipped[0].reason}`);
+      } else if (skipped.length > 0) {
+        setError(
+          `Captured ${captures.length} page${captures.length === 1 ? "" : "s"}; skipped ${skipped.length} (${skipped[0].reason}).`,
+        );
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not crawl site");
+    } finally {
+      setCapturingUrl(false);
+    }
+  }
 
   async function captureUrl() {
     const url = urlInput.trim();
@@ -640,8 +771,18 @@ export default function Page() {
           <textarea
             value={feature}
             onChange={(e) => setFeature(e.target.value)}
+            onKeyDown={(e) => {
+              if (
+                e.key === "Enter" &&
+                (e.metaKey || e.ctrlKey) &&
+                canGenerate
+              ) {
+                e.preventDefault();
+                void handleGenerate();
+              }
+            }}
             rows={6}
-            placeholder="e.g. Users can reset their password by entering their email; we send a one-time link valid for 15 minutes..."
+            placeholder="e.g. Users can reset their password by entering their email; we send a one-time link valid for 15 minutes... (⌘/Ctrl+Enter to generate)"
             className="w-full rounded-lg border border-neutral-300 bg-white p-4 text-sm shadow-sm focus:border-neutral-900 focus:outline-none dark:border-neutral-700 dark:bg-neutral-900 dark:focus:border-neutral-200"
           />
         </div>
@@ -658,7 +799,7 @@ export default function Page() {
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !capturingUrl && urlInput.trim()) {
                   e.preventDefault();
-                  void captureUrl();
+                  void (urlMode === "crawl" ? crawlSite() : captureUrl());
                 }
               }}
               placeholder="https://example.com/pricing"
@@ -672,8 +813,16 @@ export default function Page() {
               <option value="desktop">Desktop 1440×900</option>
               <option value="mobile">Mobile 390×844</option>
             </select>
+            <select
+              value={urlMode}
+              onChange={(e) => setUrlMode(e.target.value as "single" | "crawl")}
+              className="rounded-lg border border-neutral-300 bg-white px-2 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-900"
+            >
+              <option value="single">This page only</option>
+              <option value="crawl">Crawl site (≤ 5 pages)</option>
+            </select>
             <button
-              onClick={captureUrl}
+              onClick={urlMode === "crawl" ? crawlSite : captureUrl}
               disabled={
                 capturingUrl ||
                 urlInput.trim().length === 0 ||
@@ -681,7 +830,13 @@ export default function Page() {
               }
               className="rounded-lg bg-neutral-900 px-3 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-40 dark:bg-neutral-100 dark:text-neutral-900"
             >
-              {capturingUrl ? "Capturing…" : "Capture"}
+              {capturingUrl
+                ? urlMode === "crawl"
+                  ? "Crawling…"
+                  : "Capturing…"
+                : urlMode === "crawl"
+                  ? "Crawl"
+                  : "Capture"}
             </button>
           </div>
         </div>
@@ -795,6 +950,12 @@ export default function Page() {
                   {opt.label}
                 </button>
               ))}
+              <button
+                onClick={() => setJiraOpen((v) => !v)}
+                className="rounded-md border border-indigo-300 bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-700 hover:bg-indigo-100 dark:border-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-300"
+              >
+                ↥ Push to Jira
+              </button>
             </div>
           )}
         </div>
@@ -802,6 +963,115 @@ export default function Page() {
           <p className="rounded-md bg-red-100 px-3 py-2 text-sm text-red-800 dark:bg-red-900/40 dark:text-red-300">
             {error}
           </p>
+        )}
+
+        {result && jiraOpen && (
+          <div className="rounded-lg border border-indigo-200 bg-white p-4 dark:border-indigo-900 dark:bg-neutral-900">
+            <div className="mb-2 flex items-center justify-between">
+              <h3 className="text-sm font-medium">Push to Jira Cloud</h3>
+              <button
+                onClick={() => {
+                  setJiraOpen(false);
+                  setJiraResults(null);
+                }}
+                className="text-xs text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-100"
+              >
+                Close
+              </button>
+            </div>
+            <p className="mb-3 text-xs text-neutral-500">
+              Your API token is sent to Jira through our server and is never stored. Generate
+              one at id.atlassian.com/manage-profile/security/api-tokens. Non-secret fields are
+              saved in your browser.
+            </p>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <input
+                type="text"
+                value={jiraCreds.domain}
+                onChange={(e) => setJiraCreds({ ...jiraCreds, domain: e.target.value })}
+                placeholder="mycompany  (→ mycompany.atlassian.net)"
+                className="rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-900"
+              />
+              <input
+                type="email"
+                value={jiraCreds.email}
+                onChange={(e) => setJiraCreds({ ...jiraCreds, email: e.target.value })}
+                placeholder="your@atlassian.email"
+                className="rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-900"
+              />
+              <input
+                type="password"
+                value={jiraCreds.apiToken}
+                onChange={(e) => setJiraCreds({ ...jiraCreds, apiToken: e.target.value })}
+                placeholder="API token (not stored in your browser)"
+                className="rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-900"
+                autoComplete="off"
+              />
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  type="text"
+                  value={jiraCreds.projectKey}
+                  onChange={(e) =>
+                    setJiraCreds({ ...jiraCreds, projectKey: e.target.value.toUpperCase() })
+                  }
+                  placeholder="Project key (e.g. QA)"
+                  className="rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-900"
+                />
+                <input
+                  type="text"
+                  value={jiraCreds.issueType}
+                  onChange={(e) => setJiraCreds({ ...jiraCreds, issueType: e.target.value })}
+                  placeholder="Issue type (Test)"
+                  className="rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-900"
+                />
+              </div>
+            </div>
+            <div className="mt-3 flex items-center gap-2">
+              <button
+                onClick={pushToJira}
+                disabled={jiraPushing}
+                className="rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-500 disabled:opacity-50"
+              >
+                {jiraPushing
+                  ? `Pushing ${result.test_cases.length} issues…`
+                  : `Push ${result.test_cases.length} issues to ${jiraCreds.projectKey || "…"}`}
+              </button>
+              {jiraResults && (
+                <span className="text-xs text-neutral-500">
+                  {jiraResults.filter((r) => r.key).length} created,{" "}
+                  {jiraResults.filter((r) => r.error).length} failed.
+                </span>
+              )}
+            </div>
+            {jiraResults && (
+              <ul className="mt-3 max-h-64 space-y-1 overflow-y-auto text-xs">
+                {jiraResults.map((r) => (
+                  <li
+                    key={r.id}
+                    className={
+                      r.error
+                        ? "text-red-700 dark:text-red-300"
+                        : "text-green-700 dark:text-green-300"
+                    }
+                  >
+                    <span className="font-mono text-neutral-500">{r.id}</span>{" "}
+                    {r.key ? (
+                      <a
+                        href={r.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="underline"
+                      >
+                        {r.key} →
+                      </a>
+                    ) : (
+                      <span>{r.error}</span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         )}
       </section>
 
@@ -821,6 +1091,13 @@ export default function Page() {
                 editingId === tc.id && editDraft ? (
                   <li
                     key={tc.id}
+                    onBlur={(e) => {
+                      // If focus is moving to another element inside this card, ignore.
+                      const next = e.relatedTarget as Node | null;
+                      if (next && e.currentTarget.contains(next)) return;
+                      // Focus left the card entirely — commit the edits.
+                      saveEdit();
+                    }}
                     className="rounded-lg border border-indigo-300 bg-white p-4 dark:border-indigo-700 dark:bg-neutral-900"
                   >
                     <div className="mb-3 flex items-start justify-between gap-3">
@@ -938,7 +1215,7 @@ export default function Page() {
                         Cancel
                       </button>
                       <span className="text-xs text-neutral-500">
-                        Local edit — no API call, no quota used.
+                        Autosaves on blur · no API call, no quota used.
                       </span>
                     </div>
                   </li>
