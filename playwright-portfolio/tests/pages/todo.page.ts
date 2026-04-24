@@ -4,7 +4,7 @@ import { BasePage } from './base.page.js';
 export type Filter = 'All' | 'Active' | 'Completed';
 
 export class TodoPage extends BasePage {
-  readonly path = '/';
+  readonly path = '/todomvc';
 
   readonly input: Locator;
   readonly items: Locator;
