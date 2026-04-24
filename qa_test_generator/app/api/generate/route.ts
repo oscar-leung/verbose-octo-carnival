@@ -19,16 +19,24 @@ const TEST_CASE_SCHEMA = {
     feature_summary: {
       type: "string",
       description:
-        "One- to two-sentence summary of the feature under test, synthesized from text and any screenshots provided.",
+        "One to two sentences capturing the primary user-visible behavior, its trigger, and its major constraints (limits, auth, persistence). Specific, not marketing.",
     },
     test_cases: {
       type: "array",
-      description: "Comprehensive test cases. Aim for 8-25 depending on feature complexity.",
+      description:
+        "Between 8 and 25 test cases. Simple one-flow features ~= 10; complex multi-step multi-role features ~= 20-25.",
       items: {
         type: "object",
         properties: {
-          id: { type: "string", description: "Stable identifier like TC-001." },
-          title: { type: "string", description: "Short, action-oriented title." },
+          id: {
+            type: "string",
+            description: "Zero-padded stable identifier: TC-001, TC-002, ...",
+          },
+          title: {
+            type: "string",
+            description:
+              "Describes the specific behavior being verified, NOT the category. Good: 'Blank email shows inline Required error'. Bad: 'Negative email test'.",
+          },
           category: {
             type: "string",
             enum: [
@@ -41,20 +49,28 @@ const TEST_CASE_SCHEMA = {
               "accessibility",
             ],
           },
-          priority: { type: "string", enum: ["high", "medium", "low"] },
+          priority: {
+            type: "string",
+            enum: ["high", "medium", "low"],
+            description:
+              "high = blocks release, data loss / security risk, primary flow broken. medium = degraded UX, non-primary flow, edge cases affecting >1% of users. low = cosmetic, rare edges, polish.",
+          },
           preconditions: {
             type: "array",
             items: { type: "string" },
-            description: "State that must hold before the test starts.",
+            description:
+              "Specific setup state, including concrete test data. Bad: 'user is logged in'. Good: \"Authenticated as user with email='primary+test@example.com', role='customer', failed_login_attempts_last_hour=0.\"",
           },
           steps: {
             type: "array",
             items: { type: "string" },
-            description: "Numbered actions a tester or automation performs.",
+            description:
+              "Atomic imperative actions; each step does one thing. Good: \"Click 'Sign in'\" / \"Enter 'bad@' in 'Email' field\". Bad: 'Click Sign in and verify error appears'. Quote UI labels exactly as they appear.",
           },
           expected_result: {
             type: "string",
-            description: "Observable outcome that defines pass/fail.",
+            description:
+              "Single observable, specific outcome — exact text, exact status code, exact UI state. Bad: 'Error is shown'. Good: \"Page displays exact text 'Please enter a valid email address' in red (#DC2626) below the Email input; Submit button is disabled.\"",
           },
         },
         required: [
@@ -74,27 +90,59 @@ const TEST_CASE_SCHEMA = {
   additionalProperties: false,
 } as const;
 
-const SYSTEM_PROMPT = `You are a senior SDET generating production-grade test cases for an app or website.
+const SYSTEM_PROMPT = `You are a senior SDET generating paying-customer-quality test cases. Someone is paying $9/month for this output — it must be good enough to paste into Jira or TestRail with zero manual rework.
 
-Inputs may include any combination of:
-- A written feature description.
-- Screenshots of the actual UI (mobile, tablet, or desktop). When screenshots are present, ground the test cases in what is actually visible: button labels, field names, error states, navigation, and observable affordances. Do NOT hallucinate UI elements that are not in the screenshots.
+<inputs>
+A written feature description, screenshots of the actual UI (mobile / tablet / desktop), or both.
 
-Coverage requirements:
-- At least one happy path test for each primary user flow you can identify.
-- Edge cases (empty values, max lengths, unicode, concurrency, time-zone, locale).
-- Negative tests for invalid input, unauthorized access, and rate-limit triggers.
-- Boundary tests where numeric or temporal limits exist.
-- Security tests when authentication, authorization, secrets, or PII appear.
-- Accessibility tests for any user-facing UI (keyboard nav, screen reader labels, color contrast, touch target size).
+When screenshots are present:
+- Ground every test in what is actually visible: exact button labels, field names, error states, nav elements, affordances.
+- Reference UI labels in single quotes, exactly as shown: 'Sign in', 'Continue with Google'.
+- Do NOT invent UI elements that are not in the screenshots.
+</inputs>
 
-Style:
-- Each test must be independently executable.
-- Steps are imperative ("Tap 'Sign in'", "Enter 'foo@bar.com' in the Email field") - no narration.
-- Reference exact UI labels you can see in screenshots, in quotes.
-- Expected result is a single observable outcome.
-- IDs are stable and zero-padded (TC-001, TC-002, ...).
-- Skip categories that don't apply; do not invent UI tests for a backend-only feature, and do not invent backend tests for a pure UI screen.`;
+<coverage_rules>
+Generate tests that cover these axes where the spec warrants them. Skip axes that don't apply — do not invent backend tests for a pure-UI screen or UI tests for a backend-only API.
+
+1. Happy path: at least one per primary user flow you can identify.
+2. For every user input field: at least one empty case, one invalid-format case, one boundary-overflow case (max + 1), and one valid-edge case (minimum allowed).
+3. For every numeric or temporal limit mentioned in the spec: test at the limit, limit + 1, limit - 1, 0, and (where applicable) negative.
+4. Authorization: unauthenticated, under-privileged role, expired session, logged-in-as-different-user.
+5. Rate limits, timeouts, concurrency: if the spec mentions N req/min, test N (allowed), N+1 (rate-limited response shape + Retry-After header).
+6. Security (free-text inputs): SQL injection ("' OR 1=1 --"), XSS ("<script>alert(1)</script>"). For state-changing requests: CSRF token missing/invalid. For PII: confirm it is never returned in error messages or logs.
+7. Accessibility for any user-facing UI: keyboard-only navigation reaches every interactive element; all inputs have programmatic labels (aria-label / label 'for'); color contrast meets WCAG AA (4.5:1 for body text); touch targets >= 44×44 px.
+8. Cross-environment where the spec implies it: mobile web vs desktop, supported browsers, localization.
+</coverage_rules>
+
+<test_data_rules>
+Use concrete values, never placeholders.
+
+Bad: "an invalid email"
+Good: "'not-an-email@'", "'a@'", "' ' (single space)", "'a'.repeat(254) + '@x.com'"
+
+When text input is accepted, include at least one test with unicode ("éñ中🔥"), one with an RTL string ("مرحبا"), and one with a long string (>= 1000 chars).
+When numeric limits exist, include the exact boundary values described above.
+</test_data_rules>
+
+<style_rules>
+- Each test is self-contained: its preconditions create the exact state required. No "after running TC-003".
+- Preconditions specify test data, not just roles. "User exists with email='p@x.com', password='P@ssw0rd!', failed_attempts_last_hour=0" — not "user is logged in".
+- Steps are atomic and imperative: one action per step, no narration, no verification embedded in a step. "Click 'Submit'" — not "Click 'Submit' and verify error appears".
+- Quote UI labels exactly as shown in the spec or screenshots.
+- Expected result is a single observable outcome with specifics: exact text, exact status code, exact UI state, exact response header, exact element color, exact disabled state.
+- Title describes the verified behavior, never the category. "Blank email shows 'Required' inline error" — not "Negative test for email".
+- IDs are zero-padded: TC-001, TC-002, TC-003...
+</style_rules>
+
+<priority_rubric>
+high = blocks release, data loss or security risk, primary user flow broken.
+medium = degraded UX, non-primary flow broken, edge cases affecting more than 1% of users.
+low = cosmetic issues, rare edges, accessibility polish beyond WCAG AA.
+</priority_rubric>
+
+<target_count>
+8 to 25 tests depending on feature complexity. Simple single-flow feature ≈ 10. Complex multi-step, multi-role, auth + payment + email feature ≈ 20-25. Err on the side of more boundary and negative tests rather than padding happy paths.
+</target_count>`;
 
 function isAllowedMime(s: string): s is AllowedMime {
   return (ALLOWED_MIME as readonly string[]).includes(s);
@@ -223,8 +271,10 @@ export async function POST(req: NextRequest) {
       model: "claude-opus-4-7",
       max_tokens: 16000,
       thinking: { type: "adaptive" },
+      // "max" effort: Opus-tier only (Opus 4.6+). For paid test cases, thoroughness >
+      // latency — a slight overthinking risk beats skipping boundary / security tests.
       output_config: {
-        effort: "high",
+        effort: "max",
         format: { type: "json_schema", schema: TEST_CASE_SCHEMA },
       },
       system: SYSTEM_PROMPT,
