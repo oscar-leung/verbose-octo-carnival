@@ -31,7 +31,7 @@ export const test = base.extend<AuthedPages>({
   },
   authedInventoryPage: async ({ loginPage, inventoryPage }, use) => {
     await loginPage.goto();
-    await loginPage.login(USERS.standard.username, USERS.standard.password);
+    await loginPage.loginExpectingSuccess(USERS.standard.username, USERS.standard.password);
     await expect(inventoryPage.container).toBeVisible();
     await use(inventoryPage);
   },

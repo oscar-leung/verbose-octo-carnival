@@ -23,6 +23,15 @@ export class LoginPage extends BasePage {
     await this.loginButton.click();
   }
 
+  async loginExpectingSuccess(username: string, password: string): Promise<void> {
+    await this.usernameInput.fill(username);
+    await this.passwordInput.fill(password);
+    await Promise.all([
+      this.page.waitForURL(/\/inventory\.html$/, { timeout: 15_000 }),
+      this.loginButton.click(),
+    ]);
+  }
+
   async expectError(): Promise<string> {
     await this.errorMessage.waitFor({ state: 'visible' });
     return (await this.errorMessage.textContent())?.trim() ?? '';

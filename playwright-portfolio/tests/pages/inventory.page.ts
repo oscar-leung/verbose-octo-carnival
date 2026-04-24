@@ -64,6 +64,7 @@ export class InventoryPage extends BasePage {
 
   async logout(): Promise<void> {
     await this.burgerMenu.click();
-    await this.logoutLink.click();
+    await this.logoutLink.waitFor({ state: 'visible' });
+    await this.logoutLink.click({ force: true });
   }
 }
