@@ -26,6 +26,8 @@ from dataclasses import asdict
 from datetime import datetime, timedelta
 
 from dotenv import load_dotenv
+import sys as _sys, os as _os; _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+import library.uc_compat  # noqa: F401
 import undetected_chromedriver as uc
 from selenium import webdriver
 from selenium.common.exceptions import (

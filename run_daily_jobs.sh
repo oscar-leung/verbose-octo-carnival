@@ -19,14 +19,14 @@ TIME="$(date +%H:%M:%S)"
 # ── LinkedIn Easy Apply (headless, ~4/session = ~20/day) ───────────
 echo "[$TIME] Starting LinkedIn..." | tee -a "$LOG_DIR/$DATE.log"
 cd "$SCRIPT_DIR"
-"$PYTHON" 035_linkedin_easy_apply_pa.py --max-applies 4 \
+"$PYTHON" scripts/035_linkedin_easy_apply_pa.py --max-applies 4 \
     >> "$LOG_DIR/${DATE}_linkedin.log" 2>&1 \
     && echo "[$(date +%H:%M:%S)] LinkedIn done." | tee -a "$LOG_DIR/$DATE.log" \
     || echo "[$(date +%H:%M:%S)] LinkedIn errored — check ${DATE}_linkedin.log" | tee -a "$LOG_DIR/$DATE.log"
 
 # ── Handshake (visible browser, ~8/session = ~40/day) ─────────────
 echo "[$(date +%H:%M:%S)] Starting Handshake..." | tee -a "$LOG_DIR/$DATE.log"
-"$PYTHON" 036_handshake_apply_pa.py --max-applies 8 \
+"$PYTHON" scripts/036_handshake_apply_pa.py --max-applies 8 \
     >> "$LOG_DIR/${DATE}_handshake.log" 2>&1 \
     && echo "[$(date +%H:%M:%S)] Handshake done." | tee -a "$LOG_DIR/$DATE.log" \
     || echo "[$(date +%H:%M:%S)] Handshake errored — check ${DATE}_handshake.log" | tee -a "$LOG_DIR/$DATE.log"

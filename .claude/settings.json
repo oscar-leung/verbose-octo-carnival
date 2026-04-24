@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 -c \"from selenium import webdriver; opts = webdriver.ChromeOptions\\(\\); opts.add_argument\\('--headless=new'\\); opts.add_argument\\('--no-sandbox'\\); d = webdriver.Chrome\\(options=opts\\); d.get\\('https://example.com'\\); print\\('title:', d.title\\); d.quit\\(\\); print\\('Chrome OK'\\)\")",
+      "Bash(python3 -c \"import ast; ast.parse\\(open\\('scripts/041_glassdoor_apply.py'\\).read\\(\\)\\); print\\('syntax OK'\\)\")",
+      "Bash(python3 scripts/035_linkedin_easy_apply_pa.py --max-applies 8)",
+      "Bash(echo \"LinkedIn PID: $!\")",
+      "Bash(python3 scripts/041_glassdoor_apply.py --max-applies 20 --pages 3)",
+      "Bash(echo \"Glassdoor PID: $!\")",
+      "Bash(python3 -c ' *)",
+      "Bash(git -C /Users/oscarleung/verbose-octo-carnival ls-files)"
+    ]
+  }
+}

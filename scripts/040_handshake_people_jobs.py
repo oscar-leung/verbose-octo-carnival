@@ -31,6 +31,8 @@ from dataclasses import dataclass, asdict, field
 from datetime import datetime
 from collections import Counter
 
+import sys as _sys, os as _os; _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+import library.uc_compat  # noqa: F401
 import undetected_chromedriver as uc
 from dotenv import load_dotenv
 from selenium.common.exceptions import (
