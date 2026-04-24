@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 type Category =
   | "happy_path"
@@ -41,6 +41,23 @@ type UsageResponse = QuotaStatus & { stripeConfigured: boolean };
 
 type ExportFormat = "json" | "csv" | "jira" | "xray" | "testrail";
 
+type AllowedMime = "image/png" | "image/jpeg" | "image/webp" | "image/gif";
+
+type Screenshot = {
+  id: string;
+  name: string;
+  mediaType: AllowedMime;
+  base64: string; // raw base64 (no data URL prefix), POSTed to API
+  previewUrl: string; // data: URL for <img>
+  bytes: number;
+};
+
+const ALLOWED_MIME: AllowedMime[] = ["image/png", "image/jpeg", "image/webp", "image/gif"];
+const MAX_SCREENSHOTS = 6;
+const MAX_LONG_EDGE_PX = 2000;
+const RESIZE_MIME: AllowedMime = "image/jpeg";
+const RESIZE_QUALITY = 0.9;
+
 const CATEGORY_COLORS: Record<Category, string> = {
   happy_path: "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300",
   edge_case: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300",
@@ -65,13 +82,63 @@ const EXPORT_OPTIONS: { value: ExportFormat; label: string }[] = [
   { value: "testrail", label: "TestRail CSV" },
 ];
 
+async function fileToScreenshot(file: File): Promise<Screenshot> {
+  if (!ALLOWED_MIME.includes(file.type as AllowedMime)) {
+    throw new Error(`Unsupported image type: ${file.type || "unknown"}`);
+  }
+  const dataUrl = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(reader.error ?? new Error("Failed to read file."));
+    reader.readAsDataURL(file);
+  });
+
+  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const el = new Image();
+    el.onload = () => resolve(el);
+    el.onerror = () => reject(new Error("Failed to decode image."));
+    el.src = dataUrl;
+  });
+
+  const longEdge = Math.max(img.naturalWidth, img.naturalHeight);
+  const needsResize = longEdge > MAX_LONG_EDGE_PX;
+  const scale = needsResize ? MAX_LONG_EDGE_PX / longEdge : 1;
+  const targetW = Math.round(img.naturalWidth * scale);
+  const targetH = Math.round(img.naturalHeight * scale);
+
+  const canvas = document.createElement("canvas");
+  canvas.width = targetW;
+  canvas.height = targetH;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Canvas 2D context unavailable.");
+  ctx.drawImage(img, 0, 0, targetW, targetH);
+
+  const outputDataUrl = canvas.toDataURL(RESIZE_MIME, RESIZE_QUALITY);
+  const commaIdx = outputDataUrl.indexOf(",");
+  const base64 = outputDataUrl.slice(commaIdx + 1);
+  const bytes = Math.floor((base64.length * 3) / 4);
+
+  return {
+    id: crypto.randomUUID(),
+    name: file.name || "screenshot.jpg",
+    mediaType: RESIZE_MIME,
+    base64,
+    previewUrl: outputDataUrl,
+    bytes,
+  };
+}
+
 export default function Page() {
   const [feature, setFeature] = useState("");
+  const [screenshots, setScreenshots] = useState<Screenshot[]>([]);
   const [loading, setLoading] = useState(false);
+  const [importing, setImporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<GenerateResponse | null>(null);
   const [usage, setUsage] = useState<UsageResponse | null>(null);
   const [upgrading, setUpgrading] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   async function refreshUsage() {
     try {
@@ -86,6 +153,64 @@ export default function Page() {
     refreshUsage();
   }, []);
 
+  const ingestFiles = useCallback(
+    async (files: FileList | File[]) => {
+      const list = Array.from(files).filter((f) =>
+        ALLOWED_MIME.includes(f.type as AllowedMime),
+      );
+      if (list.length === 0) {
+        setError("No supported images found (PNG, JPEG, WebP, or GIF).");
+        return;
+      }
+      setError(null);
+      setImporting(true);
+      try {
+        const remaining = MAX_SCREENSHOTS - screenshots.length;
+        if (remaining <= 0) {
+          setError(`Maximum ${MAX_SCREENSHOTS} screenshots reached.`);
+          return;
+        }
+        const accepted = list.slice(0, remaining);
+        const processed = await Promise.all(accepted.map(fileToScreenshot));
+        setScreenshots((prev) => [...prev, ...processed]);
+        if (list.length > accepted.length) {
+          setError(
+            `Only added ${accepted.length} of ${list.length} (max ${MAX_SCREENSHOTS} per request).`,
+          );
+        }
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Failed to process image.");
+      } finally {
+        setImporting(false);
+      }
+    },
+    [screenshots.length],
+  );
+
+  // Paste-from-clipboard support: listen on document.
+  useEffect(() => {
+    function onPaste(e: ClipboardEvent) {
+      if (!e.clipboardData) return;
+      const files: File[] = [];
+      for (const item of Array.from(e.clipboardData.items)) {
+        if (item.kind === "file") {
+          const f = item.getAsFile();
+          if (f) files.push(f);
+        }
+      }
+      if (files.length > 0) {
+        e.preventDefault();
+        void ingestFiles(files);
+      }
+    }
+    document.addEventListener("paste", onPaste);
+    return () => document.removeEventListener("paste", onPaste);
+  }, [ingestFiles]);
+
+  function removeScreenshot(id: string) {
+    setScreenshots((prev) => prev.filter((s) => s.id !== id));
+  }
+
   async function handleGenerate() {
     setLoading(true);
     setError(null);
@@ -94,7 +219,13 @@ export default function Page() {
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ feature }),
+        body: JSON.stringify({
+          feature,
+          screenshots: screenshots.map((s) => ({
+            mediaType: s.mediaType,
+            data: s.base64,
+          })),
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Request failed");
@@ -141,14 +272,20 @@ export default function Page() {
     return `${remaining}/${limit} free generations left today`;
   })();
 
+  const canGenerate =
+    !loading && !importing && (feature.trim().length >= 5 || screenshots.length > 0);
+
+  const totalImageMb = screenshots.reduce((acc, s) => acc + s.bytes, 0) / 1024 / 1024;
+
   return (
     <main className="mx-auto max-w-5xl px-4 py-10">
       <header className="mb-8 flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-3xl font-semibold tracking-tight">QA Test Case Generator</h1>
           <p className="mt-2 text-sm text-neutral-600 dark:text-neutral-400">
-            Paste a feature description. Get structured test cases covering happy paths, edge cases,
-            negative scenarios, boundaries, security, and accessibility.
+            Describe a feature, drop in screenshots of your app or website, or both. Get
+            structured test cases covering happy paths, edge cases, negatives, boundaries,
+            security, and accessibility.
           </p>
         </div>
         <div className="flex shrink-0 flex-col items-end gap-2">
@@ -169,18 +306,113 @@ export default function Page() {
         </div>
       </header>
 
-      <section className="space-y-3">
-        <textarea
-          value={feature}
-          onChange={(e) => setFeature(e.target.value)}
-          rows={8}
-          placeholder="e.g. Users can reset their password by entering their email; we send a one-time link valid for 15 minutes. After 5 failed attempts, the account is locked for 30 minutes..."
-          className="w-full rounded-lg border border-neutral-300 bg-white p-4 text-sm shadow-sm focus:border-neutral-900 focus:outline-none dark:border-neutral-700 dark:bg-neutral-900 dark:focus:border-neutral-200"
-        />
+      <section className="space-y-4">
+        <div>
+          <label className="mb-1 block text-xs font-semibold uppercase text-neutral-500">
+            Feature description (optional if screenshots provided)
+          </label>
+          <textarea
+            value={feature}
+            onChange={(e) => setFeature(e.target.value)}
+            rows={6}
+            placeholder="e.g. Users can reset their password by entering their email; we send a one-time link valid for 15 minutes..."
+            className="w-full rounded-lg border border-neutral-300 bg-white p-4 text-sm shadow-sm focus:border-neutral-900 focus:outline-none dark:border-neutral-700 dark:bg-neutral-900 dark:focus:border-neutral-200"
+          />
+        </div>
+
+        <div>
+          <label className="mb-1 block text-xs font-semibold uppercase text-neutral-500">
+            Screenshots (drag & drop, click, or paste — up to {MAX_SCREENSHOTS})
+          </label>
+          <div
+            onDragOver={(e) => {
+              e.preventDefault();
+              setDragOver(true);
+            }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setDragOver(false);
+              if (e.dataTransfer.files.length > 0) void ingestFiles(e.dataTransfer.files);
+            }}
+            onClick={() => fileInputRef.current?.click()}
+            className={`flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed p-6 text-sm transition-colors ${
+              dragOver
+                ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20"
+                : "border-neutral-300 bg-white hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-900 dark:hover:bg-neutral-800"
+            }`}
+          >
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept={ALLOWED_MIME.join(",")}
+              multiple
+              hidden
+              onChange={(e) => {
+                if (e.target.files && e.target.files.length > 0) {
+                  void ingestFiles(e.target.files);
+                }
+                e.target.value = "";
+              }}
+            />
+            <p className="text-neutral-700 dark:text-neutral-300">
+              {importing ? "Processing…" : "Drag & drop, click, or ⌘V to paste"}
+            </p>
+            <p className="mt-1 text-xs text-neutral-500">
+              PNG, JPEG, WebP, GIF · resized to {MAX_LONG_EDGE_PX}px on the long edge
+            </p>
+          </div>
+
+          {screenshots.length > 0 && (
+            <div className="mt-3">
+              <div className="mb-2 flex items-center justify-between text-xs text-neutral-500">
+                <span>
+                  {screenshots.length} image{screenshots.length === 1 ? "" : "s"} ·{" "}
+                  {totalImageMb.toFixed(2)} MB total
+                </span>
+                <button
+                  onClick={() => setScreenshots([])}
+                  className="text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-100"
+                >
+                  Clear all
+                </button>
+              </div>
+              <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+                {screenshots.map((s) => (
+                  <li
+                    key={s.id}
+                    className="group relative overflow-hidden rounded-lg border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={s.previewUrl}
+                      alt={s.name}
+                      className="h-32 w-full object-cover"
+                    />
+                    <div className="px-2 py-1 text-xs">
+                      <div className="truncate" title={s.name}>
+                        {s.name}
+                      </div>
+                      <div className="text-neutral-500">{(s.bytes / 1024).toFixed(0)} KB</div>
+                    </div>
+                    <button
+                      onClick={() => removeScreenshot(s.id)}
+                      className="absolute right-1 top-1 rounded-full bg-black/60 px-2 text-xs text-white opacity-0 transition-opacity group-hover:opacity-100"
+                      aria-label={`Remove ${s.name}`}
+                    >
+                      ×
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+
         <div className="flex flex-wrap items-center gap-3">
           <button
             onClick={handleGenerate}
-            disabled={loading || feature.trim().length < 10}
+            disabled={!canGenerate}
             className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-40 dark:bg-neutral-100 dark:text-neutral-900"
           >
             {loading ? "Generating…" : "Generate test cases"}
