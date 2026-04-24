@@ -173,6 +173,8 @@ export default function Page() {
   const [regeneratingId, setRegeneratingId] = useState<string | null>(null);
   const [feedbackDraftId, setFeedbackDraftId] = useState<string | null>(null);
   const [feedbackDraft, setFeedbackDraft] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState<TestCase | null>(null);
 
   async function refreshUsage() {
     try {
@@ -313,6 +315,39 @@ export default function Page() {
     } finally {
       setLoading(false);
     }
+  }
+
+  function startEdit(tc: TestCase) {
+    setEditingId(tc.id);
+    setEditDraft({ ...tc, preconditions: [...tc.preconditions], steps: [...tc.steps] });
+    setFeedbackDraftId(null);
+    setError(null);
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+    setEditDraft(null);
+  }
+
+  function saveEdit() {
+    if (!editDraft) return;
+    const cleaned: TestCase = {
+      ...editDraft,
+      title: editDraft.title.trim(),
+      expected_result: editDraft.expected_result.trim(),
+      preconditions: editDraft.preconditions.map((p) => p.trim()).filter((p) => p.length > 0),
+      steps: editDraft.steps.map((s) => s.trim()).filter((s) => s.length > 0),
+    };
+    setResult((prev) =>
+      prev
+        ? {
+            ...prev,
+            test_cases: prev.test_cases.map((tc) => (tc.id === cleaned.id ? cleaned : tc)),
+          }
+        : prev,
+    );
+    setEditingId(null);
+    setEditDraft(null);
   }
 
   async function handleRegenerate(testCase: TestCase, instruction: string) {
@@ -632,104 +667,243 @@ export default function Page() {
               {result.test_cases.length} test case{result.test_cases.length === 1 ? "" : "s"}
             </h2>
             <ul className="space-y-3">
-              {result.test_cases.map((tc) => (
-                <li
-                  key={tc.id}
-                  className="rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <div className="text-xs font-mono text-neutral-500">{tc.id}</div>
-                      <div className="font-medium">{tc.title}</div>
+              {result.test_cases.map((tc) =>
+                editingId === tc.id && editDraft ? (
+                  <li
+                    key={tc.id}
+                    className="rounded-lg border border-indigo-300 bg-white p-4 dark:border-indigo-700 dark:bg-neutral-900"
+                  >
+                    <div className="mb-3 flex items-start justify-between gap-3">
+                      <div className="flex-1">
+                        <div className="text-xs font-mono text-neutral-500">{tc.id}</div>
+                        <input
+                          type="text"
+                          value={editDraft.title}
+                          onChange={(e) =>
+                            setEditDraft({ ...editDraft, title: e.target.value })
+                          }
+                          className="mt-1 w-full rounded-md border border-neutral-300 bg-white px-2 py-1 text-sm font-medium focus:border-neutral-900 focus:outline-none dark:border-neutral-700 dark:bg-neutral-900 dark:focus:border-neutral-200"
+                        />
+                      </div>
+                      <div className="flex shrink-0 flex-col gap-2">
+                        <select
+                          value={editDraft.category}
+                          onChange={(e) =>
+                            setEditDraft({
+                              ...editDraft,
+                              category: e.target.value as Category,
+                            })
+                          }
+                          className="rounded-md border border-neutral-300 bg-white px-1 py-0.5 text-xs dark:border-neutral-700 dark:bg-neutral-900"
+                        >
+                          {(
+                            [
+                              "happy_path",
+                              "edge_case",
+                              "negative",
+                              "boundary",
+                              "security",
+                              "performance",
+                              "accessibility",
+                            ] as Category[]
+                          ).map((c) => (
+                            <option key={c} value={c}>
+                              {c.replace("_", " ")}
+                            </option>
+                          ))}
+                        </select>
+                        <select
+                          value={editDraft.priority}
+                          onChange={(e) =>
+                            setEditDraft({
+                              ...editDraft,
+                              priority: e.target.value as Priority,
+                            })
+                          }
+                          className="rounded-md border border-neutral-300 bg-white px-1 py-0.5 text-xs dark:border-neutral-700 dark:bg-neutral-900"
+                        >
+                          <option value="high">high</option>
+                          <option value="medium">medium</option>
+                          <option value="low">low</option>
+                        </select>
+                      </div>
                     </div>
-                    <div className="flex shrink-0 gap-2">
-                      <span className={`rounded px-2 py-0.5 text-xs ${CATEGORY_COLORS[tc.category]}`}>
-                        {tc.category.replace("_", " ")}
-                      </span>
-                      <span className={`rounded px-2 py-0.5 text-xs ${PRIORITY_COLORS[tc.priority]}`}>
-                        {tc.priority}
-                      </span>
-                    </div>
-                  </div>
 
-                  {tc.preconditions.length > 0 && (
                     <div className="mt-3">
                       <div className="text-xs font-semibold uppercase text-neutral-500">
-                        Preconditions
+                        Preconditions (one per line)
                       </div>
-                      <ul className="mt-1 list-disc pl-5 text-sm">
-                        {tc.preconditions.map((p, i) => (
-                          <li key={i}>{p}</li>
+                      <textarea
+                        value={editDraft.preconditions.join("\n")}
+                        onChange={(e) =>
+                          setEditDraft({
+                            ...editDraft,
+                            preconditions: e.target.value.split("\n"),
+                          })
+                        }
+                        rows={Math.max(2, editDraft.preconditions.length)}
+                        className="mt-1 w-full rounded-md border border-neutral-300 bg-white p-2 text-sm focus:border-neutral-900 focus:outline-none dark:border-neutral-700 dark:bg-neutral-900 dark:focus:border-neutral-200"
+                      />
+                    </div>
+
+                    <div className="mt-3">
+                      <div className="text-xs font-semibold uppercase text-neutral-500">
+                        Steps (one per line)
+                      </div>
+                      <textarea
+                        value={editDraft.steps.join("\n")}
+                        onChange={(e) =>
+                          setEditDraft({ ...editDraft, steps: e.target.value.split("\n") })
+                        }
+                        rows={Math.max(3, editDraft.steps.length)}
+                        className="mt-1 w-full rounded-md border border-neutral-300 bg-white p-2 text-sm focus:border-neutral-900 focus:outline-none dark:border-neutral-700 dark:bg-neutral-900 dark:focus:border-neutral-200"
+                      />
+                    </div>
+
+                    <div className="mt-3">
+                      <div className="text-xs font-semibold uppercase text-neutral-500">
+                        Expected result
+                      </div>
+                      <textarea
+                        value={editDraft.expected_result}
+                        onChange={(e) =>
+                          setEditDraft({ ...editDraft, expected_result: e.target.value })
+                        }
+                        rows={3}
+                        className="mt-1 w-full rounded-md border border-neutral-300 bg-white p-2 text-sm focus:border-neutral-900 focus:outline-none dark:border-neutral-700 dark:bg-neutral-900 dark:focus:border-neutral-200"
+                      />
+                    </div>
+
+                    <div className="mt-4 flex items-center gap-2 border-t border-neutral-100 pt-3 dark:border-neutral-800">
+                      <button
+                        onClick={saveEdit}
+                        className="rounded-md bg-neutral-900 px-3 py-1 text-xs font-medium text-white dark:bg-neutral-100 dark:text-neutral-900"
+                      >
+                        Save
+                      </button>
+                      <button
+                        onClick={cancelEdit}
+                        className="rounded-md border border-neutral-300 px-3 py-1 text-xs hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800"
+                      >
+                        Cancel
+                      </button>
+                      <span className="text-xs text-neutral-500">
+                        Local edit — no API call, no quota used.
+                      </span>
+                    </div>
+                  </li>
+                ) : (
+                  <li
+                    key={tc.id}
+                    className="rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="text-xs font-mono text-neutral-500">{tc.id}</div>
+                        <div className="font-medium">{tc.title}</div>
+                      </div>
+                      <div className="flex shrink-0 gap-2">
+                        <span
+                          className={`rounded px-2 py-0.5 text-xs ${CATEGORY_COLORS[tc.category]}`}
+                        >
+                          {tc.category.replace("_", " ")}
+                        </span>
+                        <span
+                          className={`rounded px-2 py-0.5 text-xs ${PRIORITY_COLORS[tc.priority]}`}
+                        >
+                          {tc.priority}
+                        </span>
+                      </div>
+                    </div>
+
+                    {tc.preconditions.length > 0 && (
+                      <div className="mt-3">
+                        <div className="text-xs font-semibold uppercase text-neutral-500">
+                          Preconditions
+                        </div>
+                        <ul className="mt-1 list-disc pl-5 text-sm">
+                          {tc.preconditions.map((p, i) => (
+                            <li key={i}>{p}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    <div className="mt-3">
+                      <div className="text-xs font-semibold uppercase text-neutral-500">Steps</div>
+                      <ol className="mt-1 list-decimal pl-5 text-sm">
+                        {tc.steps.map((s, i) => (
+                          <li key={i}>{s}</li>
                         ))}
-                      </ul>
+                      </ol>
                     </div>
-                  )}
 
-                  <div className="mt-3">
-                    <div className="text-xs font-semibold uppercase text-neutral-500">Steps</div>
-                    <ol className="mt-1 list-decimal pl-5 text-sm">
-                      {tc.steps.map((s, i) => (
-                        <li key={i}>{s}</li>
-                      ))}
-                    </ol>
-                  </div>
-
-                  <div className="mt-3">
-                    <div className="text-xs font-semibold uppercase text-neutral-500">
-                      Expected result
+                    <div className="mt-3">
+                      <div className="text-xs font-semibold uppercase text-neutral-500">
+                        Expected result
+                      </div>
+                      <p className="mt-1 text-sm">{tc.expected_result}</p>
                     </div>
-                    <p className="mt-1 text-sm">{tc.expected_result}</p>
-                  </div>
 
-                  <div className="mt-4 border-t border-neutral-100 pt-3 dark:border-neutral-800">
-                    {feedbackDraftId === tc.id ? (
-                      <div className="space-y-2">
-                        <textarea
-                          value={feedbackDraft}
-                          onChange={(e) => setFeedbackDraft(e.target.value)}
-                          rows={2}
-                          placeholder="What's wrong with this test case? e.g. 'expected result should include the exact error text', 'steps skip the email verification step'"
-                          className="w-full rounded-md border border-neutral-300 bg-white p-2 text-xs focus:border-neutral-900 focus:outline-none dark:border-neutral-700 dark:bg-neutral-900 dark:focus:border-neutral-200"
-                          autoFocus
-                        />
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => handleRegenerate(tc, feedbackDraft.trim())}
-                            disabled={regeneratingId === tc.id}
-                            className="rounded-md bg-indigo-600 px-3 py-1 text-xs font-medium text-white hover:bg-indigo-500 disabled:opacity-50"
-                          >
-                            {regeneratingId === tc.id ? "Regenerating…" : "Regenerate"}
-                          </button>
+                    <div className="mt-4 border-t border-neutral-100 pt-3 dark:border-neutral-800">
+                      {feedbackDraftId === tc.id ? (
+                        <div className="space-y-2">
+                          <textarea
+                            value={feedbackDraft}
+                            onChange={(e) => setFeedbackDraft(e.target.value)}
+                            rows={2}
+                            placeholder="What's wrong with this test case? e.g. 'expected result should include the exact error text', 'steps skip the email verification step'"
+                            className="w-full rounded-md border border-neutral-300 bg-white p-2 text-xs focus:border-neutral-900 focus:outline-none dark:border-neutral-700 dark:bg-neutral-900 dark:focus:border-neutral-200"
+                            autoFocus
+                          />
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => handleRegenerate(tc, feedbackDraft.trim())}
+                              disabled={regeneratingId === tc.id}
+                              className="rounded-md bg-indigo-600 px-3 py-1 text-xs font-medium text-white hover:bg-indigo-500 disabled:opacity-50"
+                            >
+                              {regeneratingId === tc.id ? "Regenerating…" : "Regenerate"}
+                            </button>
+                            <button
+                              onClick={() => {
+                                setFeedbackDraftId(null);
+                                setFeedbackDraft("");
+                              }}
+                              disabled={regeneratingId === tc.id}
+                              className="rounded-md border border-neutral-300 px-3 py-1 text-xs hover:bg-neutral-100 disabled:opacity-50 dark:border-neutral-700 dark:hover:bg-neutral-800"
+                            >
+                              Cancel
+                            </button>
+                            <span className="text-xs text-neutral-500">
+                              Leave blank for a generic improvement pass.
+                            </span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-3">
                           <button
                             onClick={() => {
-                              setFeedbackDraftId(null);
+                              setFeedbackDraftId(tc.id);
                               setFeedbackDraft("");
                             }}
-                            disabled={regeneratingId === tc.id}
-                            className="rounded-md border border-neutral-300 px-3 py-1 text-xs hover:bg-neutral-100 disabled:opacity-50 dark:border-neutral-700 dark:hover:bg-neutral-800"
+                            disabled={regeneratingId !== null || editingId !== null}
+                            className="text-xs text-indigo-600 hover:text-indigo-500 disabled:opacity-50 dark:text-indigo-400"
                           >
-                            Cancel
+                            ↻ Regenerate with feedback
                           </button>
-                          <span className="text-xs text-neutral-500">
-                            Leave blank for a generic improvement pass.
-                          </span>
+                          <button
+                            onClick={() => startEdit(tc)}
+                            disabled={regeneratingId !== null || editingId !== null}
+                            className="text-xs text-neutral-600 hover:text-neutral-900 disabled:opacity-50 dark:text-neutral-400 dark:hover:text-neutral-100"
+                          >
+                            ✎ Edit manually
+                          </button>
                         </div>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => {
-                          setFeedbackDraftId(tc.id);
-                          setFeedbackDraft("");
-                        }}
-                        disabled={regeneratingId !== null}
-                        className="text-xs text-indigo-600 hover:text-indigo-500 disabled:opacity-50 dark:text-indigo-400"
-                      >
-                        ↻ Regenerate with feedback
-                      </button>
-                    )}
-                  </div>
-                </li>
-              ))}
+                      )}
+                    </div>
+                  </li>
+                ),
+              )}
             </ul>
           </div>
         </section>
