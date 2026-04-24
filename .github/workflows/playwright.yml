@@ -44,13 +44,9 @@ jobs:
           npm --version
           npx playwright --version
           echo
-          echo "=== saucedemo.com HEAD ==="
-          curl -sI -o /tmp/sd.head -w 'HTTP %{http_code} | size %{size_header} | time %{time_total}s\n' https://www.saucedemo.com/ || true
-          head -c 400 /tmp/sd.head; echo
-          echo
-          echo "=== saucedemo.com GET (first 500 bytes) ==="
-          curl -sL -o /tmp/sd.html -w 'HTTP %{http_code} | size %{size_download} | time %{time_total}s\n' https://www.saucedemo.com/ || true
-          head -c 500 /tmp/sd.html; echo
+          echo "=== todomvc GET (first 500 bytes) ==="
+          curl -sL -o /tmp/tm.html -w 'HTTP %{http_code} | size %{size_download} | time %{time_total}s\n' https://demo.playwright.dev/todomvc || true
+          head -c 500 /tmp/tm.html; echo
           echo
           echo "=== jsonplaceholder GET /users/1 ==="
           curl -s -o /tmp/jp.json -w 'HTTP %{http_code} | size %{size_download}\n' https://jsonplaceholder.typicode.com/users/1 || true

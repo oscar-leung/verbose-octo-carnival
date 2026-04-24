@@ -2,8 +2,8 @@
 
 A production-shaped Playwright + TypeScript test framework exercised against two live public systems under test:
 
-- **E2E UI** — [`saucedemo.com`](https://www.saucedemo.com) (Sauce Labs' public training app)
-- **API** — [`jsonplaceholder.typicode.com`](https://jsonplaceholder.typicode.com) (public REST sandbox)
+- **E2E UI** — [`demo.playwright.dev/todomvc`](https://demo.playwright.dev/todomvc) (Playwright's reference TodoMVC, GitHub-Pages hosted, bulletproof in CI)
+- **API** — [`jsonplaceholder.typicode.com`](https://jsonplaceholder.typicode.com) (public REST sandbox, no auth, no rate ceiling)
 
 Built to show the patterns hiring managers actually look for: Page Object Model, typed fixtures, tagged suites, cross-browser + mobile projects, API + UI under one runner, and CI artifacts (HTML report, JUnit, traces, videos, screenshots).
 
@@ -14,11 +14,11 @@ Built to show the patterns hiring managers actually look for: Page Object Model,
 | Concern | How it's handled |
 |---|---|
 | Flaky waits | Playwright auto-waiting + web-first assertions. No `sleep`s. |
-| Locator drift | `data-test` attributes first; semantic `getByRole` second. |
-| Test setup | Typed fixtures (`authedInventoryPage`) keep specs free of boilerplate login. |
-| Test pyramid | API project executes first in CI; UI runs in parallel across 3 browsers. |
+| Locator drift | `getByRole` / `getByPlaceholder` / `getByTestId` — user-facing locators that survive style refactors. |
+| Test setup | Typed fixtures (`todoPage`, `seededTodoPage`) keep specs free of boilerplate. |
+| Test pyramid | API project executes first in CI (no browser needed); UI runs in parallel across 3 browsers. |
 | Debugging | `trace: retain-on-failure`, `video: retain-on-failure`, JUnit + HTML report. |
-| Secrets | Baseline URL + API keys pulled from env (`BASE_URL`). |
+| Secrets / env | Baseline URL overridable via `BASE_URL` env var. |
 | CI | GitHub Actions matrix across `chromium`, `firefox`, `webkit`, `api`. |
 
 ---
@@ -32,20 +32,17 @@ playwright-portfolio/
 ├── tests/
 │   ├── pages/                    # Page Object Model (TypeScript classes)
 │   │   ├── base.page.ts
-│   │   ├── login.page.ts
-│   │   ├── inventory.page.ts
-│   │   ├── cart.page.ts
-│   │   └── checkout.page.ts
+│   │   └── todo.page.ts
 │   ├── fixtures/
-│   │   └── auth.fixture.ts       # `test` extended with page-object fixtures
+│   │   └── todo.fixture.ts       # `test` extended with todoPage + seededTodoPage
 │   ├── data/
-│   │   ├── users.ts              # canned saucedemo user matrix
-│   │   └── products.ts
-│   ├── e2e/                      # 21 UI tests × 3 browsers
-│   │   ├── login.spec.ts
-│   │   ├── inventory.spec.ts
-│   │   ├── cart.spec.ts
-│   │   └── checkout.spec.ts
+│   │   └── samples.ts
+│   ├── e2e/                      # 15 UI tests × 3 desktop browsers + 1 mobile
+│   │   ├── add.spec.ts
+│   │   ├── complete.spec.ts
+│   │   ├── edit.spec.ts
+│   │   ├── filter.spec.ts
+│   │   └── persistence.spec.ts
 │   └── api/                      # 7 API tests, browser-free
 │       └── jsonplaceholder.spec.ts
 └── .github/workflows/playwright.yml (at repo root)
@@ -78,23 +75,24 @@ npm run typecheck          # tsc --noEmit
 Override the SUT:
 
 ```bash
-BASE_URL=https://staging.example.com npm test
+BASE_URL=https://staging.example.com/todomvc npm test
 ```
 
 ---
 
 ## Test coverage snapshot
 
-**UI (saucedemo.com)** — 21 tests × 3 desktop browsers = 63 runs
+**UI (TodoMVC)** — 15 tests × 3 desktop browsers + 1 @mobile run
 
-- **Authentication** — happy path, locked-out user, missing username, missing password, invalid credentials, logout
-- **Inventory** — product count, A→Z / Z→A sort, price low→high / high→low sort, add-to-cart badge, remove-from-cart badge
-- **Cart** — items persist from inventory, remove-in-cart updates badge, continue-shopping returns to inventory, empty cart state
-- **Checkout** — happy-path order with subtotal + tax = total assertion, required first name, required last name, required postal code
+- **Add** — single, multiple, input clears, counter shows remaining
+- **Complete / clear** — toggle, untoggle, toggle-all, clear-completed
+- **Edit / delete** — double-click to edit + Enter to save, delete button, empty-list hides main section
+- **Filter** — Active / Completed / All filter links
+- **Persistence + responsive** — localStorage survives reload, mobile viewport renders
 
 **API (jsonplaceholder.typicode.com)** — 7 tests
 
-- `GET /users` full list with schema assertions on each user
+- `GET /users` full list with per-user schema assertions
 - `GET /users/:id` single user
 - `GET /users/:id` → 404 for unknown ids
 - `GET /posts?userId=1` filter by relation
@@ -108,18 +106,18 @@ BASE_URL=https://staging.example.com npm test
 
 ## Design choices worth calling out
 
-1. **POM via classes, not functions.** Constructors wire locators once; methods describe user intent (`addToCart`, `checkout`, `fillInfo`) rather than clicks. Cheap to scan, cheap to diff.
-2. **`data-test` locators first.** saucedemo publishes them; using them survives style refactors. Fallback is `getByRole`.
-3. **Fixtures over `beforeEach`.** `authedInventoryPage` is a composable fixture — any test that asks for it gets a logged-in session with no boilerplate.
+1. **POM via classes, not functions.** Constructors wire locators once; methods describe user intent (`add`, `toggle`, `remove`, `edit`) rather than clicks. Cheap to scan, cheap to diff.
+2. **User-facing locators.** `getByPlaceholder`, `getByRole`, `getByTestId` — the locators Playwright recommends because they mirror how users (and screen readers) find things.
+3. **Fixtures over `beforeEach`.** `seededTodoPage` is a composable fixture — any test that needs three pre-existing todos gets them for free with no boilerplate.
 4. **Projects, not forks.** A single config runs UI across three browsers *and* the API suite, with per-project `testDir` and `baseURL`.
-5. **CI does the real work.** Local dev prefers `chromium` + no retries; CI enables `retries: 2`, `workers: 2`, and forbids `test.only` leaking in.
+5. **CI does the real work.** Local dev prefers a single browser + no retries; CI enables `retries: 2`, `workers: 2`, and forbids `test.only` leaking in.
 6. **Traces on failure only.** `retain-on-failure` avoids the multi-GB trace dumps that kill a CI bucket, while still giving you `npx playwright show-trace` when something breaks.
 
 ---
 
 ## CI
 
-`.github/workflows/playwright.yml` runs a matrix of `{chromium, firefox, webkit, api}` on every push and PR that touches `playwright-portfolio/`. Artifacts uploaded per-job:
+`.github/workflows/playwright.yml` runs a matrix of `{chromium, firefox, webkit, api}` on every push and PR that touches `playwright-portfolio/`. Each job prints an SUT-reachability diagnostic block (node/playwright versions + live HTTP probe of each SUT) before running tests, so a future break is diagnosable from the logs alone. Artifacts uploaded per-job:
 
 - `playwright-report-<project>` — always (open with `npm run report`)
 - `test-results-<project>` — on failure (traces, videos, screenshots)
@@ -128,8 +126,8 @@ BASE_URL=https://staging.example.com npm test
 
 ## Extending
 
-- **New page** — add a class under `tests/pages/`, register it in `tests/fixtures/auth.fixture.ts` if you want it injected.
-- **New user** — add to `tests/data/users.ts` (typed via `satisfies`).
+- **New page** — add a class under `tests/pages/`, register it in `tests/fixtures/todo.fixture.ts` if you want it injected.
+- **New sample data** — add to `tests/data/samples.ts`.
 - **Mobile test** — tag with `@mobile`; the `mobile-chrome` project picks it up automatically.
 - **Visual regression** — `await expect(page).toHaveScreenshot()` is already available; snapshots will land under `tests/e2e/__screenshots__/` when you add them.
 
@@ -137,5 +135,5 @@ BASE_URL=https://staging.example.com npm test
 
 ## Notes
 
-- The sibling `qa_portfolio/` directory in this repo is the Selenium + pytest counterpart to this framework, same SUT — useful for a before/after comparison of the two dominant UI automation stacks.
-- The API suite targets JSONPlaceholder because it's the most stable public REST sandbox available — no API key, no rate ceiling for CI volumes, no schema drift.
+- The sibling `qa_portfolio/` directory in this repo is a Selenium + pytest counterpart — useful for a side-by-side of the two dominant UI automation stacks.
+- TodoMVC was chosen over bespoke demo shops (saucedemo, toolshop) specifically because it's hosted on GitHub Pages with no CDN/bot-detection layer in front of it, so CI runs are deterministic. The API suite targets JSONPlaceholder for the same reason — no API key, no rate ceiling, no schema drift.
