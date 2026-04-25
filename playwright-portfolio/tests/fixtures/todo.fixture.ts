@@ -1,5 +1,6 @@
 import { test as base, expect } from '@playwright/test';
 import { TodoPage } from '../pages/todo.page.js';
+import { SAMPLES } from '../data/samples.js';
 
 type Fixtures = {
   todoPage: TodoPage;
@@ -13,7 +14,7 @@ export const test = base.extend<Fixtures>({
     await use(todoPage);
   },
   seededTodoPage: async ({ todoPage }, use) => {
-    await todoPage.addMany(['buy milk', 'write tests', 'ship it']);
+    await todoPage.addMany(SAMPLES.three);
     await use(todoPage);
   },
 });

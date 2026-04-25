@@ -18,7 +18,7 @@ export class TodoPage extends BasePage {
     this.items = page.getByTestId('todo-item');
     this.toggleAll = page.getByLabel('Mark all as complete');
     this.clearCompleted = page.getByRole('button', { name: /clear completed/i });
-    this.counter = page.locator('.todo-count');
+    this.counter = page.getByTestId('todo-count');
   }
 
   async add(text: string): Promise<void> {
@@ -60,15 +60,4 @@ export class TodoPage extends BasePage {
     await this.page.getByRole('link', { name, exact: true }).click();
   }
 
-  async texts(): Promise<string[]> {
-    return (await this.items.allTextContents()).map((s) => s.trim());
-  }
-
-  async completedCount(): Promise<number> {
-    return this.items.locator('.completed').count();
-  }
-
-  async counterText(): Promise<string> {
-    return (await this.counter.textContent())?.trim() ?? '';
-  }
 }

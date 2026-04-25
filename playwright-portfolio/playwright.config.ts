@@ -10,11 +10,16 @@ export default defineConfig({
   workers: isCI ? 2 : undefined,
   timeout: 60_000,
   expect: { timeout: 10_000 },
-  reporter: [
-    ['list'],
-    ['html', { open: 'never', outputFolder: 'playwright-report' }],
-    ['junit', { outputFile: 'test-results/junit.xml' }],
-  ],
+  reporter: isCI
+    ? [
+        ['github'],
+        ['html', { open: 'never', outputFolder: 'playwright-report' }],
+        ['junit', { outputFile: 'test-results/junit.xml' }],
+      ]
+    : [
+        ['list'],
+        ['html', { open: 'never', outputFolder: 'playwright-report' }],
+      ],
   use: {
     baseURL: process.env.BASE_URL ?? 'https://demo.playwright.dev',
     trace: 'retain-on-failure',

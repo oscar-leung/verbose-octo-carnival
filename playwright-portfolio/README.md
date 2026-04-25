@@ -69,7 +69,9 @@ npm run test:chromium      # single browser
 npm run test:ui            # Playwright's time-travel UI mode
 npm run test:headed        # watch it run
 npm run report             # open last HTML report
+npm run lint               # ESLint with eslint-plugin-playwright
 npm run typecheck          # tsc --noEmit
+npm run check              # typecheck + lint together (pre-commit hook material)
 ```
 
 Override the SUT:
@@ -82,7 +84,7 @@ BASE_URL=https://staging.example.com/todomvc npm test
 
 ## Test coverage snapshot
 
-**UI (TodoMVC)** — 15 tests × 3 desktop browsers + 1 @mobile run
+**UI (TodoMVC)** — 16 tests × 3 desktop browsers; 1 also runs on the `mobile-chrome` project (Pixel 7 viewport)
 
 - **Add** — single, multiple, input clears, counter shows remaining
 - **Complete / clear** — toggle, untoggle, toggle-all, clear-completed
@@ -117,7 +119,12 @@ BASE_URL=https://staging.example.com/todomvc npm test
 
 ## CI
 
-`.github/workflows/playwright.yml` runs a matrix of `{chromium, firefox, webkit, api}` on every push and PR that touches `playwright-portfolio/`. Each job prints an SUT-reachability diagnostic block (node/playwright versions + live HTTP probe of each SUT) before running tests, so a future break is diagnosable from the logs alone. Artifacts uploaded per-job:
+`.github/workflows/playwright.yml` splits into two jobs that run on every push and PR touching `playwright-portfolio/`:
+
+- **api** — single short job (no browser install), runs the API project against JSONPlaceholder
+- **e2e** — matrix of `{chromium, firefox, webkit}` with a Playwright-version-keyed browser cache so cold runs install browsers once and warm runs skip the download
+
+The CI run uses Playwright's `github` reporter, so failures land as inline annotations on the PR diff. Artifacts uploaded per-job:
 
 - `playwright-report-<project>` — always (open with `npm run report`)
 - `test-results-<project>` — on failure (traces, videos, screenshots)

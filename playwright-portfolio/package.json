@@ -1,7 +1,7 @@
 {
   "name": "playwright-portfolio",
   "version": "1.0.0",
-  "description": "SDET portfolio: TypeScript Playwright framework against a live public SUT (saucedemo.com + reqres.in).",
+  "description": "SDET portfolio: TypeScript Playwright framework against demo.playwright.dev/todomvc + jsonplaceholder.typicode.com.",
   "private": true,
   "type": "module",
   "scripts": {
@@ -18,11 +18,17 @@
     "test:debug": "PWDEBUG=1 playwright test",
     "report": "playwright show-report",
     "install:browsers": "playwright install --with-deps",
-    "typecheck": "tsc --noEmit"
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "check": "npm run typecheck && npm run lint"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.55.0",
     "@types/node": "^24.3.0",
-    "typescript": "^5.6.0"
+    "eslint": "^10.2.1",
+    "eslint-plugin-playwright": "^2.10.2",
+    "typescript": "^5.6.0",
+    "typescript-eslint": "^8.59.0"
   }
 }
