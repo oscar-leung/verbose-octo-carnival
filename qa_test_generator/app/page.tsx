@@ -687,6 +687,41 @@ export default function Page() {
         </div>
       </header>
 
+      {!result && (
+        <section className="mb-8 grid gap-3 sm:grid-cols-3">
+          {[
+            {
+              n: "1",
+              title: "Describe the feature",
+              body: "Paste a spec, drop screenshots, or crawl a public URL. Either alone is enough.",
+            },
+            {
+              n: "2",
+              title: "Generate",
+              body: "Claude Opus 4.7 returns 8–25 structured test cases — happy path, edges, security, a11y — with concrete data and exact expected results.",
+            },
+            {
+              n: "3",
+              title: "Export or push",
+              body: "Download CSV / JSON / Jira / Xray / TestRail. Or push directly to Jira Cloud via API.",
+            },
+          ].map((step) => (
+            <div
+              key={step.n}
+              className="rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900"
+            >
+              <div className="flex items-center gap-2">
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-indigo-600 text-xs font-semibold text-white">
+                  {step.n}
+                </span>
+                <span className="text-sm font-medium">{step.title}</span>
+              </div>
+              <p className="mt-2 text-xs text-neutral-600 dark:text-neutral-400">{step.body}</p>
+            </div>
+          ))}
+        </section>
+      )}
+
       {historyOpen && history.length > 0 && (
         <section className="mb-6 rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
           <div className="mb-3 flex items-center justify-between">
