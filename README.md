@@ -39,7 +39,7 @@ Logs are written to `runs/daily_logs/YYYY-MM-DD.log`.
 
 ## Scripts
 
-### Active Job Hunt (035–042) — Core automation suite
+### Active Job Hunt (035–043) — Core automation suite
 
 | # | Script | Platform | Mode | What it does |
 |---|--------|----------|------|--------------|
@@ -51,6 +51,7 @@ Logs are written to `runs/daily_logs/YYYY-MM-DD.log`.
 | 040 | `040_handshake_people_jobs.py` | Handshake | Visible UC | Follows active recruiters/engineers, extracts emails, auto-applies |
 | 041 | `041_calcareers_monitor.py` | CalCareers | Headless HTTP | Monitors calcareers.ca.gov for new QA/SWE state-job postings |
 | 042 | `042_unified_pipeline.py` | Orchestrator | — | Chains Handshake apply → CalCareers monitor → GMass contact build |
+| 043 | `043_gmail_job_tracker.py` | Gmail | Headless API | Scans ATS/recruiter email, classifies status (applied / interview / offer / rejection), writes `job_tracker.json`, optional Slack + Sheets sync |
 
 ### Unified Pipeline (042)
 
