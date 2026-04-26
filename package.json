@@ -18,10 +18,13 @@
   "scripts": {
     "v5:scrape": "node v5/linkedin_scraper.mjs",
     "v5:scrape:headed": "node v5/linkedin_scraper.mjs --headed",
-    "v5:check": "node --check v5/linkedin_scraper.mjs && node --check v5/lib/config.mjs && node --check v5/lib/stealth.mjs && node --check v5/lib/output.mjs && node --check v5/lib/selectors.mjs && node --check v5/lib/human.mjs"
+    "v5:apply": "node v5/linkedin_scraper.mjs --apply --headed",
+    "v5:check": "node --check v5/linkedin_scraper.mjs && node --check v5/lib/config.mjs && node --check v5/lib/stealth.mjs && node --check v5/lib/output.mjs && node --check v5/lib/selectors.mjs && node --check v5/lib/human.mjs && node --check v5/lib/apply_modal.mjs && node --check v5/lib/gsheets.mjs",
+    "test": "node --test tests/v5_smoke.test.mjs"
   },
   "dependencies": {
-    "playwright": "^1.55.0"
+    "playwright": "^1.55.0",
+    "googleapis": "^144.0.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.55.0",

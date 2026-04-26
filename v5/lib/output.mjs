@@ -131,6 +131,11 @@ export class RunOutput {
     return { total: this._records.length, by };
   }
 
+  /** Returns a snapshot of records (for downstream sync, tests, etc). */
+  records() {
+    return [...this._records];
+  }
+
   /** Flush final jobs.json, jobs.csv, gmass_contacts.csv. */
   save() {
     fs.writeFileSync(

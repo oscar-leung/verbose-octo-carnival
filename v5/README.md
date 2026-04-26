@@ -1,22 +1,26 @@
 # v5 — LinkedIn Scraper (Playwright)
 
 A full Playwright (Node.js) rewrite of the v4 Python/Selenium LinkedIn
-scraper (`035_linkedin_easy_apply_pa.py`). Same job discovery + filter +
-output semantics, but with a smarter anti-detection context and a
-modular library so other platforms (Handshake, Indeed, Greenhouse) can
-plug into the same output pipeline later.
+scraper (`035_linkedin_easy_apply_pa.py`). Feature-complete: job
+discovery, title filter, Easy Apply modal FSM, output pipeline, and
+Google Sheets sync — all in Node, with smarter anti-detection.
 
 ## Layout
 
 ```
 v5/
-├── linkedin_scraper.mjs   # entry — CLI, main loop, login, scrape, save
+├── linkedin_scraper.mjs   # entry — CLI, main loop, login, scrape, apply, save, sync
 └── lib/
     ├── config.mjs         # env + KEYWORDS + TITLE_EXCLUDE + LOCATIONS + URL builder
     ├── stealth.mjs        # stealth BrowserContext, init script, UA rotation, storageState
     ├── human.mjs          # humanWait / humanType / humanMoveTo / sessionBreak
     ├── selectors.mjs      # every LinkedIn DOM selector in one place
-    └── output.mjs         # RunOutput: jobs.json + jobs.csv + jobs.jsonl + gmass_contacts.csv
+    ├── apply_modal.mjs    # Easy Apply modal FSM (work auth, voluntary ID, city, etc.)
+    ├── output.mjs         # RunOutput: jobs.json + jobs.csv + jobs.jsonl + gmass_contacts.csv
+    └── gsheets.mjs        # Google Sheets sync (port of library/gsheets.py)
+
+tests/
+└── v5_smoke.test.mjs      # node --test unit tests (9 passing)
 ```
 
 ## Install
@@ -60,14 +64,16 @@ node v5/linkedin_scraper.mjs \
 
 | Flag | Meaning |
 |------|---------|
-| `--dry-run` | Scrape only — default behaviour |
-| `--apply` | Open Easy Apply modal (currently opens + dismisses; FSM port is tracked for v6) |
+| `--dry-run` | Scrape only — default behaviour (no applications submitted) |
+| `--apply` | Drive the Easy Apply modal FSM and submit applications |
 | `--headed` | Visible browser |
 | `--max-jobs=N` | Cap total scraped jobs across all keywords |
+| `--max-applies=N` | Cap submissions per session (default 8) |
 | `--keyword="..."` | Override keyword list with a single keyword |
 | `--location="..."` | Override location list with a single location |
 | `--pages-per-keyword=N` | Pagination depth (default 2) |
 | `--storage=<path>` | Custom storageState JSON path |
+| `--no-sheet-sync` | Skip Google Sheets append (always skipped if env vars unset) |
 | `--verbose` | Log every skipped job |
 
 ## Output
@@ -98,20 +104,41 @@ v4 set four Chromium flags and a single CDP line
 4. **`storageState` reuse** — first successful login is the only one; subsequent runs restore cookies so LinkedIn sees a returning session instead of a fresh automation fingerprint.
 5. **Human-paced interaction**: per-keystroke jitter, bezier-ish mouse paths, incremental scroll with 280–520px deltas + 350–900ms pauses, and the same post-apply cooldowns as v4 (8–18s per apply, 60–120s every 4 applies).
 
-## What's intentionally out of scope for v5
+## Easy Apply modal FSM
 
-- **Easy Apply modal FSM** — the 20-step modal walker from v4
-  (`advance_modal()` at line 407 onwards, plus the work-auth / voluntary
-  ID / city autocomplete handlers) is not yet ported. `--apply` opens
-  the dialog, snapshots it, then discards. Status recorded is `dry_run`.
-- **Google Sheets sync** — `library/gsheets.py` is still Python; v5's
-  CSV uses the same column order so piping stays trivial.
-- **Handshake / Indeed / Greenhouse** — each has its own v4 script;
-  migrating them is a follow-up that can reuse `lib/stealth.mjs`,
-  `lib/human.mjs`, and `lib/output.mjs` unchanged.
+`lib/apply_modal.mjs` ports v4's `advance_modal()` walker. Per step it
+reads the modal heading and dispatches a handler:
 
-## Validate without running
+| Heading match | Handler |
+|---------------|---------|
+| Privacy policy | clicks "I Agree Terms & Conditions" |
+| Additional Questions | fills `1` for inputs, `Yes` for selects, then runs work-auth |
+| Work authorization | radio answers from `WORK_AUTH_ANSWERS`, dropdown fallback |
+| Voluntary self identification | gender, race, veteran, disability, name, date |
+| Resume | sets the LinkedIn URL field |
+
+City autocomplete (`#city-HOME-CITY`) runs on every step as a fallback.
+Advance order: **Review → Submit → Next**. On any error or after 20
+steps, the modal is force-dismissed (Dismiss + Discard confirm).
+
+## Google Sheets sync
+
+If `GOOGLE_SERVICE_ACCOUNT_JSON` and `GOOGLE_SHEET_ID` are set in `.env`,
+the run-end pipeline appends new rows to the `Applications` tab using
+the same `platform|job_id` dedupe as v4's `library/gsheets.py`. The tab
+is auto-created with the COLUMNS header if missing. Pass
+`--no-sheet-sync` to skip even when configured.
+
+## Tests
 
 ```bash
-npm run v5:check   # node --check each module
+npm test          # 9 unit tests, ~110ms
+npm run v5:check  # node --check on every module
 ```
+
+## Future work (not blocking v5)
+
+- **Handshake / Indeed / Greenhouse** Playwright ports — reuse
+  `lib/stealth.mjs`, `lib/human.mjs`, `lib/output.mjs`, and
+  `lib/gsheets.mjs` unchanged. Each platform needs its own
+  `selectors.mjs` + login flow.

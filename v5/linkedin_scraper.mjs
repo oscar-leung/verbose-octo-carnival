@@ -39,6 +39,8 @@ import { launchStealthContext, persistStorageState } from './lib/stealth.mjs';
 import { humanWait, humanScrollUntil, humanType, postApplyWait, sessionBreak } from './lib/human.mjs';
 import { LOGIN, SEARCH, JOB_DETAIL, APPLY, firstVisible } from './lib/selectors.mjs';
 import { RunOutput } from './lib/output.mjs';
+import { runEasyApply } from './lib/apply_modal.mjs';
+import { syncJobs } from './lib/gsheets.mjs';
 
 // ── CLI parsing ─────────────────────────────────────────────────────────────
 function parseArgs(argv) {
@@ -58,7 +60,9 @@ const CFG = {
   dryRun: !args.flags.has('apply'),
   headed: args.flags.has('headed'),
   verbose: args.flags.has('verbose'),
+  noSheetSync: args.flags.has('no-sheet-sync'),
   maxJobs: Number(args.kv['max-jobs']) || Infinity,
+  maxApplies: Number(args.kv['max-applies']) || LIMITS.maxAppliesPerSession,
   keywords: args.kv.keyword ? [args.kv.keyword] : KEYWORDS,
   locations: args.kv.location !== undefined ? [args.kv.location] : LOCATIONS,
   pagesPerKeyword: Number(args.kv['pages-per-keyword']) || LIMITS.pagesPerKeyword,
@@ -165,25 +169,8 @@ async function readDescription(page) {
   return '';
 }
 
-/** Stub for the Easy Apply modal FSM. v5 ships the scraper half of the
- *  refactor; the full modal FSM port is tracked for v6. If --apply is passed
- *  we open the dialog, snapshot it, then dismiss, so the behaviour is
- *  equivalent to v4's --dry-run. */
-async function tryEasyApply(page, out, jobId) {
-  const btn = page.locator(APPLY.easyBtn).first();
-  if ((await btn.count()) === 0) return { status: 'skipped', note: 'no_easy_apply_button' };
-  await btn.click();
-  await humanWait(1, 2);
-  await page.screenshot({ path: path.join(out.dir, `apply_${jobId}.png`) });
-  // Dismiss without submitting — the modal FSM is not yet ported.
-  const dismiss = page.locator(APPLY.dismissBtn).first();
-  if ((await dismiss.count()) > 0) {
-    await dismiss.click();
-    await humanWait(0.5, 1);
-    const discard = page.locator(APPLY.discardConfirm).first();
-    if ((await discard.count()) > 0) await discard.click();
-  }
-  return { status: 'dry_run', note: 'modal_fsm_not_ported' };
+async function tryEasyApply(page, out, profile, dryRun) {
+  return runEasyApply(page, { profile, dryRun, log: out });
 }
 
 async function scrape() {
@@ -264,10 +251,10 @@ async function scrape() {
             const email = extractEmail(desc);
             const base = { ...rec(meta, keyword), skills_mentioned: skills, contact_email: email };
 
-            if (!CFG.dryRun && appliesThisSession < LIMITS.maxAppliesPerSession) {
-              const result = await tryEasyApply(page, out, meta.jobId);
+            if (!CFG.dryRun && appliesThisSession < CFG.maxApplies) {
+              const result = await tryEasyApply(page, out, profile, false);
               out.add({ ...base, status: result.status, note: result.note });
-              if (result.status === 'applied' || result.status === 'dry_run') {
+              if (result.status === 'applied') {
                 appliesThisSession += 1;
                 await postApplyWait();
                 if (appliesThisSession % LIMITS.sessionBreakEvery === 0) {
@@ -290,6 +277,14 @@ async function scrape() {
     try { await context?.close(); } catch {}
     try { await browser?.close(); } catch {}
     out.save();
+    if (!CFG.noSheetSync) {
+      try {
+        const synced = await syncJobs(out.records(), 'LinkedIn', { log: out });
+        if (synced.appended > 0) out.info(`gsheets: appended ${synced.appended} new rows`);
+      } catch (e) {
+        out.warn(`gsheets sync skipped: ${e.message}`);
+      }
+    }
     const s = out.summary();
     out.info(`Done. total=${s.total} by_status=${JSON.stringify(s.by)}`);
     out.close();
