@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>You're in — Cold Email Personalizer</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-stone-50 text-stone-900 antialiased">
+  <main class="mx-auto max-w-2xl px-6 py-16">
+    <h1 class="font-serif text-4xl font-semibold tracking-tight">You're in.</h1>
+    <p class="mt-3 text-stone-600">Thanks for subscribing. Here's your unlock key — keep it somewhere safe.</p>
+
+    <div class="mt-6 rounded-md border border-stone-300 bg-white p-4 shadow-sm">
+      <label class="block text-xs font-medium uppercase tracking-wide text-stone-500">Your unlock key</label>
+      <div class="mt-2 flex gap-2">
+        <input id="unlock-key" type="text" readonly value="{{ unlock_key }}" class="flex-1 rounded-md border border-stone-300 bg-stone-50 p-2 font-mono text-sm" />
+        <button id="copy-btn" class="rounded-md bg-stone-900 px-4 py-2 text-sm font-medium text-white hover:bg-stone-700">Copy</button>
+      </div>
+    </div>
+
+    <a href="/?unlock_key={{ unlock_key }}" class="mt-8 inline-flex items-center rounded-md bg-stone-900 px-5 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-stone-700">
+      Start writing emails →
+    </a>
+
+    <p class="mt-10 text-xs text-stone-500">Lost your key later? Reply to your Stripe receipt and we'll re-issue.</p>
+  </main>
+
+  <script>
+    document.getElementById("copy-btn").addEventListener("click", () => {
+      navigator.clipboard.writeText(document.getElementById("unlock-key").value);
+    });
+  </script>
+</body>
+</html>
