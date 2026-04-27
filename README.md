@@ -39,7 +39,7 @@ Logs are written to `runs/daily_logs/YYYY-MM-DD.log`.
 
 ## Scripts
 
-### Active Job Hunt (035–044) — Core automation suite
+### Active Job Hunt (035–045) — Core automation suite
 
 | # | Script | Platform | Mode | What it does |
 |---|--------|----------|------|--------------|
@@ -53,6 +53,36 @@ Logs are written to `runs/daily_logs/YYYY-MM-DD.log`.
 | 042 | `042_unified_pipeline.py` | Orchestrator | — | Chains Handshake apply → CalCareers monitor → GMass contact build |
 | 043 | `043_gmail_job_tracker.py` | Gmail | Headless API | Scans ATS/recruiter email, classifies status (applied / interview / offer / rejection), writes `job_tracker.json`, optional Slack + Sheets sync |
 | 044 | `044_runs_dashboard.py` | Reporting | — | Walks `runs/` + `job_tracker.json` and renders a per-script health view as either a self-contained HTML page (`runs/dashboard.html`) or an ANSI summary in the terminal (`--terminal`) |
+| 045 | `045_dashboard_server.py` | Web dashboard | Flask | Localhost web app (`http://127.0.0.1:5050`) — searchable application table, per-company timeline, "Scan Gmail now" button that runs 043 in a thread |
+
+### Web Dashboard (045)
+
+Live UI on top of `043_gmail_job_tracker.py` and `044_runs_dashboard.py`. The
+server reads `job_tracker.json` for the application table and per-company
+timelines, embeds 044's per-script health page at `/scripts`, and exposes a
+**Scan Gmail now** button that runs the same code path as the 043 CLI in a
+background thread.
+
+```bash
+pip install flask
+python3 045_dashboard_server.py            # http://127.0.0.1:5050
+python3 045_dashboard_server.py --port 8080
+```
+
+Routes:
+
+| Path | What it does |
+|------|--------------|
+| `/` | Pipeline pills + searchable, filterable table of every tracked application |
+| `/entry/<key>` | One company/role — full email status timeline + Gmail thread links |
+| `/scripts` | Embedded 044 dashboard (per-script run health, daily timeline) |
+| `/api/tracker` | Raw `job_tracker.json` as JSON |
+| `/api/refresh` (POST) | Kicks Gmail rescan in a thread |
+| `/api/refresh-status` | Live progress (`running`, `last_result`, `last_error`) |
+
+Deliberately localhost-only by default — it reads/writes `gmail_token.json`
+on disk and has no auth. To open it past localhost, put it behind an SSH
+tunnel or a reverse proxy that handles login.
 
 ### Unified Pipeline (042)
 
