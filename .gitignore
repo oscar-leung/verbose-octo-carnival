@@ -29,6 +29,11 @@ handshake_cookies.json
 *cookies*.json
 .chrome-handshake-profile/
 
+# Gmail tracker artifacts (043 / 045) — contain OAuth tokens and personal data
+gmail_oauth_client.json
+gmail_token.json
+job_tracker.json
+
 # Build artifacts
 dist/
 build/
