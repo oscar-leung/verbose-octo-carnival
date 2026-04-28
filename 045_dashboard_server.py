@@ -8,10 +8,15 @@ Live UI on top of 043 (Gmail reader) and 044 (rendering).
   python3 045_dashboard_server.py --host 0.0.0.0   # share on LAN (no auth!)
 
 Pages:
-  /                    Funnel + searchable application table
+  /                    Charts + funnel + searchable application table
   /entry/<key>         Per-application timeline (every email we have on this thread)
+  /contacts            Recruiters / agencies / hiring managers seen in inbox
+  /contact/<email>     Per-contact thread + subject history
+  /alerts              Jobs surfaced in LinkedIn / Indeed / Glassdoor digests
   /scripts             Embedded 044 dashboard (per-script health, daily timeline)
   /api/tracker         Raw job_tracker.json
+  /api/contacts        Raw contacts.json
+  /api/alerts          Raw alerts.json
   /api/refresh  POST   Trigger a Gmail rescan (kicks 043's pipeline in a thread)
 
 The "Scan Gmail now" button calls /api/refresh; the server runs the same code
@@ -39,6 +44,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 TRACKER_PATH = ROOT / "job_tracker.json"
+CONTACTS_PATH = ROOT / "contacts.json"
+ALERTS_PATH = ROOT / "alerts.json"
 
 log = logging.getLogger("dashboard_server")
 
@@ -184,6 +191,22 @@ a:hover { text-decoration: underline; }
 .tag.rejection  { background: #fad7d2; color: #721b12; }
 .tag.ghosted    { background: #e6e6e6; color: #555; }
 .tag.unknown    { background: #eee; color: #555; }
+.tag.recruiter      { background: #d6e9ff; color: #14467a; }
+.tag.agency         { background: #fef3cd; color: #6f5800; }
+.tag.hiring_manager { background: #ead6ff; color: #4d2378; }
+.bar-track { background: #eee; height: 8px; border-radius: 4px; overflow: hidden; }
+.bar-fill { height: 100%; }
+.grid-charts { display: grid; grid-template-columns: 2fr 1fr 1.5fr; gap: 14px;
+               margin-bottom: 18px; }
+@media (max-width: 900px) { .grid-charts { grid-template-columns: 1fr; } }
+.big-number { font-size: 36px; font-weight: 700; line-height: 1; margin: 6px 0; }
+.meta { color: #888; font-size: 12px; }
+.src { font-size: 11px; padding: 1px 6px; border-radius: 10px; background: #eee; }
+.src.linkedin     { background: #d6e9ff; color: #14467a; }
+.src.indeed       { background: #d8e6cd; color: #2d5016; }
+.src.glassdoor    { background: #c5e8e1; color: #0a4f3a; }
+.src.ziprecruiter { background: #ffe6c4; color: #6b3a00; }
+.src.handshake    { background: #ead6ff; color: #4d2378; }
 """
 
 PAGE_JS = """
@@ -255,7 +278,10 @@ def _layout(title: str, body: str) -> str:
         f'<body>'
         f'<header>'
         f'<h1>Job Tracker</h1>'
-        f'<nav><a href="/">Applications</a><a href="/scripts">Script health</a>'
+        f'<nav><a href="/">Applications</a>'
+        f'<a href="/contacts">Recruiters</a>'
+        f'<a href="/alerts">Job alerts</a>'
+        f'<a href="/scripts">Script health</a>'
         f'<a href="/api/tracker">API</a></nav>'
         f'<div class="spacer"></div>'
         f'<span id="refresh-status"></span>'
@@ -264,6 +290,137 @@ def _layout(title: str, body: str) -> str:
         f'<main>{body}</main>'
         f'<script>{PAGE_JS}</script>'
         f'</body></html>'
+    )
+
+
+# ── Chart helpers (inline SVG, no JS deps) ───────────────────────────────────
+STATUS_COLORS = {
+    "applied":    "#3498db",
+    "assessment": "#f1c40f",
+    "interview":  "#9b59b6",
+    "offer":      "#16a085",
+    "rejection":  "#e74c3c",
+    "ghosted":    "#95a5a6",
+    "unknown":    "#bdc3c7",
+}
+
+
+def _iso_week_key(iso_date: str) -> str:
+    try:
+        d = datetime.fromisoformat(iso_date.replace("Z", "+00:00")).date()
+    except Exception:
+        return ""
+    y, w, _ = d.isocalendar()
+    return f"{y}-W{w:02d}"
+
+
+def _weekly_volume_chart(entries: dict, weeks: int = 12) -> str:
+    """Stacked-status bars for the last N ISO weeks of first_seen activity."""
+    from collections import defaultdict
+    today = datetime.now(timezone.utc).date()
+    week_keys: list[str] = []
+    cur = today
+    for _ in range(weeks):
+        y, w, _d = cur.isocalendar()
+        week_keys.append(f"{y}-W{w:02d}")
+        cur = cur.fromordinal(cur.toordinal() - 7)
+    week_keys.reverse()
+
+    data: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
+    for e in entries.values():
+        wk = _iso_week_key(e.get("first_seen") or "")
+        if wk in week_keys:
+            data[wk][e.get("status", "unknown")] += 1
+
+    peak = max((sum(d.values()) for d in data.values()), default=0)
+    if peak == 0:
+        return '<div class="empty">No applications in the last 12 weeks.</div>'
+
+    bar_w, bar_gap, h = 26, 6, 130
+    chart_w = len(week_keys) * (bar_w + bar_gap)
+    bars = []
+    statuses_order = ["applied", "assessment", "interview", "offer", "rejection"]
+    for i, wk in enumerate(week_keys):
+        x = i * (bar_w + bar_gap)
+        y_cursor = h
+        for s in statuses_order:
+            n = data[wk].get(s, 0)
+            if not n:
+                continue
+            seg_h = n / peak * (h - 4)
+            y_cursor -= seg_h
+            bars.append(
+                f'<rect x="{x}" y="{y_cursor:.1f}" width="{bar_w}" height="{seg_h:.1f}" '
+                f'fill="{STATUS_COLORS[s]}"><title>{wk} {s}: {n}</title></rect>'
+            )
+        # week label (just MM-DD of week start, every other tick to keep it readable)
+        if i % 2 == 0:
+            bars.append(
+                f'<text x="{x + bar_w/2:.1f}" y="{h + 14}" text-anchor="middle" '
+                f'font-size="9" fill="currentColor" opacity="0.6">{wk[-3:]}</text>'
+            )
+    legend = " ".join(
+        f'<span style="display:inline-flex;align-items:center;gap:4px;margin-right:10px">'
+        f'<span style="display:inline-block;width:10px;height:10px;background:{STATUS_COLORS[s]};'
+        f'border-radius:2px"></span>{s}</span>' for s in statuses_order
+    )
+    return (
+        f'<svg viewBox="0 0 {chart_w} {h+22}" width="100%" height="{h+22}px" '
+        f'preserveAspectRatio="xMinYMid meet">{"".join(bars)}</svg>'
+        f'<div style="font-size:11px;margin-top:6px">{legend}</div>'
+    )
+
+
+def _response_rate(entries: dict) -> tuple[int, int, float]:
+    """(responded, total, rate). Responded = anyone past 'applied'."""
+    total = len(entries)
+    responded = sum(
+        1 for e in entries.values()
+        if e.get("status") not in (None, "applied", "unknown")
+    )
+    rate = (responded / total) if total else 0.0
+    return responded, total, rate
+
+
+def _top_companies_html(entries: dict, n: int = 10) -> str:
+    from collections import Counter
+    c = Counter(
+        (e.get("company") or "(unknown)").strip()
+        for e in entries.values()
+    )
+    items = c.most_common(n)
+    if not items:
+        return '<div class="empty">—</div>'
+    peak = items[0][1] if items else 1
+    rows = []
+    for company, count in items:
+        pct = (count / peak * 100) if peak else 0
+        rows.append(
+            f'<tr><td>{escape(company)}</td>'
+            f'<td style="width:60%"><div class="bar-track">'
+            f'<div class="bar-fill" style="width:{pct:.1f}%;background:#3498db"></div>'
+            f'</div></td><td style="text-align:right">{count}</td></tr>'
+        )
+    return (
+        f'<table style="font-size:13px"><tbody>{"".join(rows)}</tbody></table>'
+    )
+
+
+def _charts_panel(entries: dict) -> str:
+    responded, total, rate = _response_rate(entries)
+    weekly = _weekly_volume_chart(entries)
+    top = _top_companies_html(entries)
+    return (
+        '<div class="grid-charts">'
+        f'<div class="panel"><h2>Last 12 weeks</h2>{weekly}</div>'
+        f'<div class="panel"><h2>Response rate</h2>'
+        f'<div class="big-number">{rate*100:.0f}%</div>'
+        f'<div class="meta">{responded} of {total} got past <i>applied</i></div>'
+        f'<div class="bar-track" style="margin-top:8px">'
+        f'<div class="bar-fill" style="width:{rate*100:.1f}%;background:#16a085"></div>'
+        f'</div></div>'
+        f'<div class="panel"><h2>Top companies</h2>{top}</div>'
+        '</div>'
     )
 
 
@@ -336,6 +493,141 @@ def _entries_table(entries: dict, status_filter: str | None) -> str:
     )
 
 
+def _contacts_table(contacts: dict, kind_filter: str | None) -> str:
+    items = sorted(
+        contacts.items(),
+        key=lambda kv: kv[1].get("last_seen") or "",
+        reverse=True,
+    )
+    if kind_filter:
+        items = [(k, v) for k, v in items if v.get("kind") == kind_filter]
+    if not items:
+        return '<div class="panel"><div class="empty">No recruiter contacts yet.</div></div>'
+
+    rows = []
+    for email, c in items:
+        name = c.get("name") or "—"
+        company = c.get("company") or "—"
+        kind = c.get("kind") or "unknown"
+        msgs = c.get("message_count", 0)
+        first = (c.get("first_seen") or "")[:10]
+        last = (c.get("last_seen") or "")[:10]
+        search_blob = " ".join([name, email, company, kind]).lower()
+        rows.append(
+            f'<tr data-search="{escape(search_blob)}" '
+            f'data-href="/contact/{escape(email)}">'
+            f'<td>{escape(name)}</td>'
+            f'<td><a href="mailto:{escape(email)}">{escape(email)}</a></td>'
+            f'<td>{escape(company)}</td>'
+            f'<td><span class="tag {escape(kind)}">{escape(kind)}</span></td>'
+            f'<td>{msgs}</td>'
+            f'<td>{escape(first)}</td>'
+            f'<td>{escape(last)}</td>'
+            f'</tr>'
+        )
+
+    options = ['<option value="">all kinds</option>']
+    for k in ["recruiter", "agency", "hiring_manager", "unknown"]:
+        sel = " selected" if kind_filter == k else ""
+        options.append(f'<option value="{k}"{sel}>{k}</option>')
+
+    return (
+        f'<div class="panel"><h2>Recruiters & agencies ({len(items)})</h2>'
+        f'<div class="controls">'
+        f'<input id="q" placeholder="Search name, email, company…" />'
+        f'<select id="kind-filter" onchange="location=\'?kind=\'+this.value">'
+        f'{"".join(options)}</select>'
+        f'</div>'
+        f'<table>'
+        f'<thead><tr><th>Name</th><th>Email</th><th>Company</th><th>Kind</th>'
+        f'<th>Msgs</th><th>First seen</th><th>Last seen</th></tr></thead>'
+        f'<tbody>{"".join(rows)}</tbody></table></div>'
+    )
+
+
+def _contact_detail_html(email: str, c: dict) -> str:
+    subjects = c.get("subjects") or []
+    items = "".join(
+        f'<li><div class="subj">{escape(s)}</div></li>' for s in subjects
+    )
+    threads = c.get("gmail_thread_ids") or []
+    thread_links = "".join(
+        f'<a href="https://mail.google.com/mail/u/0/#inbox/{escape(t)}" '
+        f'target="_blank">{escape(t[:10])}</a> '
+        for t in threads
+    )
+    return (
+        f'<div class="panel">'
+        f'<a href="/contacts">← All recruiters</a>'
+        f'<h2 style="margin-top:8px">{escape(c.get("name") or email)}</h2>'
+        f'<dl class="kvs">'
+        f'<dt>Email</dt><dd><a href="mailto:{escape(email)}">{escape(email)}</a></dd>'
+        f'<dt>Company</dt><dd>{escape(c.get("company") or "—")}</dd>'
+        f'<dt>Kind</dt><dd><span class="tag {escape(c.get("kind","unknown"))}">'
+        f'{escape(c.get("kind","unknown"))}</span></dd>'
+        f'<dt>Messages</dt><dd>{c.get("message_count", 0)}</dd>'
+        f'<dt>First seen</dt><dd>{escape((c.get("first_seen") or "")[:16].replace("T"," "))}</dd>'
+        f'<dt>Last seen</dt><dd>{escape((c.get("last_seen") or "")[:16].replace("T"," "))}</dd>'
+        f'<dt>Gmail threads</dt><dd>{thread_links or "—"}</dd>'
+        f'</dl></div>'
+        f'<div class="panel"><h2>Recent subjects</h2>'
+        + (f'<ul class="timeline">{items}</ul>' if items
+           else '<div class="empty">None.</div>')
+        + '</div>'
+    )
+
+
+def _alerts_table(alerts: dict, source_filter: str | None) -> str:
+    items = sorted(
+        alerts.values(),
+        key=lambda a: a.get("last_seen") or "",
+        reverse=True,
+    )
+    if source_filter:
+        items = [a for a in items if a.get("source") == source_filter]
+    if not items:
+        return '<div class="panel"><div class="empty">No job alerts yet.</div></div>'
+
+    rows = []
+    for a in items:
+        company = a.get("company") or "—"
+        role = a.get("role") or "—"
+        source = a.get("source") or "?"
+        url = a.get("url") or ""
+        seen = a.get("seen_count", 1)
+        first = (a.get("first_seen") or "")[:10]
+        last = (a.get("last_seen") or "")[:10]
+        link = (f'<a href="{escape(url)}" target="_blank">open</a>'
+                if url else '—')
+        rows.append(
+            f'<tr>'
+            f'<td><span class="src {escape(source)}">{escape(source)}</span></td>'
+            f'<td>{escape(company)}</td>'
+            f'<td>{escape(role)}</td>'
+            f'<td>{seen}×</td>'
+            f'<td>{escape(first)}</td>'
+            f'<td>{escape(last)}</td>'
+            f'<td>{link}</td>'
+            f'</tr>'
+        )
+
+    sources = sorted({a.get("source", "?") for a in alerts.values()})
+    options = ['<option value="">all sources</option>']
+    for s in sources:
+        sel = " selected" if source_filter == s else ""
+        options.append(f'<option value="{s}"{sel}>{s}</option>')
+
+    return (
+        f'<div class="panel"><h2>Job alerts ({len(items)})</h2>'
+        f'<div class="controls">'
+        f'<select onchange="location=\'?source=\'+this.value">{"".join(options)}</select>'
+        f'</div>'
+        f'<table><thead><tr><th>Source</th><th>Company</th><th>Role</th>'
+        f'<th>Seen</th><th>First</th><th>Last</th><th></th></tr></thead>'
+        f'<tbody>{"".join(rows)}</tbody></table></div>'
+    )
+
+
 def _entry_detail_html(key: str, entry: dict) -> str:
     company = entry.get("company") or "(unknown)"
     role = entry.get("role") or "—"
@@ -390,25 +682,37 @@ def make_app():
 
     app = Flask(__name__)
 
-    def _read_tracker() -> dict:
-        if not TRACKER_PATH.exists():
+    def _read_json(path: Path, key: str) -> dict:
+        if not path.exists():
             return {}
         try:
-            return json.loads(TRACKER_PATH.read_text()).get("entries", {}) or {}
+            return json.loads(path.read_text()).get(key, {}) or {}
         except Exception as e:
-            log.warning("bad tracker json: %s", e)
+            log.warning("bad json %s: %s", path.name, e)
             return {}
+
+    def _read_tracker() -> dict:
+        return _read_json(TRACKER_PATH, "entries")
+
+    def _read_contacts() -> dict:
+        return _read_json(CONTACTS_PATH, "contacts")
+
+    def _read_alerts() -> dict:
+        return _read_json(ALERTS_PATH, "alerts")
 
     @app.get("/")
     def index():
         entries = _read_tracker()
-        # Funnel respects the actual stored statuses
         from collections import Counter
         cnt = Counter(e.get("status", "unknown") for e in entries.values())
         order = ["applied", "assessment", "interview", "offer", "rejection", "ghosted", "unknown"]
         funnel = {k: cnt[k] for k in order if cnt[k]}
         status_filter = request.args.get("status") or None
-        body = _funnel_html(funnel) + _entries_table(entries, status_filter)
+        body = (
+            (_charts_panel(entries) if entries else "")
+            + _funnel_html(funnel)
+            + _entries_table(entries, status_filter)
+        )
         return _layout("Job Tracker", body)
 
     @app.get("/entry/<path:key>")
@@ -418,6 +722,36 @@ def make_app():
             abort(404)
         return _layout(f"{entries[key].get('company','')} — Job Tracker",
                        _entry_detail_html(key, entries[key]))
+
+    @app.get("/contacts")
+    def contacts_list():
+        contacts = _read_contacts()
+        kind_filter = request.args.get("kind") or None
+        return _layout("Recruiters — Job Tracker",
+                       _contacts_table(contacts, kind_filter))
+
+    @app.get("/contact/<path:email>")
+    def contact_detail(email):
+        contacts = _read_contacts()
+        if email not in contacts:
+            abort(404)
+        return _layout(f"{contacts[email].get('name', email)} — Job Tracker",
+                       _contact_detail_html(email, contacts[email]))
+
+    @app.get("/alerts")
+    def alerts_list():
+        alerts = _read_alerts()
+        source_filter = request.args.get("source") or None
+        return _layout("Job alerts — Job Tracker",
+                       _alerts_table(alerts, source_filter))
+
+    @app.get("/api/contacts")
+    def api_contacts():
+        return jsonify({"contacts": _read_contacts()})
+
+    @app.get("/api/alerts")
+    def api_alerts():
+        return jsonify({"alerts": _read_alerts()})
 
     @app.get("/scripts")
     def scripts():
