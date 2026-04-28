@@ -51,9 +51,9 @@ Logs are written to `runs/daily_logs/YYYY-MM-DD.log`.
 | 040 | `040_handshake_people_jobs.py` | Handshake | Visible UC | Follows active recruiters/engineers, extracts emails, auto-applies |
 | 041 | `041_calcareers_monitor.py` | CalCareers | Headless HTTP | Monitors calcareers.ca.gov for new QA/SWE state-job postings |
 | 042 | `042_unified_pipeline.py` | Orchestrator | — | Chains Handshake apply → CalCareers monitor → GMass contact build |
-| 043 | `043_gmail_job_tracker.py` | Gmail | Headless API | Scans ATS/recruiter email, classifies status (applied / interview / offer / rejection), writes `job_tracker.json`, optional Slack + Sheets sync |
+| 043 | `043_gmail_job_tracker.py` | Gmail | Headless API | Dispatches each scanned message into `application_reply` (→ `job_tracker.json`), `recruiter_outreach` (→ `contacts.json`), or `job_alert` (→ `alerts.json`); optional Slack + Sheets sync |
 | 044 | `044_runs_dashboard.py` | Reporting | — | Walks `runs/` + `job_tracker.json` and renders a per-script health view as either a self-contained HTML page (`runs/dashboard.html`) or an ANSI summary in the terminal (`--terminal`) |
-| 045 | `045_dashboard_server.py` | Web dashboard | Flask | Localhost web app (`http://127.0.0.1:5050`) — searchable application table, per-company timeline, "Scan Gmail now" button that runs 043 in a thread |
+| 045 | `045_dashboard_server.py` | Web dashboard | Flask | Localhost web app (`http://127.0.0.1:5050`) — charts (weekly volume, response rate, top companies), application table, per-company timeline, recruiter directory, job-alert feed, "Scan Gmail now" button that runs 043 in a thread |
 
 ### Web Dashboard (045)
 
@@ -73,10 +73,13 @@ Routes:
 
 | Path | What it does |
 |------|--------------|
-| `/` | Pipeline pills + searchable, filterable table of every tracked application |
+| `/` | Charts (weekly volume, response rate, top companies) + pipeline pills + searchable application table |
 | `/entry/<key>` | One company/role — full email status timeline + Gmail thread links |
+| `/contacts` | Recruiters, agencies, and hiring managers seen in your inbox; filter by kind |
+| `/contact/<email>` | One person — kind, company, message count, recent subjects, thread links |
+| `/alerts` | Jobs surfaced in LinkedIn / Indeed / Glassdoor / etc. digests; filter by source |
 | `/scripts` | Embedded 044 dashboard (per-script run health, daily timeline) |
-| `/api/tracker` | Raw `job_tracker.json` as JSON |
+| `/api/tracker`, `/api/contacts`, `/api/alerts` | Raw JSON for each store |
 | `/api/refresh` (POST) | Kicks Gmail rescan in a thread |
 | `/api/refresh-status` | Live progress (`running`, `last_result`, `last_error`) |
 
