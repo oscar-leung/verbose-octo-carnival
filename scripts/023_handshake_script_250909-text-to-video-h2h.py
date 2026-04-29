@@ -39,7 +39,7 @@ FILE_PATH = os.path.expanduser("~/Downloads/image/QA Feedback") # Using expandus
 CATEGORIES = ["Instruction Following", "Visual Quality", "Overall Choice"]
 DELAY_THINKING = 3   # Time to wait before voting
 DELAY_BETWEEN_VOTES = 5
-TASK_ID = "250909-text-to-video-h2h"
+TASK_ID = "250929-text-to-image-h2h"
 COOLDOWN = 60 * .5  # Cooldown time between tasks in seconds
 WAIT_SEC = 15 # Increased default wait slightly for more robustness
 
@@ -328,41 +328,6 @@ def multimango_tasking_cycle():
     safe_close_and_switch(handshake_window_handle)
     logger.info("Multimango tab closed.")
 
-def upload_file_to_handshake():
-    """Handles the file upload process for Handshake."""
-    logger.info("   📂 Attempting file upload...")
-    if click_with_retry((By.XPATH, "//button[@aria-label='Upload files'] | //button[normalize-space()='Upload files']"), retries=3):
-        time.sleep(1) # Give a moment for the dialog to appear
-
-        # Check if the file input element is directly accessible (more robust)
-        try:
-            file_input = driver.find_element(By.XPATH, "//input[@type='file']")
-            file_input.send_keys(FILE_PATH)
-            logger.info(f"      📁 File '{FILE_PATH}' selected via Selenium send_keys.")
-            return True
-        except NoSuchElementException:
-            logger.info("      Falling back to pyautogui for file upload (input type=file not found).")
-            # Fallback to pyautogui for native file dialogs (macOS specific)
-            try:
-                # Ensure Chrome is frontmost. This can sometimes be flaky.
-                os.system("osascript -e 'tell application \"Google Chrome\" to activate'")
-                time.sleep(1) # Give it time to activate
-
-                pyautogui.hotkey('command', 'shift', 'g') # Go to folder
-                time.sleep(0.5)
-                pyautogui.write(FILE_PATH, interval=0.02) # Slower typing for reliability
-                time.sleep(0.5)
-                pyautogui.press('enter')
-                time.sleep(0.5)
-                pyautogui.press('enter') # Confirm file selection
-                logger.info("      🍎 File Selected via macOS Keystrokes (PyAutoGUI)")
-                return True
-            except Exception as e:
-                logger.error(f"      ❌ PyAutoGUI Keystroke Error: {e}", exc_info=True)
-                return False
-    else:
-        logger.warning("      ⛔ Skipped file upload (Upload Button not clickable).")
-        return False
 
 def submit_and_wait_next_input(input_locator, submit_locator, value="0", timeout=WAIT_SEC):
     """
@@ -396,30 +361,6 @@ def submit_and_wait_next_input(input_locator, submit_locator, value="0", timeout
         logger.error(f"Error during submit_and_wait_next_input for {input_locator}: {e}", exc_info=True)
         raise
 
-def fill_handshake_questions(num_questions=5, value="0"):
-    """Fills a series of input questions on Handshake."""
-    input_locator = (By.XPATH, "//div[contains(@class,'flex') and contains(@class,'flex-col')]//input")
-    submit_locator = (By.XPATH, "//button[@aria-label='Submit' or normalize-space()='Submit']")
-
-    logger.info(f"   📝 Filling {num_questions} Handshake inputs with value '{value}'...")
-
-    try:
-        # First question: just wait for it to appear
-        wait.until(EC.visibility_of_element_located(input_locator))
-
-        for i in range(num_questions - 1):
-            logger.debug(f"    - Filling question {i+1}...")
-            submit_and_wait_next_input(input_locator, submit_locator, value=value)
-            time.sleep(0.5) # Short pause between questions
-
-        # Last one: submit, but don't expect a new input to appear
-        logger.debug(f"    - Filling final question {num_questions}...")
-        safe_send_keys(input_locator, value) # Use safe_send_keys for the last one
-        click_with_retry(submit_locator)
-        logger.info("   ✅ All Handshake questions filled and submitted.")
-    except Exception as e:
-        logger.error(f"   ❌ Error filling Handshake questions: {e}", exc_info=True)
-        raise
 
 def handshake_complete_task():
     """Completes the Handshake task and prepares for the next cycle."""
