@@ -56,8 +56,11 @@ load_dotenv()
 
 # ── CLI ───────────────────────────────────────────────────────────────────────
 parser = argparse.ArgumentParser()
-parser.add_argument("--dry-run", action="store_true", help="Scrape only, do not submit")
+parser.add_argument("--dry-run",     action="store_true", help="Scrape only, do not submit")
 parser.add_argument("--max-applies", type=int, default=None, help="Override MAX_APPLIES_PER_SESSION")
+parser.add_argument("--cookie-file", metavar="FILE",
+                    help="Load LinkedIn cookies from JSON and skip credential login (PythonAnywhere mode). "
+                         "Generate with: python scripts/export_linkedin_cookies.py")
 args = parser.parse_args()
 
 # ── Config ────────────────────────────────────────────────────────────────────
@@ -110,11 +113,12 @@ LOCATIONS = [
     "Sunnyvale, CA",
 ]
 
-PAGES_PER_KEYWORD = 2    # 25 jobs/page → 50 per keyword — enough without over-scraping
+PAGES_PER_KEYWORD = 3    # 25 jobs/page → 75 per keyword
 JOBS_PER_PAGE     = 25
 MODAL_MAX_STEPS   = 20
 WAIT_SEC          = 10
-MAX_APPLIES_PER_SESSION = args.max_applies if args.max_applies is not None else 8    # Conservative cap — well under detection threshold
+_base_applies = args.max_applies if args.max_applies is not None else 10
+MAX_APPLIES_PER_SESSION = random.randint(max(1, _base_applies - 2), _base_applies + 2)
 SESSION_BREAK_EVERY     = 4    # Break every 4 applications
 SESSION_BREAK_SECS      = (60, 120)  # 1-2 min break (more human-like)
 
@@ -145,6 +149,7 @@ REVIEW_BTN  = "//button[@aria-label='Review your application']"
 SUBMIT_BTN  = "//button[@aria-label='Submit application']"
 DISMISS_BTN = "//button[@aria-label='Dismiss']"
 _JS_CLICK   = "arguments[0].click();"
+_JS_SCROLL  = "arguments[0].scrollIntoView({block:'center'});"
 
 # ── Data ──────────────────────────────────────────────────────────────────────
 @dataclass
@@ -220,6 +225,23 @@ def init_driver() -> webdriver.Chrome:
     return driver
 
 
+def _load_linkedin_cookies(driver: webdriver.Chrome, cookie_file: str):
+    """Inject cookies exported by export_linkedin_cookies.py to skip credential login."""
+    import json as _json
+    driver.get("https://www.linkedin.com")
+    time.sleep(2)
+    with open(cookie_file) as f:
+        cookies = _json.load(f)
+    for c in cookies:
+        c.pop("sameSite", None)
+        try:
+            driver.add_cookie(c)
+        except Exception:
+            pass
+    driver.refresh()
+    time.sleep(3)
+
+
 # ── Helpers ───────────────────────────────────────────────────────────────────
 def el_exists(driver, xpath: str, timeout: int = 2) -> bool:
     try:
@@ -231,7 +253,7 @@ def el_exists(driver, xpath: str, timeout: int = 2) -> bool:
 def safe_click(driver, wait, xpath: str, timeout: int = 5) -> bool:
     try:
         el = WebDriverWait(driver, timeout).until(EC.element_to_be_clickable((By.XPATH, xpath)))
-        driver.execute_script("arguments[0].scrollIntoView({block:'center'});", el)
+        driver.execute_script(_JS_SCROLL, el)
         try:
             el.click()
         except (ElementClickInterceptedException, ElementNotInteractableException):
@@ -571,7 +593,7 @@ def login(driver, wait):
         driver.save_screenshot(os.path.join(RUN_DIR, "login_page.png"))
         raise RuntimeError("Could not find LinkedIn email field — check login_page.png")
 
-    driver.execute_script("arguments[0].scrollIntoView({block:'center'});", email_field)
+    driver.execute_script(_JS_SCROLL, email_field)
     human_wait(0.3, 0.6)
     email_field.clear()
     email_field.send_keys(USERNAME)
@@ -582,7 +604,7 @@ def login(driver, wait):
             candidates = driver.find_elements(By.XPATH, xp)
             for el in candidates:
                 if el.is_displayed() and el.is_enabled():
-                    driver.execute_script("arguments[0].scrollIntoView({block:'center'});", el)
+                    driver.execute_script(_JS_SCROLL, el)
                     human_wait(0.2, 0.4)
                     el.clear()
                     el.send_keys(PASSWORD)
@@ -605,135 +627,188 @@ def login(driver, wait):
         driver.save_screenshot(os.path.join(RUN_DIR, "login_success.png"))
 
 # ── Main ──────────────────────────────────────────────────────────────────────
+# ── Job / page / keyword processors (module-level to keep run() lean) ─────────
+def _process_job(driver, wait, job_el, idx, total, keyword, counts, seen_ids):
+    """Process one job card. Raises StopIteration when session cap is hit."""
+    meta   = get_job_meta(driver, job_el)
+    job_id = meta["job_id"]
+    if not job_id or job_id in seen_ids:
+        return
+    seen_ids.add(job_id)
+
+    title_low  = meta["title"].lower()
+    loc_str    = meta.get("location", "") or "?"
+    title_skip = any(tok in title_low for tok in TITLE_EXCLUDE)
+    log.info(
+        f"  [{idx+1:02}/{total}] {meta['title'][:38]:<38} | "
+        f"{meta['company'][:18]:<18} | {loc_str[:22]:<22} | "
+        f"{'SKIP:title' if title_skip else '→ checking'}"
+    )
+
+    if title_skip:
+        counts["skipped"] = counts.get("skipped", 0) + 1
+        _records.append(JobRecord(
+            job_id=job_id, title=meta["title"], company=meta["company"],
+            location=meta["location"], keyword=keyword,
+            status="skipped", url=meta["url"], note="title_excluded",
+        ))
+        human_wait(0.5, 1.0)
+        return
+
+    driver.execute_script(_JS_SCROLL, job_el)
+    try:
+        job_el.click()
+    except Exception:
+        driver.execute_script(_JS_CLICK, job_el)
+    human_wait(1.0, 2.5)
+
+    desc          = get_job_description(driver)
+    contact_email = extract_email(desc)
+    if contact_email:
+        log.info(f"    Found email: {contact_email}")
+
+    status = run_easy_apply(driver, wait) if el_exists(driver, EASY_BTN) else "skipped"
+    counts[status] = counts.get(status, 0) + 1
+    _records.append(JobRecord(
+        job_id=job_id, title=meta["title"], company=meta["company"],
+        location=meta["location"], keyword=keyword, status=status,
+        url=meta["url"], skills_mentioned=extract_skills(desc),
+        contact_email=contact_email,
+    ))
+
+    if status != "applied":
+        human_wait(2.0, 4.5)
+        return
+
+    human_wait(8.0, 18.0)
+    if counts["applied"] % SESSION_BREAK_EVERY == 0:
+        pause = random.uniform(*SESSION_BREAK_SECS)
+        log.info(f"  [anti-detect] Session break {pause:.0f}s after {counts['applied']} applies")
+        time.sleep(pause)
+    if counts["applied"] >= MAX_APPLIES_PER_SESSION:
+        log.info(f"  [anti-detect] Hit session cap ({MAX_APPLIES_PER_SESSION}) — stopping.")
+        raise StopIteration
+
+
+def _process_page(driver, wait, keyword, location, page, counts, seen_ids) -> bool:
+    """Load one results page and process all jobs on it. Returns False if no jobs."""
+    start = page * JOBS_PER_PAGE
+    log.info(f"  Page {page+1} (start={start})")
+    try:
+        driver.get(search_url(keyword, start, location))
+        human_wait(2.0, 3.5)
+    except InvalidSessionIdException:
+        log.error("Chrome session lost — exiting.")
+        raise
+
+    try:
+        WebDriverWait(driver, WAIT_SEC).until(
+            EC.presence_of_element_located((By.XPATH, "//li[@data-occludable-job-id]"))
+        )
+    except TimeoutException:
+        log.info(f"  Page {page+1}: no jobs — stopping keyword.")
+        return False
+
+    job_els = driver.find_elements(By.XPATH, "//li[@data-occludable-job-id]")
+    log.info(f"  Page {page+1}: {len(job_els)} jobs")
+    for idx, job_el in enumerate(job_els):
+        try:
+            _process_job(driver, wait, job_el, idx, len(job_els), keyword, counts, seen_ids)
+        except (InvalidSessionIdException, StopIteration):
+            raise
+        except StaleElementReferenceException:
+            log.warning(f"  [{idx+1}] Stale element — skip")
+        except Exception as e:
+            log.error(f"  [{idx+1}] Error: {e}")
+            counts["error"] += 1
+            emergency_close(driver, wait)
+    return True
+
+
+def _process_keyword(driver, wait, keyword, location, counts, seen_ids):
+    loc_tag = f" [{location}]" if location else " [general]"
+    log.info(f"\n{'─'*60}")
+    log.info(f"  Keyword: {keyword}{loc_tag}")
+    log.info(f"{'─'*60}")
+    time.sleep(random.uniform(8, 25))
+    for page in range(PAGES_PER_KEYWORD):
+        if not _process_page(driver, wait, keyword, location, page, counts, seen_ids):
+            break
+
+
+def _run_session(driver, wait, counts, seen_ids):
+    for location in LOCATIONS:
+        for keyword in KEYWORDS:
+            _process_keyword(driver, wait, keyword, location, counts, seen_ids)
+
+
+def _log_summary(counts, seen_ids):
+    log.info("=" * 60)
+    log.info("  RUN SUMMARY")
+    log.info("=" * 60)
+    log.info(f"  Applied  : {counts['applied']}")
+    log.info(f"  Skipped  : {counts['skipped']}")
+    log.info(f"  Errors   : {counts['error']}")
+    log.info(f"  Dry-run  : {counts.get('dry_run', 0)}")
+    log.info(f"  Unique jobs seen: {len(seen_ids)}")
+    applied_recs = [r for r in _records if r.status == "applied"]
+    if applied_recs:
+        log.info("")
+        log.info("  Jobs applied to:")
+        for r in applied_recs:
+            log.info(f"    {r.title[:40]:<40} @ {r.company[:25]:<25}  {r.location[:20]}")
+    skipped_counts: dict = {}
+    for r in _records:
+        if r.status == "skipped":
+            reason = r.note or "unknown"
+            skipped_counts[reason] = skipped_counts.get(reason, 0) + 1
+    if skipped_counts:
+        log.info("")
+        log.info("  Skipped reasons:")
+        for reason, cnt in sorted(skipped_counts.items(), key=lambda x: -x[1]):
+            log.info(f"    {reason:<30} {cnt:>4}")
+    try:
+        import sys as _sys, os as _os
+        _sys.path.insert(0, _os.path.dirname(__file__))
+        from library.gsheets import sync_jobs
+        sync_jobs([asdict(r) for r in _records], platform="LinkedIn")
+        log.info("  Synced to Google Sheets.")
+    except Exception as e:
+        log.warning(f"  Google Sheets sync skipped: {e}")
+    log.info(f"  Run folder: {RUN_DIR}")
+    log.info("=" * 60)
+
+
+# ── Main ──────────────────────────────────────────────────────────────────────
 def run():
     mode = "DRY-RUN (no submissions)" if args.dry_run else "LIVE"
     log.info("=" * 60)
     loc_label = ", ".join(l if l else "general" for l in LOCATIONS)
-    log.info(f"  LinkedIn Easy Apply PA  |  {len(KEYWORDS)} keywords × {len(LOCATIONS)} locations × {PAGES_PER_KEYWORD} pages  |  {mode}")
+    log.info(
+        f"  LinkedIn Easy Apply PA  |  {len(KEYWORDS)} keywords × "
+        f"{len(LOCATIONS)} locations × {PAGES_PER_KEYWORD} pages  |  "
+        f"{mode}  |  cap={MAX_APPLIES_PER_SESSION}"
+    )
     log.info(f"  Locations: {loc_label}")
     log.info(f"  Run folder: {RUN_DIR}")
     log.info("=" * 60)
+    if not args.dry_run:
+        _jitter = random.randint(0, 75)
+        log.info(f"  Startup jitter: sleeping {_jitter}s...")
+        time.sleep(_jitter)
 
-    driver = init_driver()
-    wait   = WebDriverWait(driver, WAIT_SEC)
-    counts  = {"applied": 0, "skipped": 0, "error": 0, "dry_run": 0}
+    driver   = init_driver()
+    wait     = WebDriverWait(driver, WAIT_SEC)
+    counts   = {"applied": 0, "skipped": 0, "error": 0, "dry_run": 0}
     seen_ids: set[str] = set()
 
     try:
-        login(driver, wait)
-
-        for location in LOCATIONS:
-            for keyword in KEYWORDS:
-                loc_tag = f" [{location}]" if location else " [general]"
-                log.info(f"\n{'─'*60}")
-                log.info(f"  Keyword: {keyword}{loc_tag}")
-                log.info(f"{'─'*60}")
-
-                for page in range(PAGES_PER_KEYWORD):
-                    start = page * JOBS_PER_PAGE
-                    log.info(f"  Page {page+1} (start={start})")
-                    try:
-                        driver.get(search_url(keyword, start, location))
-                        human_wait(2.0, 3.5)
-                    except InvalidSessionIdException:
-                        log.error("Chrome session lost — exiting.")
-                        raise
-
-                    try:
-                        WebDriverWait(driver, WAIT_SEC).until(
-                            EC.presence_of_element_located((By.XPATH, "//li[@data-occludable-job-id]"))
-                        )
-                    except TimeoutException:
-                        log.info(f"  Page {page+1}: no jobs — stopping keyword.")
-                        break
-
-                    job_els = driver.find_elements(By.XPATH, "//li[@data-occludable-job-id]")
-                    log.info(f"  Page {page+1}: {len(job_els)} jobs")
-
-                    for idx, job_el in enumerate(job_els):
-                        try:
-                            meta   = get_job_meta(driver, job_el)
-                            job_id = meta["job_id"]
-                            if not job_id or job_id in seen_ids:
-                                continue
-                            seen_ids.add(job_id)
-
-                            title_low = meta["title"].lower()
-                            loc_str   = meta.get("location", "") or "?"
-                            title_skip = any(tok in title_low for tok in TITLE_EXCLUDE)
-                            log.info(
-                                f"  [{idx+1:02}/{len(job_els)}] {meta['title'][:38]:<38} | "
-                                f"{meta['company'][:18]:<18} | {loc_str[:22]:<22} | "
-                                f"{'SKIP:title' if title_skip else '→ checking'}"
-                            )
-
-                            # Skip titles that don't match Oscar's background
-                            if title_skip:
-                                counts["skipped"] = counts.get("skipped", 0) + 1
-                                _records.append(JobRecord(
-                                    job_id=job_id, title=meta["title"],
-                                    company=meta["company"], location=meta["location"],
-                                    keyword=keyword, status="skipped", url=meta["url"],
-                                    note="title_excluded",
-                                ))
-                                human_wait(0.5, 1.0)
-                                continue
-
-                            driver.execute_script("arguments[0].scrollIntoView({block:'center'});", job_el)
-                            try:
-                                job_el.click()
-                            except Exception:
-                                driver.execute_script(_JS_CLICK, job_el)
-                            human_wait(1.0, 2.5)
-
-                            desc = get_job_description(driver)
-                            contact_email = extract_email(desc)
-                            if contact_email:
-                                log.info(f"    Found email: {contact_email}")
-
-                            if not el_exists(driver, EASY_BTN):
-                                status = "skipped"
-                            else:
-                                status = run_easy_apply(driver, wait)
-
-                            counts[status] = counts.get(status, 0) + 1
-                            _records.append(JobRecord(
-                                job_id=job_id,
-                                title=meta["title"],
-                                company=meta["company"],
-                                location=meta["location"],
-                                keyword=keyword,
-                                status=status,
-                                url=meta["url"],
-                                skills_mentioned=extract_skills(desc),
-                                contact_email=contact_email,
-                            ))
-
-                            # ── Anti-detection: paced delays ──────────────────
-                            # Longer wait after each apply (looks human)
-                            if status == "applied":
-                                human_wait(8.0, 18.0)
-                                # Extra break every N applications
-                                if counts["applied"] % SESSION_BREAK_EVERY == 0:
-                                    pause = random.uniform(*SESSION_BREAK_SECS)
-                                    log.info(f"  [anti-detect] Session break {pause:.0f}s after {counts['applied']} applies")
-                                    time.sleep(pause)
-                                # Hard cap
-                                if counts["applied"] >= MAX_APPLIES_PER_SESSION:
-                                    log.info(f"  [anti-detect] Hit session cap ({MAX_APPLIES_PER_SESSION}) — stopping.")
-                                    raise StopIteration
-                            else:
-                                human_wait(2.0, 4.5)
-
-                        except (InvalidSessionIdException, StopIteration):
-                            raise
-                        except StaleElementReferenceException:
-                            log.warning(f"  [{idx+1}] Stale element — skip")
-                        except Exception as e:
-                            log.error(f"  [{idx+1}] Error: {e}")
-                            counts["error"] += 1
-                            emergency_close(driver, wait)
-
+        if args.cookie_file:
+            _load_linkedin_cookies(driver, args.cookie_file)
+            log.info("Cookie-mode: LinkedIn session loaded from file.")
+        else:
+            login(driver, wait)
+        _run_session(driver, wait, counts, seen_ids)
     except StopIteration:
         log.info("  Session cap reached — wrapping up cleanly.")
     except (InvalidSessionIdException, Exception) as e:
@@ -746,44 +821,7 @@ def run():
         except Exception:
             pass
 
-    log.info("=" * 60)
-    log.info("  RUN SUMMARY")
-    log.info("=" * 60)
-    log.info(f"  Applied  : {counts['applied']}")
-    log.info(f"  Skipped  : {counts['skipped']}")
-    log.info(f"  Errors   : {counts['error']}")
-    log.info(f"  Dry-run  : {counts.get('dry_run', 0)}")
-    log.info(f"  Unique jobs seen: {len(seen_ids)}")
-    if _records:
-        applied_recs = [r for r in _records if r.status == "applied"]
-        if applied_recs:
-            log.info("")
-            log.info("  Jobs applied to:")
-            for r in applied_recs:
-                log.info(f"    ✓ {r.title[:40]:<40} @ {r.company[:25]:<25}  {r.location[:20]}")
-        skipped_by_reason: dict = {}
-        for r in _records:
-            if r.status == "skipped":
-                reason = r.note or "unknown"
-                skipped_by_reason[reason] = skipped_by_reason.get(reason, 0) + 1
-        if skipped_by_reason:
-            log.info("")
-            log.info("  Skipped reasons:")
-            for reason, cnt in sorted(skipped_by_reason.items(), key=lambda x: -x[1]):
-                log.info(f"    {reason:<30} {cnt:>4}")
-
-    # ── Sync to Google Sheets ──────────────────────────────────────────────────
-    try:
-        import sys, os
-        sys.path.insert(0, os.path.dirname(__file__))
-        from library.gsheets import sync_jobs
-        sync_jobs([asdict(r) for r in _records], platform="LinkedIn")
-        log.info("  Synced to Google Sheets.")
-    except Exception as e:
-        log.warning(f"  Google Sheets sync skipped: {e}")
-
-    log.info(f"  Run folder: {RUN_DIR}")
-    log.info("=" * 60)
+    _log_summary(counts, seen_ids)
 
 
 if __name__ == "__main__":
