@@ -26,7 +26,9 @@ from typing import Optional
 from urllib.parse import quote_plus
 
 from dotenv import load_dotenv
-from selenium import webdriver
+import sys as _sys, os as _os; _sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
+import library.uc_compat  # noqa: F401
+import undetected_chromedriver as uc
 from selenium.common.exceptions import (
     ElementClickInterceptedException,
     ElementNotInteractableException,
@@ -216,19 +218,23 @@ def extract_skills(text: str) -> str:
     return ", ".join(s for s in SKILLS if s in text.lower())
 
 # ── Driver ────────────────────────────────────────────────────────────────────
-def init_driver() -> webdriver.Chrome:
-    """Non-headless — Indeed detects headless and shows CAPTCHA."""
-    opts = webdriver.ChromeOptions()
-    opts.add_argument("--disable-blink-features=AutomationControlled")
-    opts.add_experimental_option("excludeSwitches", ["enable-automation"])
-    opts.add_experimental_option("useAutomationExtension", False)
+CHROME_PROFILE = os.path.expanduser("~/.chrome-indeed-profile")
+
+def init_driver() -> uc.Chrome:
+    """Persistent profile so Indeed session cookies survive between runs."""
+    for lock in ["SingletonLock", "SingletonCookie", "SingletonSocket"]:
+        p = os.path.join(CHROME_PROFILE, lock)
+        if os.path.exists(p) or os.path.islink(p):
+            try:
+                os.remove(p)
+            except Exception:
+                pass
+    opts = uc.ChromeOptions()
+    opts.add_argument("--no-sandbox")
+    opts.add_argument("--disable-dev-shm-usage")
     opts.add_argument("--start-maximized")
-    driver = webdriver.Chrome(options=opts)
-    driver.execute_cdp_cmd(
-        "Page.addScriptToEvaluateOnNewDocument",
-        {"source": "Object.defineProperty(navigator,'webdriver',{get:()=>undefined})"},
-    )
-    return driver
+    opts.add_argument(f"--user-data-dir={CHROME_PROFILE}")
+    return uc.Chrome(options=opts, use_subprocess=True, version_main=147)
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 def el_exists(driver, xpath, timeout=2) -> bool:
@@ -524,7 +530,7 @@ def run():
     log.info(f"  Run folder: {RUN_DIR}")
     log.info("=" * 60)
 
-    driver = init_driver()
+    driver = init_driver()  # type: ignore[assignment]
     wait   = WebDriverWait(driver, WAIT_SEC)
     counts: dict[str, int] = {}
 
@@ -551,6 +557,10 @@ def run():
                         "//div[contains(@class,'job_seen_beacon')]",
                         "//div[contains(@class,'resultContent')]",
                         "//li[.//h2[contains(@class,'jobTitle')]]",
+                        "//div[@data-testid='jobsearch-ResultsList']//li[.//h2]",
+                        "//ul[contains(@class,'jobsearch-ResultsList')]//li",
+                        "//div[contains(@class,'tapItem')]",
+                        "//li[contains(@class,'css-') and .//a[contains(@href,'/viewjob')]]",
                     ]
                     cards = []
                     found_cards = False
