@@ -8,7 +8,26 @@
       "Bash(python3 scripts/041_glassdoor_apply.py --max-applies 20 --pages 3)",
       "Bash(echo \"Glassdoor PID: $!\")",
       "Bash(python3 -c ' *)",
-      "Bash(git -C /Users/oscarleung/verbose-octo-carnival ls-files)"
+      "Bash(git -C /Users/oscarleung/verbose-octo-carnival ls-files)",
+      "Bash(sed -i '' 's|_os.path.dirname\\(_os.path.abspath\\(__file__\\)\\)|_os.path.dirname\\(_os.path.dirname\\(_os.path.abspath\\(__file__\\)\\)\\)|g' /Users/oscarleung/verbose-octo-carnival/scripts/036_handshake_apply_pa.py /Users/oscarleung/verbose-octo-carnival/scripts/039_handshake_follow_employers.py /Users/oscarleung/verbose-octo-carnival/scripts/040_handshake_people_jobs.py /Users/oscarleung/verbose-octo-carnival/scripts/041_glassdoor_apply.py)",
+      "Bash(sed -i '' 's/return uc\\\\.Chrome\\(options=opts, use_subprocess=True\\)/return uc.Chrome\\(options=opts, use_subprocess=True, version_main=147\\)/g' /Users/oscarleung/verbose-octo-carnival/scripts/036_handshake_apply_pa.py /Users/oscarleung/verbose-octo-carnival/scripts/039_handshake_follow_employers.py /Users/oscarleung/verbose-octo-carnival/scripts/040_handshake_people_jobs.py /Users/oscarleung/verbose-octo-carnival/scripts/041_glassdoor_apply.py)",
+      "Bash(awk '{print \"Running: PID\", $2}')",
+      "Bash(pkill -f \"041_glassdoor\")",
+      "Bash(rm -f ~/.chrome-glassdoor-profile/SingletonLock ~/.chrome-glassdoor-profile/SingletonCookie ~/.chrome-glassdoor-profile/SingletonSocket)",
+      "Bash(python3 041_glassdoor_apply.py --max-applies 20 --pages 3)",
+      "Bash(echo \"PID: $!\")",
+      "Bash(git -C /Users/oscarleung/verbose-octo-carnival add scripts/035_linkedin_easy_apply_pa.py scripts/037_indeed_apply.py scripts/038_greenhouse_apply.py library/uc_compat.py)",
+      "Bash(git -C /Users/oscarleung/verbose-octo-carnival diff --name-only HEAD)",
+      "Bash(git -C /Users/oscarleung/verbose-octo-carnival diff --cached --name-only)",
+      "Bash(git -C /Users/oscarleung/verbose-octo-carnival show HEAD --stat)",
+      "Bash(git -C /Users/oscarleung/verbose-octo-carnival status library/ scripts/037_indeed_apply.py scripts/038_greenhouse_apply.py)",
+      "Bash(git -C /Users/oscarleung/verbose-octo-carnival branch)",
+      "Bash(git -C /Users/oscarleung/verbose-octo-carnival log --oneline -5)",
+      "Bash(git -C /Users/oscarleung/verbose-octo-carnival diff --cached --stat)",
+      "Bash(python -m py_compile scripts/038_greenhouse_apply.py)"
+    ],
+    "additionalDirectories": [
+      "/tmp"
     ]
   }
 }
