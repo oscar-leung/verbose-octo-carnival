@@ -44,17 +44,21 @@ load_dotenv()
 
 # ── CLI ───────────────────────────────────────────────────────────────────────
 parser = argparse.ArgumentParser()
-parser.add_argument("--dry-run", action="store_true", help="Collect data, do not submit")
-parser.add_argument("--resume", metavar="RUN_DIR", help="Resume a previous run")
+parser.add_argument("--dry-run",     action="store_true", help="Collect data, do not submit")
+parser.add_argument("--resume",      metavar="RUN_DIR",   help="Resume a previous run")
 parser.add_argument("--max-applies", type=int, default=30, help="Max applications per session (default 30)")
+parser.add_argument("--cookie-file", metavar="FILE",
+                    help="Load Handshake cookies from JSON and use headless Chrome (PythonAnywhere mode). "
+                         "Generate with: python scripts/export_handshake_cookies.py")
 args = parser.parse_args()
 
 # ── Config ────────────────────────────────────────────────────────────────────
 TOTAL_PAGES     = 20   # reduced — we iterate multiple searches instead
-APPLY_PAUSE_MIN = 1.2
-APPLY_PAUSE_MAX = 2.5
+APPLY_PAUSE_MIN = 1.5
+APPLY_PAUSE_MAX = 3.5
 SAVE_EVERY      = 5
-MAX_APPLIES     = args.max_applies
+_base_applies   = args.max_applies if args.max_applies is not None else 20
+MAX_APPLIES     = random.randint(max(1, _base_applies - 3), _base_applies + 3)
 
 COVER_LETTER_NAME = "HandShake Cover Letter"
 TRANSCRIPT_NAME   = "0JH7198571 | SJSU Transcript | Oscar Leung"
@@ -268,6 +272,36 @@ def init_driver() -> uc.Chrome:
     # NOT headless — Cloudflare Turnstile blocks headless browsers
     return uc.Chrome(options=opts, use_subprocess=True, version_main=147)
 
+
+def init_driver_headless() -> webdriver.Chrome:
+    """Standard headless Chrome for PythonAnywhere (no display available)."""
+    opts = webdriver.ChromeOptions()
+    opts.add_argument("--headless=new")
+    opts.add_argument("--no-sandbox")
+    opts.add_argument("--disable-dev-shm-usage")
+    opts.add_argument("--disable-gpu")
+    opts.add_argument("--window-size=1920,1080")
+    opts.add_argument("--disable-blink-features=AutomationControlled")
+    opts.add_experimental_option("excludeSwitches", ["enable-automation"])
+    return webdriver.Chrome(options=opts)
+
+
+def load_cookies(drv: webdriver.Chrome, cookie_file: str):
+    """Inject cookies from a JSON file exported by export_handshake_cookies.py."""
+    drv.get("https://app.joinhandshake.com")
+    time.sleep(2)
+    with open(cookie_file) as f:
+        cookies = json.load(f)
+    for c in cookies:
+        c.pop("sameSite", None)
+        try:
+            drv.add_cookie(c)
+        except Exception:
+            pass
+    drv.refresh()
+    time.sleep(3)
+
+
 # ── Browser helpers ───────────────────────────────────────────────────────────
 driver: webdriver.Chrome = None   # set in main
 
@@ -380,8 +414,13 @@ def collect_job_data(index: int, page: int, apply_type: str = "unknown") -> dict
     location_raw = safe_text("//*[@data-hook='location'] | //*[@data-hook='job-location']", timeout=1)
     job_type     = safe_text("//*[@data-hook='job-type'] | //*[@data-hook='employment-type']", timeout=1)
 
-    work_auth_raw      = safe_text("//*[@data-hook='work-auth-title']", timeout=1)
-    work_auth_required = "yes" if "required" in work_auth_raw.lower() else "no" if work_auth_raw else ""
+    work_auth_raw = safe_text("//*[@data-hook='work-auth-title']", timeout=1)
+    if "required" in work_auth_raw.lower():
+        work_auth_required = "yes"
+    elif work_auth_raw:
+        work_auth_required = "no"
+    else:
+        work_auth_required = ""
     visa_text          = safe_text(
         "//*[contains(normalize-space(),'visa sponsor') or contains(normalize-space(),'OPT')]", timeout=1
     )
@@ -404,9 +443,15 @@ def collect_job_data(index: int, page: int, apply_type: str = "unknown") -> dict
     loc  = parse_location(location_raw)
     dl   = parse_deadline(deadline_raw)
     pd, days = parse_posted(posted_raw)
-    emp  = ("full-time" if "full" in job_type.lower() else
-            "internship" if "intern" in job_type.lower() else
-            "part-time" if "part" in job_type.lower() else job_type.lower())
+    jt = job_type.lower()
+    if "full" in jt:
+        emp = "full-time"
+    elif "intern" in jt:
+        emp = "internship"
+    elif "part" in jt:
+        emp = "part-time"
+    else:
+        emp = jt
 
     return {
         "page": page, "index": index,
@@ -457,262 +502,276 @@ EXTERNAL_XPATH = (
 APPLY_XPATH   = "//button[@aria-label='Apply'] | //button[.//span[normalize-space()='Apply']]"
 SUBMIT_XPATH  = "//button[normalize-space()='Submit Application']"
 
+# ── Card helpers ──────────────────────────────────────────────────────────────
+def _click_card_link(card):
+    link = None
+    for lxp in [".//a[@role='button']", ".//a[contains(@href,'/jobs/')]", ".//a"]:
+        try:
+            link = card.find_element(By.XPATH, lxp)
+            break
+        except Exception:
+            pass
+    if link is None:
+        driver.execute_script(_JS_CLICK, card)
+    else:
+        driver.execute_script("arguments[0].scrollIntoView({block:'center'});", link)
+        driver.execute_script(_JS_CLICK, link)
+
+
+def _detect_apply_type() -> str:
+    if el_exists(ALREADY_APPLIED_XPATH, timeout=1):
+        return "easy_apply"
+    if el_exists(EXTERNAL_XPATH, timeout=1):
+        return "external"
+    if el_exists(APPLY_XPATH, timeout=2):
+        return "easy_apply"
+    return "unknown"
+
+
+def _skip_status(apply_type: str, title: str, loc_str: str) -> str | None:
+    """Return skip-status key if this card should be skipped, else None."""
+    if not title_ok(title):
+        return "skipped_title"
+    if not location_ok(loc_str):
+        return "skipped_location"
+    if el_exists(ALREADY_APPLIED_XPATH, timeout=1):
+        return "skipped_already_applied"
+    if apply_type == "external":
+        return "skipped_external"
+    if apply_type != "easy_apply":
+        return "skipped_no_button"
+    if args.dry_run:
+        return "dry_run"
+    return None
+
+
+def _submit_application(title: str, company: str) -> str:
+    """Execute apply flow. Returns final status key."""
+    fast_click(APPLY_XPATH)
+    time.sleep(random.uniform(0.8, 1.4))
+    attach_doc("Search your resumes",       RESUME_NAME)
+    attach_doc("Search your cover letters", COVER_LETTER_NAME)
+    attach_doc("Search your transcripts",   TRANSCRIPT_NAME)
+    time.sleep(0.3)
+    if not el_exists(SUBMIT_XPATH, timeout=3):
+        logging.warning("    No Submit button — closing modal")
+        close_modal()
+        return "skipped_no_submit_button"
+    fast_click(SUBMIT_XPATH)
+    time.sleep(random.uniform(APPLY_PAUSE_MIN, APPLY_PAUSE_MAX))
+    dismiss_post_submit()
+    logging.info(f"    Applied to {title[:40]} @ {company[:25]}")
+    return "applied"
+
+
+def process_card(idx, page, n):
+    job_data = {"page": page, "index": idx + 1, "apply_type": "unknown",
+                "status": "pending", "timestamp": datetime.now().isoformat()}
+    try:
+        all_cards = find_cards()
+        if idx >= len(all_cards):
+            return None
+
+        _click_card_link(all_cards[idx])
+        time.sleep(random.uniform(0.7, 1.3))
+
+        apply_type = _detect_apply_type()
+        job_data   = collect_job_data(idx + 1, page, apply_type)
+
+        jid = job_data.get("job_id", "")
+        if jid and jid in seen_ids:
+            logging.info(f"  [{idx+1}/{n}] Duplicate {jid} — skip")
+            return None
+        if jid:
+            seen_ids.add(jid)
+
+        title   = job_data.get("title", "") or "???"
+        company = job_data.get("company", "") or "???"
+        loc_str = job_data.get("location_raw", "") or "location unknown"
+        sal_tag = f"  {job_data.get('salary_raw','')[:18]}" if job_data.get("salary_raw") else ""
+
+        skip = _skip_status(apply_type, title, loc_str)
+        logging.info(
+            f"  [{idx+1:02}/{n}] {title[:36]:<36} | {company[:18]:<18} | "
+            f"{loc_str[:20]:<20} | {skip or f'APPLY ({apply_type})'}{sal_tag}"
+        )
+
+        status = skip if skip is not None else _submit_application(title, company)
+        job_data["status"] = status
+        record_job(job_data)
+        return status
+
+    except Exception as e:
+        logging.error(f"  Card {idx+1} error: {type(e).__name__}: {e}")
+        try:
+            close_modal()
+        except Exception:
+            pass
+        job_data["status"] = "error"
+        record_job(job_data)
+        return "error"
+
+
+# ── Search helpers ────────────────────────────────────────────────────────────
+def _type_keyword(search_kw: str) -> bool:
+    """Navigate to job search and type keyword. Returns False if input not found."""
+    driver.get("https://app.joinhandshake.com/job-search/")
+    time.sleep(random.uniform(2.0, 3.0))
+    for xp in [
+        "//input[@placeholder='Search jobs, companies, or keywords']",
+        "//input[contains(@placeholder,'Search jobs')]",
+        "//input[contains(@placeholder,'Search')][@type='search']",
+        "//input[@type='search']",
+        "//input[@name='query']",
+    ]:
+        if el_exists(xp, timeout=3):
+            try:
+                box = driver.find_element(By.XPATH, xp)
+                box.clear()
+                box.send_keys(search_kw)
+                box.send_keys(Keys.RETURN)
+                time.sleep(random.uniform(2.5, 3.5))
+                return True
+            except Exception:
+                pass
+    return False
+
+
+def _process_page(page: int) -> bool:
+    """Process one result page. Returns True if apply cap was hit."""
+    if page > 1:
+        driver.execute_script("window.scrollTo(0, 0);")
+        time.sleep(0.3)
+        next_btn = f"//button[@value='{page}' and not(@aria-current='page')]"
+        if not el_exists(next_btn, timeout=4):
+            logging.info("  No next page — moving to next search.")
+            return False
+        fast_click(next_btn)
+        time.sleep(random.uniform(1.5, 2.5))
+
+    n = len(find_cards())
+    logging.info(f"  {n} cards on page {page}")
+    for idx in range(n):
+        processed = Counter(j["status"] for j in all_jobs)
+        if processed.get("applied", 0) + processed.get("dry_run", 0) >= MAX_APPLIES:
+            return True
+        process_card(idx, page, n)
+
+    _flush(force=True)
+    logging.info(f"  Page {page} done: {dict(Counter(j['status'] for j in all_jobs))}")
+    time.sleep(random.uniform(2.0, 3.0))
+    return False
+
+
+def run_search(search_kw, search_loc):
+    logging.info(f"\n{'='*60}")
+    logging.info(f"  SEARCH: {search_kw!r}  |  location: {search_loc or 'any (post-filter)'}")
+    logging.info(f"{'='*60}")
+
+    if not _type_keyword(search_kw):
+        logging.warning("  Could not find search input — skipping this keyword.")
+        return False
+
+    for page in range(1, TOTAL_PAGES + 1):
+        if Counter(j["status"] for j in all_jobs).get("applied", 0) >= MAX_APPLIES:
+            return True
+        logging.info(f"  PAGE {page}/{TOTAL_PAGES}  |  applied so far: "
+                     f"{Counter(j['status'] for j in all_jobs).get('applied', 0)}")
+        if _process_page(page):
+            return True
+
+    return False
+
+
 # ── Main ──────────────────────────────────────────────────────────────────────
+def _ensure_logged_in(username: str, password: str):
+    """Log in via credentials if the persistent profile session has expired."""
+    driver.get("https://app.joinhandshake.com/explore")
+    time.sleep(3)
+    if el_exists("//nav | //a[contains(@href,'/jobs')] | //a[contains(@href,'/explore')]", timeout=5):
+        logging.info("Session active (persistent profile).")
+        return
+    logging.info("Not logged in — doing fresh login.")
+    driver.get("https://app.joinhandshake.com/login?requested_authentication_method=standard")
+    time.sleep(3)
+    driver.save_screenshot(os.path.join(RUN_DIR, "login_page.png"))
+    WebDriverWait(driver, 20).until(
+        EC.presence_of_element_located((By.ID, "email-address-identifier"))
+    ).send_keys(username)
+    fast_click("//button[normalize-space()='Next']")
+    time.sleep(1.5)
+    fast_click("//a[normalize-space()='Log in another way']")
+    WebDriverWait(driver, 10).until(
+        EC.presence_of_element_located((By.ID, "password"))
+    ).send_keys(password)
+    fast_click("//button[normalize-space()='Log in']")
+    time.sleep(5)
+    logging.info("Logged in.")
+
+
+def _log_summary():
+    counts  = Counter(j["status"] for j in all_jobs)
+    applied = counts.get("applied", 0)
+    skipped = sum(v for k, v in counts.items() if k.startswith("skipped"))
+    logging.info("\n" + "=" * 60)
+    logging.info("  RUN SUMMARY")
+    logging.info("=" * 60)
+    logging.info(f"  Total processed : {len(all_jobs)}")
+    logging.info(f"  Applied         : {applied}")
+    logging.info(f"  Skipped         : {skipped}")
+    logging.info(f"  Errors          : {counts.get('error', 0)}")
+    logging.info("")
+    logging.info("  Breakdown by status:")
+    for status, cnt in sorted(counts.items(), key=lambda x: -x[1]):
+        logging.info(f"    {status:<35} {cnt:>4}  {'█' * min(cnt, 20)}")
+    if applied > 0:
+        logging.info("")
+        logging.info("  Jobs applied to:")
+        for j in all_jobs:
+            if j.get("status") == "applied":
+                logging.info(
+                    f"    {j.get('title','?')[:40]:<40} @ "
+                    f"{j.get('company','?')[:25]:<25}  {j.get('location_raw','')[:20]}"
+                )
+
+
+def _sync_sheets():
+    try:
+        sys.path.insert(0, os.path.dirname(__file__))
+        from library.gsheets import sync_jobs
+        sync_jobs(all_jobs, platform="Handshake")
+        logging.info("  Synced to Google Sheets.")
+    except Exception as e:
+        logging.warning(f"  Google Sheets sync skipped: {e}")
+
+
 def run():
     global driver
 
     mode = "DRY-RUN" if args.dry_run else "LIVE"
-    logging.info(f"Run ID: {RUN_ID}  |  {mode}  →  {RUN_DIR}/")
+    logging.info(f"Run ID: {RUN_ID}  |  {mode}  →  {RUN_DIR}/  |  cap={MAX_APPLIES}")
+    if not args.dry_run:
+        _jitter = random.randint(0, 75)
+        logging.info(f"  Startup jitter: sleeping {_jitter}s...")
+        time.sleep(_jitter)
 
-    username = os.getenv("handshake_email")
-    password = os.getenv("handshake_password")
+    if args.cookie_file:
+        driver = init_driver_headless()
+        load_cookies(driver, args.cookie_file)
+        logging.info("Cookie-mode: session loaded from file.")
+    else:
+        driver = init_driver()
+        _ensure_logged_in(
+            username=os.getenv("handshake_email", ""),
+            password=os.getenv("handshake_password", ""),
+        )
 
-    driver = init_driver()
-
-    # ── Session restore via persistent Chrome profile ─────────────────────────
-    # The persistent profile keeps the Cloudflare fingerprint + session cookies
-    # so we rarely need to log in again. If the session did expire, do a fresh
-    # login and it will be persisted for next time.
-    def is_logged_in() -> bool:
-        return el_exists("//nav | //a[contains(@href,'/jobs')] | //a[contains(@href,'/explore')]", timeout=5)
-
-    def ensure_logged_in():
-        driver.get("https://app.joinhandshake.com/explore")
-        time.sleep(3)
-        if is_logged_in():
-            logging.info("Session active (persistent profile).")
-            return
-        logging.info("Not logged in — doing fresh login.")
-        driver.get("https://app.joinhandshake.com/login?requested_authentication_method=standard")
-        time.sleep(3)
-        driver.save_screenshot(os.path.join(RUN_DIR, "login_page.png"))
-        WebDriverWait(driver, 20).until(
-            EC.presence_of_element_located((By.ID, "email-address-identifier"))
-        ).send_keys(username)
-        fast_click("//button[normalize-space()='Next']")
-        time.sleep(1.5)
-        fast_click("//a[normalize-space()='Log in another way']")
-        WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.ID, "password"))
-        ).send_keys(password)
-        fast_click("//button[normalize-space()='Log in']")
-        time.sleep(5)
-        logging.info("Logged in.")
-
-    ensure_logged_in()
     driver.save_screenshot(os.path.join(RUN_DIR, "post_login.png"))
 
-    def process_card(idx, page, n):
-        """Open one card, collect data, and apply if eligible. Returns new status."""
-        job_data = {"page": page, "index": idx + 1, "apply_type": "unknown",
-                    "status": "pending", "timestamp": datetime.now().isoformat()}
-        try:
-            all_cards = find_cards()
-            if idx >= len(all_cards):
-                return None
-
-            card = all_cards[idx]
-            link = None
-            for lxp in [".//a[@role='button']", ".//a[contains(@href,'/jobs/')]", ".//a"]:
-                try:
-                    link = card.find_element(By.XPATH, lxp)
-                    break
-                except Exception:
-                    pass
-            if link is None:
-                driver.execute_script(_JS_CLICK, card)
-            else:
-                driver.execute_script("arguments[0].scrollIntoView({block:'center'});", link)
-                driver.execute_script(_JS_CLICK, link)
-            time.sleep(random.uniform(0.7, 1.3))
-
-            if el_exists(ALREADY_APPLIED_XPATH, timeout=1):
-                apply_type = "easy_apply"
-            elif el_exists(EXTERNAL_XPATH, timeout=1):
-                apply_type = "external"
-            elif el_exists(APPLY_XPATH, timeout=2):
-                apply_type = "easy_apply"
-            else:
-                apply_type = "unknown"
-
-            job_data = collect_job_data(idx + 1, page, apply_type)
-
-            jid = job_data.get("job_id", "")
-            if jid and jid in seen_ids:
-                logging.info(f"  [{idx+1}/{n}] Duplicate {jid} — skip")
-                return None
-            if jid:
-                seen_ids.add(jid)
-
-            title   = job_data.get("title", "") or "???"
-            company = job_data.get("company", "") or "???"
-            loc_str = job_data.get("location_raw", "") or "location unknown"
-            sal_str = job_data.get("salary_raw", "")
-            sal_tag = f"  💰{sal_str[:18]}" if sal_str else ""
-
-            # Determine outcome tag for the log line
-            if not title_ok(title):
-                outcome = "SKIP:title"
-            elif not location_ok(loc_str):
-                outcome = f"SKIP:location({loc_str[:20]})"
-            elif el_exists(ALREADY_APPLIED_XPATH, timeout=1):
-                outcome = "SKIP:already_applied"
-            elif apply_type == "external":
-                outcome = "SKIP:external"
-            elif apply_type != "easy_apply":
-                outcome = "SKIP:no_button"
-            elif args.dry_run:
-                outcome = "DRY_RUN"
-            else:
-                outcome = f"✓ APPLY ({apply_type})"
-
-            logging.info(
-                f"  [{idx+1:02}/{n}] {title[:36]:<36} | {company[:18]:<18} | "
-                f"{loc_str[:20]:<20} | {outcome}{sal_tag}"
-            )
-
-            # Now execute the outcome
-            if not title_ok(title):
-                job_data["status"] = "skipped_title"
-                record_job(job_data)
-                return "skipped_title"
-
-            if not location_ok(loc_str):
-                job_data["status"] = "skipped_location"
-                record_job(job_data)
-                return "skipped_location"
-
-            if el_exists(ALREADY_APPLIED_XPATH, timeout=1):
-                job_data["status"] = "skipped_already_applied"
-                record_job(job_data)
-                return "skipped_already_applied"
-
-            if apply_type == "external":
-                job_data["status"] = "skipped_external"
-                record_job(job_data)
-                return "skipped_external"
-
-            if apply_type != "easy_apply":
-                job_data["status"] = "skipped_no_button"
-                record_job(job_data)
-                return "skipped_no_button"
-
-            if args.dry_run:
-                job_data["status"] = "dry_run"
-                record_job(job_data)
-                return "dry_run"
-
-            fast_click(APPLY_XPATH)
-            time.sleep(random.uniform(0.8, 1.4))
-            attach_doc("Search your resumes",       RESUME_NAME)
-            attach_doc("Search your cover letters", COVER_LETTER_NAME)
-            attach_doc("Search your transcripts",   TRANSCRIPT_NAME)
-            time.sleep(0.3)
-
-            if not el_exists(SUBMIT_XPATH, timeout=3):
-                logging.warning("    No Submit button — closing modal")
-                close_modal()
-                job_data["status"] = "skipped_no_submit_button"
-                record_job(job_data)
-                return "skipped_no_submit_button"
-
-            fast_click(SUBMIT_XPATH)
-            time.sleep(random.uniform(APPLY_PAUSE_MIN, APPLY_PAUSE_MAX))
-            dismiss_post_submit()
-            logging.info(f"    ✓ Applied to {title[:40]} @ {company[:25]}")
-            job_data["status"] = "applied"
-            record_job(job_data)
-            return "applied"
-
-        except Exception as e:
-            logging.error(f"  Card {idx+1} error: {type(e).__name__}: {e}")
-            try:
-                close_modal()
-            except Exception:
-                pass
-            job_data["status"] = "error"
-            record_job(job_data)
-            return "error"
-
-    def run_search(search_kw, search_loc):
-        """Type keyword into Handshake search bar and paginate through results."""
-        logging.info(f"\n{'='*60}")
-        logging.info(f"  SEARCH: {search_kw!r}  |  location filter: {search_loc or 'any (post-filter)'}")
-        logging.info(f"{'='*60}")
-
-        # Navigate to base search page and type keyword into the search input
-        driver.get("https://app.joinhandshake.com/job-search/")
-        time.sleep(random.uniform(2.0, 3.0))
-
-        search_input_xpaths = [
-            "//input[@placeholder='Search jobs, companies, or keywords']",
-            "//input[contains(@placeholder,'Search jobs')]",
-            "//input[contains(@placeholder,'Search')][@type='search']",
-            "//input[@type='search']",
-            "//input[@name='query']",
-        ]
-        typed = False
-        for xp in search_input_xpaths:
-            if el_exists(xp, timeout=3):
-                try:
-                    box = driver.find_element(By.XPATH, xp)
-                    box.clear()
-                    box.send_keys(search_kw)
-                    box.send_keys(Keys.RETURN)
-                    time.sleep(random.uniform(2.5, 3.5))
-                    typed = True
-                    break
-                except Exception:
-                    pass
-        if not typed:
-            logging.warning("  Could not find search input — skipping this keyword.")
-            return False
-
-        for page in range(1, TOTAL_PAGES + 1):
-            applied_count = Counter(j["status"] for j in all_jobs).get("applied", 0)
-            if applied_count >= MAX_APPLIES:
-                return True  # cap hit
-
-            logging.info(f"  PAGE {page}/{TOTAL_PAGES}  |  applied so far: {applied_count}")
-
-            if page > 1:
-                driver.execute_script("window.scrollTo(0, 0);")
-                time.sleep(0.3)
-                next_btn = f"//button[@value='{page}' and not(@aria-current='page')]"
-                if not el_exists(next_btn, timeout=4):
-                    logging.info("  No next page — moving to next search.")
-                    return False
-                fast_click(next_btn)
-                time.sleep(random.uniform(1.5, 2.5))
-
-            cards = find_cards()
-            n = len(cards)
-            logging.info(f"  {n} cards on page {page}")
-
-            for idx in range(n):
-                # Cap counts both "applied" (live) and "dry_run" so --max-applies
-                # limits iterations the same way in both modes.
-                processed = Counter(j["status"] for j in all_jobs)
-                action_count = processed.get("applied", 0) + processed.get("dry_run", 0)
-                if action_count >= MAX_APPLIES:
-                    return True  # cap hit
-                process_card(idx, page, n)
-
-            _flush(force=True)
-            counts = Counter(j["status"] for j in all_jobs)
-            logging.info(f"  Page {page} done: {dict(counts)}")
-            time.sleep(random.uniform(2.0, 3.0))
-
-        return False
-
     for search_kw in SEARCH_KEYWORDS:
-        processed = Counter(j["status"] for j in all_jobs)
+        processed    = Counter(j["status"] for j in all_jobs)
         action_count = processed.get("applied", 0) + processed.get("dry_run", 0)
-        if action_count >= MAX_APPLIES:
-            logging.info(f"  Session cap ({MAX_APPLIES}) reached — stopping.")
-            break
-        cap_hit = run_search(search_kw, "")
-        if cap_hit:
+        if action_count >= MAX_APPLIES or run_search(search_kw, ""):
             logging.info(f"  Session cap ({MAX_APPLIES}) reached — stopping.")
             break
 
@@ -722,39 +781,8 @@ def run():
     except Exception:
         pass
 
-    logging.info("\n" + "=" * 60)
-    logging.info("  RUN SUMMARY")
-    logging.info("=" * 60)
-    counts = Counter(j["status"] for j in all_jobs)
-    total   = len(all_jobs)
-    applied = counts.get("applied", 0)
-    skipped = sum(v for k, v in counts.items() if k.startswith("skipped"))
-    errors  = counts.get("error", 0)
-    logging.info(f"  Total processed : {total}")
-    logging.info(f"  Applied         : {applied}")
-    logging.info(f"  Skipped         : {skipped}")
-    logging.info(f"  Errors          : {errors}")
-    logging.info("")
-    logging.info("  Breakdown by status:")
-    for status, cnt in sorted(counts.items(), key=lambda x: -x[1]):
-        bar = "█" * min(cnt, 20)
-        logging.info(f"    {status:<35} {cnt:>4}  {bar}")
-    if applied > 0:
-        logging.info("")
-        logging.info("  Jobs applied to:")
-        for j in all_jobs:
-            if j.get("status") == "applied":
-                logging.info(f"    ✓ {j.get('title','?')[:40]:<40} @ {j.get('company','?')[:25]:<25}  {j.get('location_raw','')[:20]}")
-
-    # ── Sync to Google Sheets ──────────────────────────────────────────────────
-    try:
-        sys.path.insert(0, os.path.dirname(__file__))
-        from library.gsheets import sync_jobs
-        sync_jobs(all_jobs, platform="Handshake")
-        logging.info("  Synced to Google Sheets.")
-    except Exception as e:
-        logging.warning(f"  Google Sheets sync skipped: {e}")
-
+    _log_summary()
+    _sync_sheets()
     logging.info(f"  JSON → {DATA_FILE}")
     logging.info(f"  CSV  → {CSV_FILE}")
 
