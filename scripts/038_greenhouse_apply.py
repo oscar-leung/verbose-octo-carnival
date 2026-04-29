@@ -38,7 +38,9 @@ from typing import Optional
 from urllib.parse import quote_plus
 
 from dotenv import load_dotenv
-from selenium import webdriver
+import sys as _sys, os as _os; _sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
+import library.uc_compat  # noqa: F401
+import undetected_chromedriver as uc
 from selenium.common.exceptions import (
     ElementClickInterceptedException,
     ElementNotInteractableException,
@@ -55,8 +57,10 @@ load_dotenv()
 # ── CLI ───────────────────────────────────────────────────────────────────────
 parser = argparse.ArgumentParser()
 parser.add_argument("--dry-run", action="store_true", help="Collect data, do not submit")
-parser.add_argument("--google-pages", type=int, default=10,
-                    help="Google result pages to scrape per query (default 10, ~100 jobs)")
+parser.add_argument("--google-pages", type=int, default=20,
+                    help="Google result pages to scrape per query (default 20, ~200 jobs)")
+parser.add_argument("--max-applies", type=int, default=50,
+                    help="Max applications to submit per run (default 50)")
 args = parser.parse_args()
 
 # ── Config ────────────────────────────────────────────────────────────────────
@@ -231,22 +235,23 @@ def dismiss_modal(driver):
         pass
 
 # ── Driver ────────────────────────────────────────────────────────────────────
-def init_driver() -> webdriver.Chrome:
-    opts = webdriver.ChromeOptions()
-    opts.add_argument("--disable-blink-features=AutomationControlled")
-    opts.add_experimental_option("excludeSwitches", ["enable-automation"])
-    opts.add_experimental_option("useAutomationExtension", False)
+CHROME_PROFILE = os.path.expanduser("~/.chrome-greenhouse-profile")
+
+def init_driver() -> uc.Chrome:
+    """Persistent profile + UC driver to pass Google/Bing bot detection."""
+    for lock in ["SingletonLock", "SingletonCookie", "SingletonSocket"]:
+        p = os.path.join(CHROME_PROFILE, lock)
+        if os.path.exists(p) or os.path.islink(p):
+            try:
+                os.remove(p)
+            except Exception:
+                pass
+    opts = uc.ChromeOptions()
+    opts.add_argument("--no-sandbox")
+    opts.add_argument("--disable-dev-shm-usage")
     opts.add_argument("--start-maximized")
-    opts.add_argument(
-        "user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
-    )
-    d = webdriver.Chrome(options=opts)
-    d.execute_cdp_cmd(
-        "Page.addScriptToEvaluateOnNewDocument",
-        {"source": "Object.defineProperty(navigator,'webdriver',{get:()=>undefined})"},
-    )
-    return d
+    opts.add_argument(f"--user-data-dir={CHROME_PROFILE}")
+    return uc.Chrome(options=opts, use_subprocess=True, version_main=147)
 
 # ── Google site: search ───────────────────────────────────────────────────────
 def google_search_url(query: str, start: int) -> str:
@@ -630,12 +635,12 @@ def apply_to_job(driver, wait) -> tuple[str, str]:
 def run():
     mode = "DRY-RUN" if args.dry_run else "LIVE"
     log.info("=" * 60)
-    log.info(f"  Greenhouse via Google site: search  |  {args.google_pages} pages  |  {mode}")
+    log.info(f"  Greenhouse via Google site: search  |  {args.google_pages} pages  |  max {args.max_applies} applies  |  {mode}")
     log.info(f"  Query: {GOOGLE_QUERY[:80]}...")
     log.info(f"  Run folder: {RUN_DIR}")
     log.info("=" * 60)
 
-    driver = init_driver()
+    driver = init_driver()  # type: ignore[assignment]
     wait   = WebDriverWait(driver, WAIT_SEC)
     counts: dict[str, int] = {}
 
@@ -683,7 +688,7 @@ def run():
         return
 
     # ── Phase 2: apply to each job ────────────────────────────────────────────
-    log.info(f"\n[Phase 2] Applying to {len(job_urls)} jobs...")
+    log.info(f"\n[Phase 2] Applying to {len(job_urls)} jobs (cap: {args.max_applies})...")
 
     for idx, url in enumerate(job_urls, 1):
         if url in _seen_urls:
@@ -717,6 +722,22 @@ def run():
             status, apply_type = apply_to_job(driver, wait)
             log.info(f"  → {apply_type}  |  {status}")
             counts[status] = counts.get(status, 0) + 1
+
+            if status == "applied" and counts.get("applied", 0) >= args.max_applies:
+                log.info(f"  Reached max-applies cap ({args.max_applies}). Stopping.")
+                _records.append(GHJob(
+                    job_id=detail["job_id"], title=detail["title"],
+                    company=detail["company"], location=detail["location"],
+                    status=status, url=url, apply_type=apply_type,
+                    remote_type=detail["remote_type"],
+                    employment_type=detail["employment_type"],
+                    salary_raw=detail["salary_raw"],
+                    skills_mentioned=detail["skills_mentioned"],
+                    contact_email=extract_email(detail["description_full"]),
+                    description_full=detail["description_full"],
+                ))
+                save_all()
+                break
 
             contact_email = extract_email(detail["description_full"])
             if contact_email:
