@@ -83,12 +83,18 @@ KEYWORDS = [
     "Software Quality Engineer",
     "QA Engineer Salesforce",
     "Automation Engineer Python",
+    "Quality Assurance Engineer",
+    "Test Engineer Automation",
+    "Junior QA Engineer",
+    "Entry Level QA Engineer",
     # Software Engineering
     "Software Engineer Python",
     "Software Engineer Java",
     "Backend Engineer Python",
     "Full Stack Engineer",
     "Software Developer Python",
+    "Junior Software Engineer",
+    "Entry Level Software Engineer",
 ]
 
 # Title tokens that don't match Oscar's level/background — skip on sight
@@ -104,23 +110,20 @@ TITLE_EXCLUDE = {
 # Location targeting — searches each keyword in each location
 # Empty string = LinkedIn default (all locations / remote-friendly)
 LOCATIONS = [
-    "",                  # general / remote
+    "",               # global — remote/hybrid filter applied via URL
     "Sacramento, CA",
     "Davis, CA",
-    "San Francisco, CA",
-    "San Jose, CA",
-    "Santa Clara, CA",
-    "Sunnyvale, CA",
+    "California",     # broad CA net catches remote-eligible local roles
 ]
 
 PAGES_PER_KEYWORD = 3    # 25 jobs/page → 75 per keyword
 JOBS_PER_PAGE     = 25
 MODAL_MAX_STEPS   = 20
 WAIT_SEC          = 10
-_base_applies = args.max_applies if args.max_applies is not None else 10
+_base_applies = args.max_applies if args.max_applies is not None else 15
 MAX_APPLIES_PER_SESSION = random.randint(max(1, _base_applies - 2), _base_applies + 2)
-SESSION_BREAK_EVERY     = 4    # Break every 4 applications
-SESSION_BREAK_SECS      = (60, 120)  # 1-2 min break (more human-like)
+SESSION_BREAK_EVERY     = 5    # Break every 5 applications
+SESSION_BREAK_SECS      = (45, 90)  # 45-90s break
 
 # ── Run folder ────────────────────────────────────────────────────────────────
 RUN_ID  = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
@@ -543,10 +546,15 @@ def get_job_meta(driver, job_el) -> dict:
 # ── Search URL ────────────────────────────────────────────────────────────────
 def search_url(keyword: str, start: int, location: str = "") -> str:
     from urllib.parse import quote_plus
-    kw = quote_plus(keyword)
+    kw  = quote_plus(keyword)
     loc = f"&location={quote_plus(location)}" if location else ""
-    # f_LF=f_AL filters for Easy Apply only
-    return f"https://www.linkedin.com/jobs/search/?keywords={kw}&f_LF=f_AL{loc}&start={start}"
+    # f_LF=f_AL  → Easy Apply only
+    # f_WT=2%2C3 → Remote + Hybrid work types
+    # f_E=2%2C3  → Entry Level + Associate experience level
+    return (
+        f"https://www.linkedin.com/jobs/search/?keywords={kw}"
+        f"&f_LF=f_AL&f_WT=2%2C3&f_E=2%2C3{loc}&start={start}"
+    )
 
 # ── Login ─────────────────────────────────────────────────────────────────────
 def login(driver, wait):
