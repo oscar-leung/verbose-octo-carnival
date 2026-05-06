@@ -57,7 +57,7 @@ TOTAL_PAGES     = 20   # reduced — we iterate multiple searches instead
 APPLY_PAUSE_MIN = 1.5
 APPLY_PAUSE_MAX = 3.5
 SAVE_EVERY      = 5
-_base_applies   = args.max_applies if args.max_applies is not None else 20
+_base_applies   = args.max_applies if args.max_applies is not None else 25
 MAX_APPLIES     = random.randint(max(1, _base_applies - 3), _base_applies + 3)
 
 COVER_LETTER_NAME = "HandShake Cover Letter"
@@ -73,10 +73,18 @@ SEARCH_KEYWORDS = [
     "SDET",
     "Software Quality Engineer",
     "Software Engineer",
+    "Quality Assurance Engineer",
+    "Test Automation Engineer",
+    "Junior Software Engineer",
+    "Entry Level Software Engineer",
+    "Junior QA Engineer",
 ]
 
 # Accepted locations — job must match one of these (or be remote/hybrid) to be applied to
-LOCATION_ACCEPT = {"sacramento", "davis", "remote", "hybrid", "anywhere", "nationwide"}
+LOCATION_ACCEPT = {
+    "sacramento", "davis", "remote", "hybrid", "anywhere", "nationwide",
+    "united states", "usa", "u.s.", "california", ", ca", "work from home",
+}
 
 # Titles to skip
 TITLE_EXCLUDE = {
