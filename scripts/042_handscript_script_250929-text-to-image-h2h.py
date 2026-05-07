@@ -51,7 +51,7 @@ CATEGORIES = [
 TASK_ID        = "250929-text-to-image-h2h"
 COOLDOWN       = 10        # seconds between cycles
 WAIT_SEC       = 30        # selenium wait timeout
-DURATION_HOURS = 30
+DURATION_HOURS = 5
 TOTAL_SECONDS  = DURATION_HOURS * 3600
 
 # Speed tuning — set False to disable human jitter entirely
