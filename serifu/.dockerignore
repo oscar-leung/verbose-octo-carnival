@@ -1,0 +1,6 @@
+node_modules
+dist
+e2e/shots
+e2e/episode.webm
+.env
+*.local

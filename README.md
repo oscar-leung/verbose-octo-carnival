@@ -6,6 +6,10 @@ A personal automation toolkit built with Python + Selenium that applies to jobs 
 **LinkedIn:** [linkedin.com/in/oscar-leung](https://www.linkedin.com/in/oscar-leung/)
 **PythonAnywhere:** [pythonanywhere.com/user/holymushy](https://www.pythonanywhere.com/user/holymushy/)
 
+> 🎬 **Also in this repo:** [`serifu/`](serifu/) — a web app for practicing Japanese by
+> voicing anime scenes with friends (synced video, furigana scripts, character roles,
+> rehearsal auto-pause, voice chat). See [`serifu/README.md`](serifu/README.md).
+
 ---
 
 ## What it does
