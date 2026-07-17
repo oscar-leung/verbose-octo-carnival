@@ -55,6 +55,25 @@ Logs are written to `runs/daily_logs/YYYY-MM-DD.log`.
 | 044 | `044_runs_dashboard.py` | Reporting | — | Walks `runs/` + `job_tracker.json` and renders a per-script health view as either a self-contained HTML page (`runs/dashboard.html`) or an ANSI summary in the terminal (`--terminal`) |
 | 045 | `045_dashboard_server.py` | Web dashboard | Flask | Localhost web app (`http://127.0.0.1:5050`) — charts (weekly volume, response rate, top companies), application table, per-company timeline, recruiter directory, job-alert feed, "Scan Gmail now" button that runs 043 in a thread |
 
+### Safeway Deal Tracker (046–048) — "Stocks, but for groceries"
+
+| # | Script | Role | What it does |
+|---|--------|------|--------------|
+| 046 | `046_safeway_deals_scraper.py` | Scraper | Pulls the full weekly deals/coupons gallery from Safeway's public xapi for a store (`--store-id` or `--zip`), writes CSV + XLSX + raw JSON, optional Google Sheets push |
+| 047 | `047_safeway_history_db.py` | History DB | Ingests each scraper run as a weekly snapshot into SQLite (`runs/safeway/safeway.db`) so every product accumulates a price timeline; `--demo` seeds 12 weeks of sample data |
+| 048 | `048_safeway_app.py` | Web app | Localhost Flask app (`http://127.0.0.1:5057`) — this week's deals with search/filter/sort, per-card price sparklines, and per-product "stock chart" pages with BUY/WAIT verdicts (all-time low / great / typical) based on that product's own deal history |
+
+Quick start:
+
+```bash
+python3 047_safeway_history_db.py --demo        # or: --fetch --zip 94107
+python3 048_safeway_app.py                      # open http://127.0.0.1:5057
+```
+
+Weekly refresh (Safeway's ad flips on Wednesdays):
+`python3 047_safeway_history_db.py --fetch --store-id <id>` — each run adds
+one snapshot, and the verdicts get smarter as history accumulates.
+
 ### Web Dashboard (045)
 
 Live UI on top of `043_gmail_job_tracker.py` and `044_runs_dashboard.py`. The
