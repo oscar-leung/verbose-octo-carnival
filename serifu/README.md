@@ -117,11 +117,14 @@ Design notes:
 
 ## Deploying for your friends
 
-Any Node host with WebSocket support works (Railway, Fly.io, Render, a VPS):
+Ready-made configs are included:
 
-```bash
-npm ci && npm run build && npm start   # honors PORT
-```
+- **Render (recommended, free)**: `render.yaml` at the repo root is a Blueprint.
+  On render.com: *New + → Blueprint → connect the GitHub repo → Apply*. Done —
+  you get `https://serifu-….onrender.com`. The free instance sleeps when idle;
+  the first visit after a break takes ~30–60 s to wake.
+- **Fly.io / Railway / any Docker host**: `serifu/Dockerfile` (+ `fly.toml`).
+- **Bare Node host**: `npm ci && npm run build && npm start` (honors `PORT`).
 
 Two caveats:
 
