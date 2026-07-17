@@ -65,7 +65,7 @@ CREATE TABLE IF NOT EXISTS deal_snapshots (
     savings_value REAL,
     start_date    TEXT DEFAULT '',
     end_date      TEXT DEFAULT '',
-    UNIQUE(product_key, captured_at, offer_id)
+    UNIQUE(product_key, captured_at, store_id)
 );
 CREATE INDEX IF NOT EXISTS idx_snapshots_product ON deal_snapshots(product_key, captured_at);
 CREATE INDEX IF NOT EXISTS idx_snapshots_captured ON deal_snapshots(captured_at);
@@ -90,28 +90,68 @@ def get_db(path: Path = DB_PATH) -> sqlite3.Connection:
 def product_key(brand: str, name: str) -> str:
     """Stable product identity across weeks: normalized brand+name slug."""
     raw = f"{brand} {name}".lower().strip()
+    # Split digit/letter boundaries so '16oz' and '16 oz' slug identically.
+    raw = re.sub(r"(?<=\d)(?=[a-z])|(?<=[a-z])(?=\d)", " ", raw)
     return re.sub(r"[^a-z0-9]+", "-", raw).strip("-") or "unknown"
 
 
-MONEY_RE = re.compile(r"\$?\s*(\d+(?:\.\d{1,2})?)")
+MONEY_RE = re.compile(r"\$\s*(\d+(?:\.\d{1,2})?)")
+MULTIBUY_RE = re.compile(r"(?<![\d.$])(\d+)\s*(?:for|/)\s*\$\s*(\d+(?:\.\d{1,2})?)", re.I)
 
 
 def parse_money(text: str) -> float | None:
     """Best-effort dollars from deal text: '$2.99', '2 for $5', 'Save $1.50'.
 
-    Multi-buy deals ('2 for $5') return the effective unit price. Non-price
-    text ('BOGO', 'Member Price') returns None — the row still charts as a
-    deal event, just without a y-value.
+    Multi-buy deals ('Buy 2 for $6', '2/$5') return the effective unit price.
+    Text with no dollar amount — 'BOGO', 'Buy 1 Get 1 Free', '50% off',
+    'Member Price' — returns None; a bare number only counts as dollars when
+    it's the entire string. A wrong guess here is worse than no guess: a fake
+    price_value becomes a permanent bogus all-time low in the history.
     """
     if not text:
         return None
-    t = text.strip()
-    m = re.match(r"(\d+)\s*(?:for|/)\s*\$?\s*(\d+(?:\.\d{1,2})?)", t, re.I)
+    t = str(text).strip()
+    if re.search(r"%|\bfree\b|\bbogo\b", t, re.I):
+        return None
+    m = MULTIBUY_RE.search(t)
     if m:
         qty, total = int(m.group(1)), float(m.group(2))
         return round(total / qty, 2) if qty else None
     m = MONEY_RE.search(t)
-    return float(m.group(1)) if m else None
+    if m:
+        return float(m.group(1))
+    m = re.fullmatch(r"\d+(?:\.\d{1,2})?", t)
+    return float(m.group(0)) if m else None
+
+
+def norm_date(v) -> str:
+    """ISO date from whatever the API sends: ISO strings, datetimes, epoch ms."""
+    if v in (None, ""):
+        return ""
+    s = str(v).strip()
+    if s.isdigit() and len(s) >= 12:
+        return datetime.fromtimestamp(int(s) / 1000).date().isoformat()
+    if re.match(r"\d{4}-\d{2}-\d{2}", s):
+        return s[:10]
+    return s
+
+
+def ad_week_date(offers: list[dict], filename: str | None = None) -> str:
+    """Canonical snapshot date for a batch of offers: the date embedded in the
+    dump filename, else the ad's start_date, else the most recent Wednesday
+    (Safeway's ad flips on Wednesdays). Anchoring to the ad week — not the
+    fetch day — means refetching the same weekly ad on different days
+    collapses onto one captured_at instead of fabricating extra weeks."""
+    if filename:
+        m = re.search(r"(\d{4}-\d{2}-\d{2})", Path(filename).name)
+        if m:
+            return m.group(1)
+    starts = sorted(d for d in (norm_date(o.get("start_date")) for o in offers)
+                    if re.fullmatch(r"\d{4}-\d{2}-\d{2}", d))
+    if starts:
+        return starts[0]
+    d = datetime.now().date()
+    return (d - timedelta(days=(d.weekday() - 2) % 7)).isoformat()
 
 
 def record_run(conn: sqlite3.Connection, captured_at: str, store_id: str,
@@ -124,7 +164,12 @@ def record_run(conn: sqlite3.Connection, captured_at: str, store_id: str,
 
 def ingest_offers(conn: sqlite3.Connection, offers: list[dict], store_id: str,
                   captured_at: str, source: str = "live") -> int:
-    """Ingest one snapshot of normalized offers (046's Deal fields as dicts)."""
+    """Ingest one snapshot of normalized offers (046's Deal fields as dicts).
+
+    One row per (product, week, store): when the same product appears twice in
+    a week (a WeeklySpecial plus a coupon, say), the priced — and if both are
+    priced, cheaper — offer wins, so downstream stats never double-count.
+    """
     n = 0
     for o in offers:
         name = (o.get("title") or o.get("name") or "").strip()
@@ -132,11 +177,21 @@ def ingest_offers(conn: sqlite3.Connection, offers: list[dict], store_id: str,
             continue
         brand = (o.get("brand") or "").strip()
         key = product_key(brand, name)
+        if not brand:
+            # Brand fields flicker week to week on the live API; reattach
+            # brandless offers to the existing product with the same name so
+            # one product's history doesn't split across two keys.
+            row = conn.execute(
+                "SELECT product_key FROM products WHERE lower(name) = lower(?) "
+                "ORDER BY last_seen DESC LIMIT 1", (name,)).fetchone()
+            if row:
+                key = row["product_key"]
         conn.execute(
             """INSERT INTO products (product_key, name, brand, category, image_url, first_seen, last_seen)
                VALUES (?,?,?,?,?,?,?)
                ON CONFLICT(product_key) DO UPDATE SET
-                 last_seen = excluded.last_seen,
+                 first_seen = MIN(products.first_seen, excluded.first_seen),
+                 last_seen  = MAX(products.last_seen,  excluded.last_seen),
                  category  = CASE WHEN products.category  = '' THEN excluded.category  ELSE products.category  END,
                  image_url = CASE WHEN products.image_url = '' THEN excluded.image_url ELSE products.image_url END""",
             (key, name, brand, o.get("category", ""), o.get("image_url", ""),
@@ -144,20 +199,29 @@ def ingest_offers(conn: sqlite3.Connection, offers: list[dict], store_id: str,
         )
         price_text = o.get("price") or o.get("price_text") or ""
         savings_text = o.get("savings") or o.get("savings_text") or ""
-        conn.execute(
-            """INSERT OR IGNORE INTO deal_snapshots
+        cur = conn.execute(
+            """INSERT INTO deal_snapshots
                (product_key, captured_at, store_id, offer_id, offer_type, title,
                 description, price_text, savings_text, price_value, savings_value,
                 start_date, end_date)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+               ON CONFLICT(product_key, captured_at, store_id) DO UPDATE SET
+                 offer_id=excluded.offer_id, offer_type=excluded.offer_type,
+                 title=excluded.title, description=excluded.description,
+                 price_text=excluded.price_text, savings_text=excluded.savings_text,
+                 price_value=excluded.price_value, savings_value=excluded.savings_value,
+                 start_date=excluded.start_date, end_date=excluded.end_date
+               WHERE excluded.price_value IS NOT NULL
+                 AND (deal_snapshots.price_value IS NULL
+                      OR excluded.price_value < deal_snapshots.price_value)""",
             (key, captured_at, store_id, str(o.get("offer_id", "")),
              o.get("offer_type", ""), name, o.get("description", ""),
              price_text, savings_text,
              o.get("price_value", parse_money(price_text)),
              o.get("savings_value", parse_money(savings_text)),
-             o.get("start_date", ""), o.get("end_date", "")),
+             norm_date(o.get("start_date", "")), norm_date(o.get("end_date", ""))),
         )
-        n += 1
+        n += cur.rowcount
     record_run(conn, captured_at, store_id, n, source)
     conn.commit()
     return n
@@ -256,10 +320,23 @@ def seed_demo(conn: sqlite3.Connection, weeks: int = 12, store_id: str = "demo-2
 
 # ── Live fetch (reuses 046 without duplicating its API code) ────────────────
 
+def purge_demo(conn: sqlite3.Connection) -> None:
+    """Real data replaces demo data — otherwise fabricated demo prices merge
+    into live history and permanently skew every all-time-low verdict."""
+    n = conn.execute("DELETE FROM deal_snapshots WHERE store_id LIKE 'demo-%'").rowcount
+    conn.execute("DELETE FROM products WHERE product_key NOT IN "
+                 "(SELECT DISTINCT product_key FROM deal_snapshots)")
+    conn.execute("DELETE FROM runs WHERE source = 'demo'")
+    conn.commit()
+    if n:
+        print(f"  purged {n} demo snapshots (replaced by real data)")
+
+
 def load_scraper_module():
     spec = importlib.util.spec_from_file_location(
         "safeway_scraper", ROOT / "046_safeway_deals_scraper.py")
     mod = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = mod  # required for @dataclass under Py3.11
     spec.loader.exec_module(mod)
     return mod
 
@@ -285,27 +362,29 @@ def main() -> int:
         return 0
 
     if args.from_json:
+        purge_demo(conn)
         scraper = load_scraper_module()
         from dataclasses import asdict
         for path in args.from_json:
             raw = json.loads(Path(path).read_text())
             offers = [asdict(scraper.parse_offer(o)) for o in raw]
-            captured = datetime.now().date().isoformat()
+            captured = ad_week_date(offers, filename=path)
             n = ingest_offers(conn, offers, args.store_id or "", captured)
-            print(f"Ingested {n} offers from {path}")
+            print(f"Ingested {n} offers from {path} as week {captured}")
         return 0
 
     # --fetch
     if not args.store_id and not args.zip:
         ap.error("--fetch needs --store-id or --zip")
+    purge_demo(conn)
     scraper = load_scraper_module()
     from dataclasses import asdict
     store_id = args.store_id or scraper.resolve_store_id(args.zip)
     raw = scraper.fetch_gallery(store_id)
     offers = [asdict(scraper.parse_offer(o)) for o in raw]
-    captured = datetime.now().date().isoformat()
+    captured = ad_week_date(offers)
     n = ingest_offers(conn, offers, store_id, captured)
-    print(f"Ingested {n} live offers for store {store_id} -> {args.db}")
+    print(f"Ingested {n} live offers for store {store_id} as week {captured} -> {args.db}")
     return 0
 
 

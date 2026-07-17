@@ -61,24 +61,49 @@ def db() -> sqlite3.Connection:
     return conn
 
 
-def latest_run_date(conn) -> str | None:
-    row = conn.execute("SELECT MAX(captured_at) d FROM deal_snapshots").fetchone()
+def default_store(conn) -> str:
+    """Store from the most recent ingest — the one the user is tracking now."""
+    row = conn.execute(
+        "SELECT store_id FROM runs ORDER BY captured_at DESC, id DESC LIMIT 1"
+    ).fetchone()
+    return row["store_id"] if row else ""
+
+
+def store_filter(store: str) -> tuple[str, tuple]:
+    """SQL fragment scoping a query to one store. Without this, ingesting two
+    stores into one DB would silently mix their prices in every stat."""
+    return (" AND store_id = ?", (store,)) if store else ("", ())
+
+
+def latest_run_date(conn, store: str = "") -> str | None:
+    frag, params = store_filter(store)
+    row = conn.execute(
+        f"SELECT MAX(captured_at) d FROM deal_snapshots WHERE 1=1{frag}", params
+    ).fetchone()
     return row["d"] if row and row["d"] else None
 
 
-def product_history(conn, key: str) -> list[sqlite3.Row]:
+def product_history(conn, key: str, store: str = "") -> list[sqlite3.Row]:
+    frag, params = store_filter(store)
     return conn.execute(
-        "SELECT * FROM deal_snapshots WHERE product_key = ? ORDER BY captured_at",
-        (key,),
+        f"SELECT * FROM deal_snapshots WHERE product_key = ?{frag} ORDER BY captured_at",
+        (key, *params),
     ).fetchall()
 
 
-def verdict_for(current_price: float | None, past_prices: list[float]) -> str:
-    """Rate the current price against this product's own deal history."""
-    if current_price is None or len(past_prices) < 2:
+def verdict_for(current_price: float | None, past_prices: list[float],
+                times_seen: int = 1) -> str:
+    """Rate the current price against this product's own PAST deals (the
+    current week must be excluded by the caller — comparing a price against
+    itself would make every recurring deal a perpetual 'all-time low')."""
+    if times_seen <= 1:
+        return "new"
+    if current_price is None:
+        return "typical"  # unpriced offer (BOGO/coupon) with real history
+    if len(past_prices) < 2:
         return "new"
     lo = min(past_prices)
-    if current_price <= lo:
+    if current_price < lo:
         return "all-time-low"
     q = statistics.quantiles(past_prices, n=4)
     if current_price <= q[0]:
@@ -163,28 +188,31 @@ def timeline_chart_svg(labels: list[str], prices: list[float | None], low: float
     return "".join(parts)
 
 
-def build_current_deals(conn) -> tuple[list[dict], str | None]:
+def build_current_deals(conn, store: str = "") -> tuple[list[dict], str | None]:
     """Current week's deals, each enriched with history stats + verdict."""
-    latest = latest_run_date(conn)
+    latest = latest_run_date(conn, store)
     if not latest:
         return [], None
+    frag, params = store_filter(store)
     rows = conn.execute(
-        """SELECT s.*, p.name pname, p.brand, p.category, p.image_url
+        f"""SELECT s.*, p.name pname, p.brand, p.category, p.image_url
            FROM deal_snapshots s JOIN products p USING (product_key)
-           WHERE s.captured_at = ?""",
-        (latest,),
+           WHERE s.captured_at = ?{frag}""",
+        (latest, *params),
     ).fetchall()
     # One pass over all history for sparklines + stats, grouped in Python.
     hist: dict[str, list[tuple[str, float | None]]] = {}
     for r in conn.execute(
-        "SELECT product_key, captured_at, price_value FROM deal_snapshots ORDER BY captured_at"
+        f"SELECT product_key, captured_at, price_value FROM deal_snapshots "
+        f"WHERE 1=1{frag} ORDER BY captured_at", params
     ):
         hist.setdefault(r["product_key"], []).append((r["captured_at"], r["price_value"]))
     deals = []
     for r in rows:
         series = hist.get(r["product_key"], [])
         prices = [p for _, p in series if p is not None]
-        v = verdict_for(r["price_value"], prices)
+        past = [p for d_, p in series if p is not None and d_ != latest]
+        v = verdict_for(r["price_value"], past, times_seen=len(series))
         deals.append({
             "key": r["product_key"], "name": r["pname"], "brand": r["brand"],
             "category": r["category"], "image_url": r["image_url"],
@@ -267,6 +295,7 @@ header .sub { color:var(--muted); font-size:13px; }
 .price { font-size:22px; font-weight:800; } .save { color:var(--green); font-size:13px; font-weight:600; }
 .meta { color:var(--muted); font-size:12px; display:flex; justify-content:space-between; }
 .spark { width:110px; height:30px; color:#79c0ff; }
+.pimg { width:48px; height:48px; object-fit:contain; border-radius:8px; background:#fff; }
 .histnote { color:var(--muted); font-size:12px; }
 .verdict-banner { display:flex; gap:14px; align-items:center; background:var(--card);
         border:1px solid var(--border); border-radius:14px; padding:18px 20px; margin-bottom:20px; }
@@ -290,7 +319,7 @@ th { color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacin
 </body></html>"""
 
 INDEX_HTML = """{% extends "base.html" %}
-{% block sub %}{% if latest %}weekly ad of {{ latest|fmtdate }} · {{ deals|length }} deals{% endif %}{% endblock %}
+{% block sub %}{% if latest %}weekly ad of {{ latest|fmtdate }} · {{ deals|length }} deals{% if store %} · store {{ store }}{% endif %}{% endif %}{% endblock %}
 {% block body %}
 {% if not latest %}
   <div class="empty">
@@ -317,22 +346,29 @@ INDEX_HTML = """{% extends "base.html" %}
       <option value="price"   {{ 'selected' if sort=='price' }}>Lowest price</option>
       <option value="name"    {{ 'selected' if sort=='name' }}>A → Z</option>
     </select>
+    {% if stores|length > 1 %}
+    <select name="store" onchange="this.form.submit()">
+      {% for s in stores %}<option value="{{ s }}" {{ 'selected' if s==store }}>store {{ s }}</option>{% endfor %}
+    </select>
+    {% elif store %}<input type="hidden" name="store" value="{{ store }}">{% endif %}
     {% if cat %}<input type="hidden" name="cat" value="{{ cat }}">{% endif %}
     <button style="display:none"></button>
   </form>
 
   <div class="chips">
-    <a class="chip {{ 'on' if not cat }}" href="/?q={{ q|urlencode }}&sort={{ sort }}">All</a>
+    <a class="chip {{ 'on' if not cat }}" href="/?q={{ q|urlencode }}&sort={{ sort }}&store={{ store|urlencode }}">All</a>
     {% for c in categories %}
-    <a class="chip {{ 'on' if cat==c }}" href="/?cat={{ c|urlencode }}&q={{ q|urlencode }}&sort={{ sort }}">{{ c }}</a>
+    <a class="chip {{ 'on' if cat==c }}" href="/?cat={{ c|urlencode }}&q={{ q|urlencode }}&sort={{ sort }}&store={{ store|urlencode }}">{{ c }}</a>
     {% endfor %}
   </div>
 
   <div class="grid">
     {% for d in deals %}
-    <a class="card" href="/product/{{ d.key }}">
+    <a class="card" href="/product/{{ d.key }}{% if store %}?store={{ store|urlencode }}{% endif %}">
       <div class="top">
-        <span class="emoji">{{ d.emoji }}</span>
+        {% if d.image_url %}<img class="pimg" src="{{ d.image_url }}" alt="" loading="lazy"
+             onerror="this.outerHTML='<span class=emoji>{{ d.emoji }}</span>'">
+        {% else %}<span class="emoji">{{ d.emoji }}</span>{% endif %}
         <span class="badge b-{{ d.verdict }}">{{ d.verdict_emoji }} {{ d.verdict_label }}</span>
       </div>
       <div>
@@ -361,7 +397,9 @@ PRODUCT_HTML = """{% extends "base.html" %}
 {% block body %}
   <p style="margin-bottom:14px"><a href="/" style="color:var(--muted)">← all deals</a></p>
   <div class="verdict-banner">
-    <span class="big">{{ emoji }}</span>
+    {% if p.image_url %}<img class="pimg" src="{{ p.image_url }}" alt="" style="width:56px;height:56px"
+         onerror="this.outerHTML='<span class=big>{{ emoji }}</span>'">
+    {% else %}<span class="big">{{ emoji }}</span>{% endif %}
     <div>
       <h2 style="font-size:20px">{{ p.name }}</h2>
       <div class="brand" style="color:var(--muted)">{{ p.brand }}{% if p.brand and p.category %} · {% endif %}{{ p.category }}</div>
@@ -374,8 +412,8 @@ PRODUCT_HTML = """{% extends "base.html" %}
 
   <div class="stats">
     <div class="stat"><div class="num">{{ current_price or '—' }}</div><div class="lbl">{{ 'this week' if on_deal_now else 'last deal price' }}</div></div>
-    <div class="stat"><div class="num">${{ '%.2f'|format(low) }}</div><div class="lbl">all-time low</div></div>
-    <div class="stat"><div class="num">${{ '%.2f'|format(avg) }}</div><div class="lbl">average deal price</div></div>
+    <div class="stat"><div class="num">{% if low is not none %}${{ '%.2f'|format(low) }}{% else %}—{% endif %}</div><div class="lbl">all-time low</div></div>
+    <div class="stat"><div class="num">{% if avg is not none %}${{ '%.2f'|format(avg) }}{% else %}—{% endif %}</div><div class="lbl">average deal price</div></div>
     <div class="stat"><div class="num">{{ rows|length }}</div><div class="lbl">times on deal</div></div>
     <div class="stat"><div class="num">{{ freq }}%</div><div class="lbl">of weeks on deal</div></div>
   </div>
@@ -413,7 +451,10 @@ app.jinja_loader = DictLoader({
 def index():
     conn = db()
     try:
-        deals, latest = build_current_deals(conn)
+        store = request.args.get("store") or default_store(conn)
+        stores = [r["store_id"] for r in conn.execute(
+            "SELECT DISTINCT store_id FROM runs ORDER BY store_id") if r["store_id"]]
+        deals, latest = build_current_deals(conn, store)
         q = (request.args.get("q") or "").strip()
         cat = (request.args.get("cat") or "").strip()
         sort = request.args.get("sort") or "score"
@@ -432,12 +473,14 @@ def index():
             deals.sort(key=lambda d: d["name"].lower())
         else:
             deals.sort(key=lambda d: (order.get(d["verdict"], 9), -(d["savings_value"] or 0)))
+        frag, params = store_filter(store)
         n_weeks = conn.execute(
-            "SELECT COUNT(DISTINCT captured_at) c FROM deal_snapshots").fetchone()["c"]
+            f"SELECT COUNT(DISTINCT captured_at) c FROM deal_snapshots WHERE 1=1{frag}",
+            params).fetchone()["c"]
         n_products = conn.execute("SELECT COUNT(*) c FROM products").fetchone()["c"]
         return render_template(
             "index.html", deals=deals, latest=latest, q=q, cat=cat, sort=sort,
-            categories=categories,
+            categories=categories, store=store, stores=stores,
             n_lows=sum(1 for d in deals if d["verdict"] == "all-time-low"),
             total_savings=sum(d["savings_value"] or 0 for d in deals),
             n_products=n_products, n_weeks=n_weeks,
@@ -453,19 +496,24 @@ def product(key):
         p = conn.execute("SELECT * FROM products WHERE product_key = ?", (key,)).fetchone()
         if not p:
             abort(404)
-        rows = product_history(conn, key)
-        latest = latest_run_date(conn)
+        store = request.args.get("store") or default_store(conn)
+        rows = product_history(conn, key, store)
+        latest = latest_run_date(conn, store)
         prices = [r["price_value"] for r in rows if r["price_value"] is not None]
         cur = rows[-1] if rows else None
         on_deal_now = bool(cur and latest and cur["captured_at"] == latest)
-        v = verdict_for(cur["price_value"] if cur else None, prices) if on_deal_now else "typical"
+        past = [r["price_value"] for r in rows[:-1] if r["price_value"] is not None]
+        v = verdict_for(cur["price_value"] if cur else None, past,
+                        times_seen=len(rows)) if on_deal_now else "new"
         if not on_deal_now:
             v_emoji, v_label, v_desc = "💤", "NOT IN THIS WEEK'S AD", "Check the timeline for when it usually returns"
         else:
             v_emoji, v_label, v_desc = VERDICTS[v]
         # Chart across every week in the DB, gaps where this product wasn't on deal.
+        frag, params = store_filter(store)
         all_weeks = [r["captured_at"] for r in conn.execute(
-            "SELECT DISTINCT captured_at FROM deal_snapshots ORDER BY captured_at")]
+            f"SELECT DISTINCT captured_at FROM deal_snapshots WHERE 1=1{frag} "
+            f"ORDER BY captured_at", params)]
         by_week = {r["captured_at"]: r["price_value"] for r in rows}
         chart_svg = timeline_chart_svg(
             [fmt_date(w) for w in all_weeks],
@@ -477,9 +525,9 @@ def product(key):
             v_emoji=v_emoji, v_label=v_label, v_desc=v_desc,
             emoji=CATEGORY_EMOJI.get(p["category"], DEFAULT_EMOJI),
             current_price=(cur["price_text"] if cur else None),
-            on_deal_now=on_deal_now,
-            low=min(prices) if prices else 0,
-            avg=statistics.mean(prices) if prices else 0,
+            on_deal_now=on_deal_now, store=store,
+            low=min(prices) if prices else None,
+            avg=statistics.mean(prices) if prices else None,
             freq=round(100 * len(rows) / len(all_weeks)) if all_weeks else 0,
             chart_svg=chart_svg,
         )
@@ -491,7 +539,7 @@ def product(key):
 def api_deals():
     conn = db()
     try:
-        deals, latest = build_current_deals(conn)
+        deals, latest = build_current_deals(conn, request.args.get("store") or default_store(conn))
         for d in deals:
             d.pop("spark", None)
         return jsonify({"week": latest, "count": len(deals), "deals": deals})
@@ -516,7 +564,7 @@ def api_product(key):
 def api_stats():
     conn = db()
     try:
-        deals, latest = build_current_deals(conn)
+        deals, latest = build_current_deals(conn, request.args.get("store") or default_store(conn))
         return jsonify({
             "week": latest,
             "deals_this_week": len(deals),
