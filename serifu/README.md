@@ -31,7 +31,15 @@ npm test           # unit tests (subtitle parser, room state machine)
 npm run typecheck  # strict TS across client + server
 npm run build      # build the client into dist/
 npm start          # production: one server serving dist/ + websockets
+npm run e2e        # full browser demo test (needs a running server: PORT=4123 npm start)
 ```
+
+The e2e script drives two headless Chromium users through the whole story —
+create room, join by link, load demo script, claim characters, load a
+generated video, synced play, rehearsal auto-pause + resume, voice chat with
+a real WebRTC connection, mute propagation, editor, click-to-seek — and drops
+screenshots in `e2e/shots/`. Point it at a Chromium binary with
+`CHROMIUM_PATH=/path/to/chrome` if Playwright's default lookup fails.
 
 ## How a session works
 

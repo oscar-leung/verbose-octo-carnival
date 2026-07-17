@@ -153,7 +153,10 @@ export default function VideoPanel({
           playsInline
           onClick={togglePlay}
           onLoadedMetadata={(e) => {
-            setDuration(e.currentTarget.duration);
+            // Some containers (e.g. streamed WebM) report Infinity here;
+            // fall back to the script length for the seek range instead.
+            const d = e.currentTarget.duration;
+            setDuration(Number.isFinite(d) ? d : null);
             setReady((n) => n + 1);
           }}
         />
