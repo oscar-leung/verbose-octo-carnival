@@ -1,0 +1,14 @@
+# Render Blueprint — deploys the Serifu app from the serifu/ subdirectory.
+# In Render: New + → Blueprint → connect this repo → Apply.
+services:
+  - type: web
+    name: serifu
+    runtime: node
+    plan: free
+    rootDir: serifu
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /healthz
+    envVars:
+      - key: NODE_VERSION
+        value: 22.12.0

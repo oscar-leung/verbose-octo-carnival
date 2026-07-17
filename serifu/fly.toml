@@ -1,0 +1,22 @@
+# Fly.io config (optional alternative to Render).
+# From serifu/: fly launch --copy-config --no-deploy && fly deploy
+app = "serifu"
+primary_region = "sjc"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  PORT = "3001"
+
+[http_service]
+  internal_port = 3001
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+[[http_service.checks]]
+  path = "/healthz"
+  interval = "30s"
+  timeout = "5s"
