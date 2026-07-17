@@ -61,7 +61,8 @@ Logs are written to `runs/daily_logs/YYYY-MM-DD.log`.
 |---|--------|------|--------------|
 | 046 | `046_safeway_deals_scraper.py` | Scraper | Pulls the full weekly deals/coupons gallery from Safeway's public xapi for a store (`--store-id` or `--zip`), writes CSV + XLSX + raw JSON, optional Google Sheets push |
 | 047 | `047_safeway_history_db.py` | History DB | Ingests each scraper run as a weekly snapshot into SQLite (`runs/safeway/safeway.db`) so every product accumulates a price timeline; `--demo` seeds 12 weeks of sample data |
-| 048 | `048_safeway_app.py` | Web app | Localhost Flask app (`http://127.0.0.1:5057`) — this week's deals with search/filter/sort, per-card price sparklines, and per-product "stock chart" pages with BUY/WAIT verdicts (all-time low / great / typical) based on that product's own deal history |
+| 048 | `048_safeway_app.py` | Web app | Localhost Flask app (`http://127.0.0.1:5057`) — this week's deals with search/filter/sort, per-card price sparklines, store dropdown, and per-product "stock chart" pages with BUY/WAIT verdicts (all-time low / great / typical) based on that product's own deal history |
+| 049 | `049_multichain_deals.py` | Multi-chain | Extends the tracker beyond Safeway: all Albertsons-family banners (Vons, Albertsons, Pavilions, Andronico's, …) via the same xapi, plus a Flipp weekly-ad adapter for chains like Grocery Outlet, FoodMaxx, Smart & Final, Raley's, WinCo, and CHEF'STORE; `stores --zip 95616` lists what's near you, `demo` seeds CHEF'STORE + Grocery Outlet sample stores |
 
 Quick start:
 

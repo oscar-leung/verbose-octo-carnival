@@ -229,6 +229,29 @@ def build_current_deals(conn, store: str = "") -> tuple[list[dict], str | None]:
     return deals, latest
 
 
+CHAIN_LABELS = {
+    "safeway": "Safeway", "albertsons": "Albertsons", "vons": "Vons",
+    "pavilions": "Pavilions", "andronicos": "Andronico's",
+    "chefstore": "CHEF'STORE", "groceryoutlet": "Grocery Outlet",
+    "foodmaxx": "FoodMaxx", "smartfinal": "Smart & Final", "raleys": "Raley's",
+    "wincofoods": "WinCo Foods", "sproutsfarmersmarket": "Sprouts",
+    "luckysupermarkets": "Lucky", "savemart": "Save Mart",
+    "99ranchmarket": "99 Ranch", "nuggetmarkets": "Nugget",
+}
+
+
+def store_label(s: str) -> str:
+    """'demo-chefstore-sacramento' -> \"CHEF'STORE Sacramento (demo)\"."""
+    if not s:
+        return ""
+    is_demo = s.startswith("demo-")
+    parts = s.removeprefix("demo-").split("-")
+    chain = CHAIN_LABELS.get(parts[0], parts[0].title())
+    rest = " ".join(f"#{p}" if p.isdigit() else p.title() for p in parts[1:])
+    label = f"{chain} {rest}".strip()
+    return f"{label} (demo)" if is_demo else label
+
+
 def fmt_date(iso: str) -> str:
     try:
         return datetime.fromisoformat(iso).strftime("%b %-d")
@@ -241,6 +264,7 @@ def fmt_date(iso: str) -> str:
 app = Flask(__name__)
 app.config["DB_PATH"] = str(DB_PATH)
 app.jinja_env.filters["fmtdate"] = fmt_date
+app.jinja_env.filters["storelabel"] = store_label
 
 BASE_HTML = """<!doctype html>
 <html lang="en"><head>
@@ -249,7 +273,7 @@ BASE_HTML = """<!doctype html>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0d1117">
-<title>{% block title %}Safeway Deal Tracker{% endblock %}</title>
+<title>{% block title %}Grocery Deal Tracker{% endblock %}</title>
 <style>
 :root { --bg:#0d1117; --card:#161b22; --border:#21262d; --text:#e6edf3;
         --muted:#8b949e; --red:#ff4d4d; --green:#3fb950; --amber:#d29922; }
@@ -312,14 +336,14 @@ th { color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacin
 </style></head>
 <body>
 <header>
-  <a href="/"><h1><span class="logo">Safeway</span> Deal Tracker</h1></a>
+  <a href="/"><h1><span class="logo">Grocery</span> Deal Tracker</h1></a>
   <span class="sub">{% block sub %}{% endblock %}</span>
 </header>
 <div class="wrap">{% block body %}{% endblock %}</div>
 </body></html>"""
 
 INDEX_HTML = """{% extends "base.html" %}
-{% block sub %}{% if latest %}weekly ad of {{ latest|fmtdate }} · {{ deals|length }} deals{% if store %} · store {{ store }}{% endif %}{% endif %}{% endblock %}
+{% block sub %}{% if latest %}weekly ad of {{ latest|fmtdate }} · {{ deals|length }} deals{% if store %} · {{ store|storelabel }}{% endif %}{% endif %}{% endblock %}
 {% block body %}
 {% if not latest %}
   <div class="empty">
@@ -348,7 +372,7 @@ INDEX_HTML = """{% extends "base.html" %}
     </select>
     {% if stores|length > 1 %}
     <select name="store" onchange="this.form.submit()">
-      {% for s in stores %}<option value="{{ s }}" {{ 'selected' if s==store }}>store {{ s }}</option>{% endfor %}
+      {% for s in stores %}<option value="{{ s }}" {{ 'selected' if s==store }}>{{ s|storelabel }}</option>{% endfor %}
     </select>
     {% elif store %}<input type="hidden" name="store" value="{{ store }}">{% endif %}
     {% if cat %}<input type="hidden" name="cat" value="{{ cat }}">{% endif %}
@@ -392,7 +416,7 @@ INDEX_HTML = """{% extends "base.html" %}
 {% endblock %}"""
 
 PRODUCT_HTML = """{% extends "base.html" %}
-{% block title %}{{ p.name }} — Safeway Deal Tracker{% endblock %}
+{% block title %}{{ p.name }} — Grocery Deal Tracker{% endblock %}
 {% block sub %}{{ p.category }}{% endblock %}
 {% block body %}
   <p style="margin-bottom:14px"><a href="/" style="color:var(--muted)">← all deals</a></p>
@@ -564,14 +588,18 @@ def api_product(key):
 def api_stats():
     conn = db()
     try:
-        deals, latest = build_current_deals(conn, request.args.get("store") or default_store(conn))
+        store = request.args.get("store") or default_store(conn)
+        deals, latest = build_current_deals(conn, store)
+        frag, params = store_filter(store)
         return jsonify({
             "week": latest,
+            "store": store,
             "deals_this_week": len(deals),
             "all_time_lows": sum(1 for d in deals if d["verdict"] == "all-time-low"),
             "products_tracked": conn.execute("SELECT COUNT(*) c FROM products").fetchone()["c"],
             "weeks_of_history": conn.execute(
-                "SELECT COUNT(DISTINCT captured_at) c FROM deal_snapshots").fetchone()["c"],
+                f"SELECT COUNT(DISTINCT captured_at) c FROM deal_snapshots WHERE 1=1{frag}",
+                params).fetchone()["c"],
         })
     finally:
         conn.close()

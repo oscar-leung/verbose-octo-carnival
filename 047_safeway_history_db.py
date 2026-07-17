@@ -282,7 +282,8 @@ DEMO_OFFER_TYPES = ["WeeklySpecial", "WeeklySpecial", "WeeklySpecial",
                     "PersonalizedDeal", "ManufactureCoupon"]
 
 
-def seed_demo(conn: sqlite3.Connection, weeks: int = 12, store_id: str = "demo-2926") -> int:
+def seed_demo(conn: sqlite3.Connection, weeks: int = 12,
+              store_id: str = "demo-safeway-davis") -> int:
     """Generate `weeks` of weekly-ad snapshots ending this week."""
     rng = random.Random(42)
     # Anchor snapshots to Wednesdays — Safeway's weekly ad flips on Wednesday.
