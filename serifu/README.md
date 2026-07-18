@@ -63,6 +63,41 @@ screenshots in `e2e/shots/`. Point it at a Chromium binary with
    library** (エピソード書庫) — import ep. 2's subtitles next week, load ep. 1
    back with one click.
 
+## Getting real episode subtitles
+
+The importer accepts `.srt`, `.vtt`, and `.ass/.ssa` (the format most Japanese
+subtitle archives use — ASS speaker names, when present, are auto-converted
+into characters with lines pre-assigned).
+
+- **[jimaku.cc](https://jimaku.cc/)** — dedicated Japanese-subtitle archive.
+  Frieren: [Season 1 (entry 729)](https://jimaku.cc/entry/729) and
+  [Season 2 (entry 11446)](https://jimaku.cc/entry/11446) have JP subs for
+  every episode. Free account; there's also an API (25 req/min) if we later
+  automate per-episode fetching.
+- **kitsunekko** — the older mirror many of jimaku's files came from.
+
+Workflow per episode: download the episode's JP subtitle file → 台本 editor →
+import → tag/verify speakers → *shift all* until line 1 matches your video →
+**save to エピソード書庫** → export JSON to share with friends. ~15 minutes per
+episode, once.
+
+## Voice chat behind strict NATs (optional TURN)
+
+Voice uses STUN by default, which covers most home networks. If two friends
+can't hear each other (symmetric NAT, campus/corporate Wi-Fi), give the server
+TURN credentials via environment variables — no code change needed; clients
+fetch them from `/api/ice`:
+
+```
+TURN_URLS=turn:your.relay:80,turn:your.relay:443?transport=tcp
+TURN_USERNAME=...
+TURN_CREDENTIAL=...
+```
+
+A [free metered.ca account](https://www.metered.ca/tools/openrelay/) includes
+20 GB/month of TURN relay — paste its credentials into Render's environment
+settings.
+
 ## Script format
 
 Scripts are JSON (`export JSON` in the editor produces this shape):

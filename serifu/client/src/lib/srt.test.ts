@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { joinCueLines, parseCues, parseRubyText, parseTimestamp, rubyTokensToText } from './srt';
+import {
+  joinCueLines,
+  looksLikeAss,
+  parseAss,
+  parseCues,
+  parseRubyText,
+  parseTimestamp,
+  rubyTokensToText,
+} from './srt';
 
 const NL = String.fromCharCode(10);
 
@@ -101,5 +109,49 @@ describe('parseCues', () => {
 
   it('returns an empty list for non-subtitle text', () => {
     expect(parseCues('just some prose with no timestamps')).toEqual([]);
+  });
+});
+
+describe('parseAss', () => {
+  const ass = [
+    '[Script Info]',
+    'Title: 葬送のフリーレン #01',
+    'ScriptType: v4.00+',
+    '',
+    '[Events]',
+    'Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text',
+    'Dialogue: 0,0:00:05.00,0:00:08.20,Default,ハイター,0,0,0,,王都は今日も{\\i1}にぎやか{\\i0}ですね。',
+    'Dialogue: 0,0:00:09.50,0:00:14.00,Default,,0,0,0,,十年間の冒険も、\\Nこれで終わりだな。',
+    'Comment: 0,0:00:15.00,0:00:16.00,Default,,0,0,0,,これはコメント',
+    'Dialogue: 0,0:00:14.50,0:00:18.50,Default,フリーレン,0,0,0,,{\\pos(320,50)}たった十年だよ。',
+  ].join(String.fromCharCode(10));
+
+  it('detects ASS content', () => {
+    expect(looksLikeAss(ass)).toBe(true);
+    expect(looksLikeAss('1\n00:00:01,000 --> 00:00:02,000\nhi')).toBe(false);
+  });
+
+  it('parses dialogue with override tags stripped and speakers kept', () => {
+    const cues = parseAss(ass);
+    expect(cues).toHaveLength(3);
+    expect(cues[0]?.start).toBeCloseTo(5);
+    expect(cues[0]?.text).toBe('王都は今日もにぎやかですね。');
+    expect(cues[0]?.name).toBe('ハイター');
+    expect(cues[1]?.text).toBe('十年間の冒険も、これで終わりだな。');
+    expect(cues[1]?.name).toBeUndefined();
+    expect(cues[2]?.name).toBe('フリーレン');
+  });
+
+  it('keeps commas inside dialogue text', () => {
+    const line = [
+      '[Events]',
+      'Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text',
+      'Dialogue: 0,0:00:01.00,0:00:02.00,Default,,0,0,0,,Hello, world, again',
+    ].join(String.fromCharCode(10));
+    expect(parseAss(line)[0]?.text).toBe('Hello, world, again');
+  });
+
+  it('routes through parseCues automatically', () => {
+    expect(parseCues(ass)).toHaveLength(3);
   });
 });

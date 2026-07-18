@@ -100,19 +100,34 @@ export default function ScriptEditor({ script, actions, onClose }: Props) {
     }
     const cues = parseCues(trimmed);
     if (cues.length === 0) {
-      setError('No subtitle cues found — is that an SRT/VTT file?');
+      setError('No subtitle cues found — is that an SRT/VTT/ASS file?');
       return;
     }
+    // ASS files sometimes carry speaker names — turn them into characters
+    // and pre-assign the lines, so tagging is already done.
+    const speakerNames = [...new Set(cues.map((c) => c.name).filter((n): n is string => !!n))];
+    const speakerChars: Character[] = speakerNames.map((name, i) => ({
+      id: `c${i + 1}`,
+      name,
+      color: CHAR_COLORS[i % CHAR_COLORS.length] ?? '#7ecbff',
+    }));
+    const idByName = new Map(speakerChars.map((c) => [c.name, c.id]));
+    if (speakerChars.length > 0) setChars(speakerChars);
     setTitle((t) => t || sourceName);
     setLines(
       cues.map((cue) => ({
         key: nextKey(),
-        character: '',
+        character: (cue.name && idByName.get(cue.name)) || '',
         startText: cue.start.toFixed(1),
         endText: cue.end.toFixed(1),
         text: cue.text,
         translation: '',
       }))
+    );
+    setNotice(
+      speakerChars.length > 0
+        ? `imported ${cues.length} lines with ${speakerChars.length} speakers auto-detected`
+        : `imported ${cues.length} lines — assign speakers with the dropdowns`
     );
     setError(null);
   };
@@ -297,8 +312,8 @@ export default function ScriptEditor({ script, actions, onClose }: Props) {
           />
           <button onClick={() => adoptScript(DEMO_SCRIPT)}>load demo scene</button>
           <label className="file-button">
-            import .srt / .vtt / .json
-            <input type="file" accept=".srt,.vtt,.json,.txt" onChange={onImportFile} hidden />
+            import .srt / .ass / .vtt / .json
+            <input type="file" accept=".srt,.vtt,.ass,.ssa,.json,.txt" onChange={onImportFile} hidden />
           </label>
           <button onClick={() => setPasteOpen((v) => !v)}>
             {pasteOpen ? 'hide paste box' : 'paste subtitles'}

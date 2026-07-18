@@ -36,6 +36,29 @@ const store = new RoomStore();
 app.get('/healthz', (_req, res) => {
   res.json({ ok: true });
 });
+// ICE servers for voice chat. STUN alone covers most home networks; for
+// strict NATs set TURN_URLS (comma-separated), TURN_USERNAME, and
+// TURN_CREDENTIAL in the environment (e.g. a free metered.ca account) and
+// clients pick them up with no code change.
+app.get('/api/ice', (_req, res) => {
+  const iceServers: { urls: string; username?: string; credential?: string }[] = [
+    { urls: 'stun:stun.l.google.com:19302' },
+  ];
+  const turnUrls = (process.env.TURN_URLS ?? '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const username = process.env.TURN_USERNAME;
+  const credential = process.env.TURN_CREDENTIAL;
+  for (const urls of turnUrls) {
+    iceServers.push({
+      urls,
+      ...(username ? { username } : {}),
+      ...(credential ? { credential } : {}),
+    });
+  }
+  res.json({ iceServers });
+});
 app.use(express.static(distDir));
 // SPA fallback: any other GET serves the client shell (no-op in dev, where
 // the Vite dev server owns the pages and proxies /socket.io here).
