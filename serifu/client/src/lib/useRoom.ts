@@ -21,6 +21,7 @@ export interface RoomActions {
   pause(position: number): void;
   seek(position: number): void;
   setRehearsal(enabled: boolean): void;
+  setPassScore(score: number): void;
   rehearsalPause(lineId: string): void;
   rehearsalResume(): void;
   claim(characterId: string): void;
@@ -111,6 +112,7 @@ export function useRoom(roomId: string, name: string): RoomConnection {
       pause: (position) => socketRef.current?.emit('playback:pause', { position }),
       seek: (position) => socketRef.current?.emit('playback:seek', { position }),
       setRehearsal: (enabled) => socketRef.current?.emit('rehearsal:set', { enabled }),
+      setPassScore: (score) => socketRef.current?.emit('rehearsal:threshold', { score }),
       rehearsalPause: (lineId) => socketRef.current?.emit('rehearsal:pause', { lineId }),
       rehearsalResume: () => socketRef.current?.emit('rehearsal:resume'),
       claim: (characterId) => socketRef.current?.emit('character:claim', { characterId }),

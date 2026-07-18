@@ -488,6 +488,35 @@ input[type='range'] {
 
 /* ---------- voice + characters ---------- */
 
+.practice-stats {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 6px 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.stat-chip {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 2px 12px;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.line .replay {
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.line:hover .replay,
+.line.active .replay {
+  opacity: 1;
+}
+
 .voice-panel,
 .character-bar {
   background: var(--panel);

@@ -49,12 +49,23 @@ export interface PlaybackState {
   pausedForLineId: string | null;
 }
 
+/** Running practice tally for one user in a room. */
+export interface UserStats {
+  attempts: number;
+  passes: number;
+  scoreSum: number;
+}
+
 export interface RoomState {
   roomId: string;
   users: RoomUser[];
   /** characterId -> userId */
   claims: Record<string, string>;
   rehearsalEnabled: boolean;
+  /** Score needed for a spoken attempt to pass and auto-resume (40-95). */
+  passScore: number;
+  /** userId -> practice tally; reset when a new script is loaded. */
+  stats: Record<string, UserStats>;
   playback: PlaybackState;
   scriptTitle: string | null;
   scriptVersion: number;
@@ -97,6 +108,7 @@ export interface ClientToServerEvents {
   'playback:pause': (p: { position: number }) => void;
   'playback:seek': (p: { position: number }) => void;
   'rehearsal:set': (p: { enabled: boolean }) => void;
+  'rehearsal:threshold': (p: { score: number }) => void;
   'rehearsal:pause': (p: { lineId: string }) => void;
   'rehearsal:resume': () => void;
   'character:claim': (p: { characterId: string }) => void;

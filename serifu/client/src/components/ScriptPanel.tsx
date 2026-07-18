@@ -110,6 +110,15 @@ export default function ScriptPanel({
                       {mine ? ' (you)' : ''}
                     </span>
                   )}
+                  {owner && (
+                    <button
+                      className="mini replay"
+                      title="practice this line again"
+                      onClick={() => onSeekLine(Math.max(0, line.start - 0.3))}
+                    >
+                      🔁
+                    </button>
+                  )}
                 </div>
                 <div className="line-text">
                   <RubyText tokens={line.tokens} furigana={settings.furigana} />

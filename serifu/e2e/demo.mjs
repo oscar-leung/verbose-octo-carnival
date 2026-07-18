@@ -183,6 +183,10 @@ await pageB.waitForSelector('.rehearsal-banner', { state: 'detached', timeout: 5
 const playing = await pageB.textContent('.play-btn');
 check('correct attempt auto-resumes the anime everywhere', playing === '⏸');
 
+// Practice stats: Oscar made 2 attempts (1 fail + 1 pass) — both users see it.
+await pageB.waitForSelector('.stat-chip:has-text("Oscar: 1/2")', { timeout: 5000 });
+check('live practice stats visible to the whole room', true);
+
 // ---- 9. Voice chat between the two users ----
 await pageA.click('button:has-text("join voice")');
 await pageB.click('button:has-text("join voice")');

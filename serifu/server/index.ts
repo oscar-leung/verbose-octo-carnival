@@ -138,6 +138,12 @@ io.on('connection', (socket: AppSocket) => {
     if (store.setRehearsal(roomId, p.enabled)) syncRoom(roomId);
   });
 
+  socket.on('rehearsal:threshold', (p) => {
+    const roomId = socket.data.roomId;
+    if (!roomId || typeof p?.score !== 'number') return;
+    if (store.setPassScore(roomId, p.score)) syncRoom(roomId);
+  });
+
   socket.on('rehearsal:pause', (p) => {
     const roomId = socket.data.roomId;
     if (!roomId || typeof p?.lineId !== 'string') return;
@@ -210,14 +216,18 @@ io.on('connection', (socket: AppSocket) => {
     }
     const user = store.get(roomId)?.users.get(socket.id);
     if (!user) return;
+    // The room threshold is authoritative for pass/fail and the tally.
+    const passed = store.recordAttempt(roomId, socket.id, p.score);
+    if (passed === null) return;
     io.to(roomId).emit('speech:attempt', {
       lineId: p.lineId,
       transcript: p.transcript.slice(0, 300),
       score: Math.max(0, Math.min(100, Math.round(p.score))),
-      passed: p.passed,
+      passed,
       userId: socket.id,
       userName: user.name,
     });
+    syncRoom(roomId);
   });
 
   socket.on('webrtc:signal', (p) => {

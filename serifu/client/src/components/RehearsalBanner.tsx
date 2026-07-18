@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { RoomState, SkitScript } from '../../../shared/types';
 import type { RoomActions, SpeechAttemptEvent, SpeechAttemptHandler } from '../lib/useRoom';
 import type { DisplaySettings } from '../lib/settings';
-import { PASS_SCORE, scoreAttempt, SpeechListener, speechSupported } from '../lib/speech';
+import { scoreAttempt, SpeechListener, speechSupported } from '../lib/speech';
 import RubyText from './RubyText';
 
 interface Props {
@@ -37,6 +37,9 @@ export default function RehearsalBanner({
 
   const listenerRef = useRef<SpeechListener | null>(null);
   const passedRef = useRef(false);
+  // Ref so mid-line threshold changes apply without restarting the mic.
+  const passScoreRef = useRef(state.passScore);
+  passScoreRef.current = state.passScore;
   const [listening, setListening] = useState(false);
   const [interim, setInterim] = useState('');
   const [lastScore, setLastScore] = useState<number | null>(null);
@@ -67,7 +70,7 @@ export default function RehearsalBanner({
       onFinal: (text) => {
         if (passedRef.current) return;
         const score = scoreAttempt(text, line);
-        const didPass = score >= PASS_SCORE;
+        const didPass = score >= passScoreRef.current;
         setInterim('');
         setLastTranscript(text);
         setLastScore(score);
@@ -132,7 +135,7 @@ export default function RehearsalBanner({
             </div>
           ) : listening ? (
             <div className="speech-status">
-              <span className="mic-live">🎤 listening…</span>
+              <span className="mic-live">🎤 listening… (判定 {state.passScore}+)</span>
               {interim && <span className="speech-interim">「{interim}」</span>}
               {lastScore !== null && (
                 <span className="score-badge fail">

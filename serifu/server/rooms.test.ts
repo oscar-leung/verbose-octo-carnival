@@ -177,6 +177,52 @@ describe('script loading', () => {
   });
 });
 
+describe('pass threshold + practice stats', () => {
+  it('clamps the threshold into the sane range', () => {
+    const now = { t: 1000 };
+    const store = setup(now);
+    store.setPassScore('room1', 85);
+    expect(store.toState('room1')?.passScore).toBe(85);
+    store.setPassScore('room1', 5);
+    expect(store.toState('room1')?.passScore).toBe(40);
+    store.setPassScore('room1', 200);
+    expect(store.toState('room1')?.passScore).toBe(95);
+    expect(store.setPassScore('room1', Number.NaN)).toBe(false);
+  });
+
+  it('tallies attempts against the room threshold', () => {
+    const now = { t: 1000 };
+    const store = setup(now);
+    expect(store.recordAttempt('room1', 'u1', 40)).toBe(false);
+    expect(store.recordAttempt('room1', 'u1', 90)).toBe(true);
+    const stats = store.toState('room1')?.stats.u1;
+    expect(stats).toEqual({ attempts: 2, passes: 1, scoreSum: 130 });
+    // Unknown users are rejected.
+    expect(store.recordAttempt('room1', 'ghost', 90)).toBeNull();
+  });
+
+  it('threshold changes affect subsequent attempts', () => {
+    const now = { t: 1000 };
+    const store = setup(now);
+    store.setPassScore('room1', 85);
+    expect(store.recordAttempt('room1', 'u1', 80)).toBe(false);
+    store.setPassScore('room1', 55);
+    expect(store.recordAttempt('room1', 'u1', 80)).toBe(true);
+  });
+
+  it('resets stats when a new script loads, and drops them on leave', () => {
+    const now = { t: 1000 };
+    const store = setup(now);
+    store.recordAttempt('room1', 'u1', 90);
+    store.recordAttempt('room1', 'u2', 90);
+    store.loadScript('room1', makeScript());
+    expect(store.toState('room1')?.stats).toEqual({});
+    store.recordAttempt('room1', 'u2', 90);
+    store.leave('room1', 'u2');
+    expect(store.toState('room1')?.stats.u2).toBeUndefined();
+  });
+});
+
 describe('gc', () => {
   it('removes rooms only after they have been empty long enough', () => {
     const now = { t: 1000 };

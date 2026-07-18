@@ -7,6 +7,7 @@ import ScriptPanel from './ScriptPanel';
 import CharacterBar from './CharacterBar';
 import RehearsalBanner from './RehearsalBanner';
 import VoicePanel from './VoicePanel';
+import PracticeStats from './PracticeStats';
 import ScriptEditor from './ScriptEditor';
 import { DEMO_SCRIPT } from '../data/demoScript';
 
@@ -175,9 +176,11 @@ export default function Room({ roomId, name }: { roomId: string; name: string })
             users={state.users}
             selfId={selfId}
             rehearsalEnabled={state.rehearsalEnabled}
+            passScore={state.passScore}
             actions={actions}
             onOpenEditor={() => setEditorOpen(true)}
           />
+          <PracticeStats users={state.users} stats={state.stats} selfId={selfId} />
         </section>
 
         <aside className="side">
