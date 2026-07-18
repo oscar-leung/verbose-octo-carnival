@@ -173,6 +173,30 @@ io.on('connection', (socket: AppSocket) => {
     if (store.setVoice(roomId, socket.id, p.inVoice, p.muted)) syncRoom(roomId);
   });
 
+  socket.on('speech:attempt', (p) => {
+    const roomId = socket.data.roomId;
+    if (
+      !roomId ||
+      typeof p?.lineId !== 'string' ||
+      p.lineId.length > 64 ||
+      typeof p?.transcript !== 'string' ||
+      typeof p?.score !== 'number' ||
+      typeof p?.passed !== 'boolean'
+    ) {
+      return;
+    }
+    const user = store.get(roomId)?.users.get(socket.id);
+    if (!user) return;
+    io.to(roomId).emit('speech:attempt', {
+      lineId: p.lineId,
+      transcript: p.transcript.slice(0, 300),
+      score: Math.max(0, Math.min(100, Math.round(p.score))),
+      passed: p.passed,
+      userId: socket.id,
+      userName: user.name,
+    });
+  });
+
   socket.on('webrtc:signal', (p) => {
     const roomId = socket.data.roomId;
     if (!roomId || typeof p?.to !== 'string' || typeof p?.data !== 'object' || p.data === null) {

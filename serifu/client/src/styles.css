@@ -423,6 +423,69 @@ input[type='range'] {
   align-self: flex-start;
 }
 
+.speech-zone {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.speech-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 14px;
+}
+
+.mic-live {
+  color: var(--accent);
+  animation: pulse 1.2s infinite alternate;
+}
+
+.speech-interim {
+  color: var(--muted);
+  font-style: italic;
+}
+
+.score-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 999px;
+  padding: 4px 14px;
+  font-weight: 700;
+}
+
+.score-badge.pass {
+  background: rgba(123, 216, 143, 0.15);
+  border: 1px solid #7bd88f;
+  color: #7bd88f;
+  font-size: 18px;
+}
+
+.score-badge.fail {
+  background: rgba(255, 184, 108, 0.12);
+  border: 1px solid #ffb86c;
+  color: #ffb86c;
+}
+
+.score-badge small {
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.peer-attempt {
+  font-size: 14px;
+  color: var(--muted);
+  border-left: 3px solid #ffb86c;
+  padding-left: 10px;
+}
+
+.peer-attempt.pass {
+  border-left-color: #7bd88f;
+  color: #7bd88f;
+}
+
 /* ---------- voice + characters ---------- */
 
 .voice-panel,
@@ -709,11 +772,16 @@ input[type='range'] {
   resize: vertical;
 }
 
-.editor-chars {
+.editor-chars,
+.editor-library {
   display: flex;
   gap: 8px;
   align-items: center;
   flex-wrap: wrap;
+}
+
+.editor-library select {
+  min-width: 220px;
 }
 
 .editor-hint {

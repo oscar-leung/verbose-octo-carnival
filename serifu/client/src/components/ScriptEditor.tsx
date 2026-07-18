@@ -3,6 +3,7 @@ import type { Character, ScriptLine, SkitScript } from '../../../shared/types';
 import type { RoomActions } from '../lib/useRoom';
 import { parseCues, parseRubyText, rubyTokensToText } from '../lib/srt';
 import { parseTimeInput } from '../lib/playback';
+import { loadLibrary, removeFromLibrary, saveToLibrary, type LibraryEntry } from '../lib/scriptLibrary';
 import { DEMO_SCRIPT } from '../data/demoScript';
 
 interface Props {
@@ -68,6 +69,9 @@ export default function ScriptEditor({ script, actions, onClose }: Props) {
   const [shiftText, setShiftText] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [library, setLibrary] = useState<LibraryEntry[]>(loadLibrary);
+  const [libSelection, setLibSelection] = useState('');
+  const [notice, setNotice] = useState<string | null>(null);
 
   const adoptScript = (s: SkitScript) => {
     const draft = scriptToDraft(s);
@@ -225,6 +229,32 @@ export default function ScriptEditor({ script, actions, onClose }: Props) {
     return { title: title.trim() || 'Untitled scene', characters: chars, lines: parsed };
   };
 
+  const saveCurrentToLibrary = () => {
+    const s = buildScript();
+    if (!s) return;
+    if (saveToLibrary(s)) {
+      setLibrary(loadLibrary());
+      setNotice(`saved 「${s.title}」 to this browser's library`);
+      setError(null);
+    } else {
+      setError('Could not save — browser storage is full or blocked.');
+    }
+  };
+
+  const loadFromLibrary = () => {
+    const entry = library.find((e) => e.title === libSelection);
+    if (!entry) return;
+    adoptScript(entry.script);
+    setNotice(`loaded 「${entry.title}」 — apply to room when ready`);
+  };
+
+  const deleteFromLibrary = () => {
+    if (!libSelection) return;
+    removeFromLibrary(libSelection);
+    setLibrary(loadLibrary());
+    setLibSelection('');
+  };
+
   const exportJson = () => {
     const s = buildScript();
     if (!s) return;
@@ -285,6 +315,26 @@ export default function ScriptEditor({ script, actions, onClose }: Props) {
             <button onClick={applyShift}>apply</button>
           </span>
           <button onClick={exportJson}>export JSON</button>
+        </div>
+
+        <div className="editor-library">
+          <span className="bar-label">エピソード書庫</span>
+          <select value={libSelection} onChange={(e) => setLibSelection(e.target.value)}>
+            <option value="">— saved episodes ({library.length}) —</option>
+            {library.map((entry) => (
+              <option key={entry.title} value={entry.title}>
+                {entry.title}
+              </option>
+            ))}
+          </select>
+          <button disabled={!libSelection} onClick={loadFromLibrary}>
+            load
+          </button>
+          <button className="mini" disabled={!libSelection} onClick={deleteFromLibrary} title="delete from library">
+            ✕
+          </button>
+          <button onClick={saveCurrentToLibrary}>save current</button>
+          {notice && <span className="muted">{notice}</span>}
         </div>
 
         {pasteOpen && (

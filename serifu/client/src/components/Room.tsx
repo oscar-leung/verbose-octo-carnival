@@ -11,8 +11,17 @@ import ScriptEditor from './ScriptEditor';
 import { DEMO_SCRIPT } from '../data/demoScript';
 
 export default function Room({ roomId, name }: { roomId: string; name: string }) {
-  const { connected, selfId, state, script, joinError, actions, onSignal, serverNow } =
-    useRoom(roomId, name);
+  const {
+    connected,
+    selfId,
+    state,
+    script,
+    joinError,
+    actions,
+    onSignal,
+    onSpeechAttempt,
+    serverNow,
+  } = useRoom(roomId, name);
   const [settings, setSettings] = useState<DisplaySettings>(loadSettings);
   const [userOffset, setUserOffset] = useState(0);
   const [editorOpen, setEditorOpen] = useState(false);
@@ -149,7 +158,14 @@ export default function Room({ roomId, name }: { roomId: string; name: string })
               videoPosRef={videoPosRef}
             />
             {state.playback.pausedForLineId && script && (
-              <RehearsalBanner script={script} state={state} actions={actions} settings={settings} />
+              <RehearsalBanner
+                script={script}
+                state={state}
+                selfId={selfId}
+                actions={actions}
+                settings={settings}
+                onSpeechAttempt={onSpeechAttempt}
+              />
             )}
           </div>
           <VoicePanel selfId={selfId} users={state.users} actions={actions} onSignal={onSignal} />

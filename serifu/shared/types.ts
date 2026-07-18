@@ -62,6 +62,14 @@ export interface RoomState {
   serverNow: number;
 }
 
+/** One spoken attempt at a line, scored client-side and shared with the room. */
+export interface SpeechAttempt {
+  lineId: string;
+  transcript: string;
+  score: number;
+  passed: boolean;
+}
+
 /** WebRTC signaling payload relayed verbatim between two peers. */
 export interface SignalData {
   description?: { type: string; sdp?: string } | null;
@@ -99,12 +107,14 @@ export interface ClientToServerEvents {
   ) => void;
   'voice:state': (p: { inVoice: boolean; muted: boolean }) => void;
   'webrtc:signal': (p: { to: string; data: SignalData }) => void;
+  'speech:attempt': (p: SpeechAttempt) => void;
 }
 
 export interface ServerToClientEvents {
   'room:state': (state: RoomState) => void;
   'script:state': (script: SkitScript | null) => void;
   'webrtc:signal': (p: { from: string; data: SignalData }) => void;
+  'speech:attempt': (p: SpeechAttempt & { userId: string; userName: string }) => void;
 }
 
 export const ROOM_ID_PATTERN = /^[a-z0-9-]{3,32}$/i;

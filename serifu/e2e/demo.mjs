@@ -71,6 +71,42 @@ await genPage.close();
 
 // ---- 2. User A creates a room ----
 const ctxA = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+// Fake Web Speech API for user A: first a wrong attempt (should score < 70 and
+// NOT resume), then the correct line (should pass and auto-resume the video).
+await ctxA.addInitScript(() => {
+  class FakeSpeechRecognition {
+    constructor() {
+      this._timers = [];
+      this.onresult = null;
+      this.onerror = null;
+      this.onend = null;
+    }
+    start() {
+      const emit = (text, delay) => {
+        this._timers.push(
+          setTimeout(() => {
+            if (!this.onresult) return;
+            const result = Object.assign([{ transcript: text }], { isFinal: true });
+            this.onresult({ resultIndex: 0, results: [result] });
+          }, delay)
+        );
+      };
+      emit('こんにちは世界', 700);
+      emit('王都は今日もにぎやかですね', 2400);
+    }
+    stop() {
+      this._timers.forEach(clearTimeout);
+      this._timers = [];
+      if (this.onend) this.onend();
+    }
+    abort() {
+      this.stop();
+    }
+  }
+  // Override both names — the app prefers the unprefixed one when present.
+  window.SpeechRecognition = FakeSpeechRecognition;
+  window.webkitSpeechRecognition = FakeSpeechRecognition;
+});
 const pageA = await ctxA.newPage();
 pageA.on('pageerror', (e) => console.log('A pageerror:', e.message));
 await pageA.goto(BASE);
@@ -120,22 +156,32 @@ check('play propagates to B', true);
 
 await pageA.waitForSelector('.rehearsal-banner', { timeout: 15000 });
 await pageB.waitForSelector('.rehearsal-banner', { timeout: 5000 });
-const bannerText = await pageA.textContent('.rehearsal-banner');
+const bannerA = await pageA.textContent('.rehearsal-banner');
+const bannerB = await pageB.textContent('.rehearsal-banner');
 check('rehearsal auto-pause fired at claimed line on BOTH clients',
-  (bannerText ?? '').includes('ハイター') && (bannerText ?? '').includes('Oscar'));
-await pageA.screenshot({ path: `${SHOTS}/03-rehearsal-pause-A.png` });
-await pageB.screenshot({ path: `${SHOTS}/04-rehearsal-pause-B.png` });
+  (bannerA ?? '').includes('ハイター') && (bannerA ?? '').includes('your line') &&
+  (bannerB ?? '').includes('Oscar'));
 
 // Active line should be highlighted in the script panel.
 const activeLine = await pageB.$('.line.active');
 check('active line highlighted in script panel', activeLine !== null);
 
-// ---- 8. Continue after "saying" the line ----
-await pageA.click('.rehearsal-banner button.primary');
-await pageA.waitForSelector('.rehearsal-banner', { state: 'detached', timeout: 5000 });
+// ---- 8. Speech scoring: wrong attempt fails, correct attempt auto-resumes ----
+await pageA.waitForSelector('.mic-live', { timeout: 5000 });
+check('speech recognition listening for the line owner', true);
+await pageA.waitForSelector('.score-badge.fail', { timeout: 8000 });
+check('wrong attempt scored below pass threshold (もう一回)', true);
+await pageB.waitForSelector('.peer-attempt', { timeout: 8000 });
+check('partner sees the attempt live', true);
+await pageA.screenshot({ path: `${SHOTS}/03-rehearsal-pause-A.png` });
+await pageB.screenshot({ path: `${SHOTS}/04-rehearsal-pause-B.png` });
+
+// The correct utterance arrives next — the banner must clear itself with
+// NO clicks and playback must continue.
+await pageA.waitForSelector('.rehearsal-banner', { state: 'detached', timeout: 10000 });
 await pageB.waitForSelector('.rehearsal-banner', { state: 'detached', timeout: 5000 });
 const playing = await pageB.textContent('.play-btn');
-check('resume clears banner everywhere and playback continues', playing === '⏸');
+check('correct attempt auto-resumes the anime everywhere', playing === '⏸');
 
 // ---- 9. Voice chat between the two users ----
 await pageA.click('button:has-text("join voice")');

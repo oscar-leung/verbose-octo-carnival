@@ -52,9 +52,16 @@ screenshots in `e2e/shots/`. Point it at a Chromium binary with
    apply. Timings off? The editor's *shift all* tool moves every line at once.
 4. **Claim your characters** in the 配役 bar.
 5. Press play. With **セリフで自動停止 (rehearsal mode)** on, the video pauses
-   at the start of every claimed line — the actor says it, hits continue
-   (or space), and the real delivery plays as instant feedback.
+   at the start of every claimed line. In Chrome/Edge the app then **listens**:
+   say your line, it's scored live against the script (kanji or kana reading,
+   0–100), and at **70+ the anime auto-resumes** — no clicking. Below that you
+   see your score and what it heard (もう一回！); everyone in the room watches
+   your attempts land in real time. No speech support? The continue button
+   (or space) always works.
 6. **Join voice** to talk it over; pause and replay lines as much as you like.
+7. Prep episodes one at a time in the editor and **save them to your episode
+   library** (エピソード書庫) — import ep. 2's subtitles next week, load ep. 1
+   back with one click.
 
 ## Script format
 
@@ -141,11 +148,20 @@ Serifu ships with a short, approximate demo scene only. For real episodes,
 import subtitles you own/ripped yourself and keep rooms among friends —
 distributing full copyrighted transcripts or video is on you to avoid.
 
-## Roadmap ideas (v0.2+)
+## Speech scoring notes
+
+- Uses the browser's Web Speech API (`ja-JP`) — Chrome and Edge only; Firefox
+  and most iOS browsers fall back to the manual continue button.
+- Scoring is edit-distance similarity after normalization (katakana→hiragana,
+  punctuation stripped), taken against both the surface text and the furigana
+  reading, so 「おうとは…」 and 「王都は…」 both count.
+- Pass threshold is `PASS_SCORE` (70) in `client/src/lib/speech.ts`.
+
+## Roadmap ideas (v0.3+)
 
 - Auto-furigana for imported subtitles (kuromoji/kuroshiro).
 - Per-line recording + playback: compare your delivery with the original.
-- Speech recognition scoring (Web Speech API) for solo practice mode.
 - Vocab capture: tap a word in a line → SRS export (Anki/CSV).
 - Line loop mode (A-B repeat) and per-character "hide my lines until spoken".
-- Persistent script library per room, shareable script gallery.
+- Shareable episode gallery (server-side script library) for the full
+  S1+S2 release.
