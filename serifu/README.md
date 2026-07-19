@@ -157,6 +157,14 @@ Design notes:
 - **No persistence**: rooms live in memory and are garbage-collected ~30 min
   after emptying. Export your script JSON to keep it.
 
+## Phones
+
+Serifu is an installable PWA: on **Android**, Chrome → ⋮ → *Add to Home
+screen* gives a real standalone app with full speech scoring and voice chat.
+On **iOS**, Safari → Share → *Add to Home Screen* — everything works except
+speech scoring (no Web Speech API on iOS; iPhone players use the continue
+button). See `RELEASE.md` for the App Store / Play Store path.
+
 ## Deploying for your friends
 
 Ready-made configs are included:

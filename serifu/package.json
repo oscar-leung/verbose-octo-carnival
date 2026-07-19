@@ -1,7 +1,7 @@
 {
   "name": "serifu",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.3.0",
   "description": "Practice Japanese by voicing anime scenes together — synced video, timed scripts, character roles, and voice chat.",
   "type": "module",
   "engines": {
@@ -33,6 +33,7 @@
     "playwright-core": "^1.55.0",
     "typescript": "^5.8.0",
     "vite": "^6.3.5",
+    "vite-plugin-pwa": "^1.3.0",
     "vitest": "^3.2.0"
   }
 }
