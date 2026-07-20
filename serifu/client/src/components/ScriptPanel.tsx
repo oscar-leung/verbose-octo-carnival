@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import type { RoomUser, SkitScript } from '../../../shared/types';
+import { DEMO_SCENES } from '../data/demoScenes';
 import type { DisplaySettings } from '../lib/settings';
 import { formatTime } from '../lib/playback';
 import RubyText from './RubyText';
@@ -14,7 +15,7 @@ interface Props {
   settings: DisplaySettings;
   onSeekLine: (start: number) => void;
   onOpenEditor: () => void;
-  onLoadDemo: () => void;
+  onLoadScript: (script: SkitScript) => void;
   onWordAdded: () => void;
 }
 
@@ -27,7 +28,7 @@ export default function ScriptPanel({
   settings,
   onSeekLine,
   onOpenEditor,
-  onLoadDemo,
+  onLoadScript,
   onWordAdded,
 }: Props) {
   const listRef = useRef<HTMLDivElement | null>(null);
@@ -66,12 +67,21 @@ export default function ScriptPanel({
     return (
       <div className="script-panel empty">
         <p>まだ台本がないよ — no script loaded yet.</p>
-        <div className="row">
-          <button className="primary" onClick={onLoadDemo}>
-            デモ台本を読み込む / load demo scene
-          </button>
-          <button onClick={onOpenEditor}>字幕をインポート / import subtitles</button>
+        <div className="scene-list">
+          {DEMO_SCENES.map((scene, i) => (
+            <button
+              key={scene.title}
+              className={i === 0 ? 'primary scene-btn' : 'scene-btn'}
+              onClick={() => onLoadScript(scene)}
+            >
+              {i === 0 ? '▶ ' : ''}
+              {scene.title.replace('葬送のフリーレン — ', '').replace('葬送のフリーレン ', '')}
+              {i === 0 ? ' / load demo scene' : ''}
+              <small>{scene.lines.length} lines · {scene.characters.length} roles</small>
+            </button>
+          ))}
         </div>
+        <button onClick={onOpenEditor}>字幕をインポート / import your own episode</button>
       </div>
     );
   }

@@ -11,7 +11,6 @@ import PracticeStats from './PracticeStats';
 import ScriptEditor from './ScriptEditor';
 import Wordbook from './Wordbook';
 import { loadWordbook } from '../lib/wordbook';
-import { DEMO_SCRIPT } from '../data/demoScript';
 
 export default function Room({ roomId, name }: { roomId: string; name: string }) {
   const {
@@ -232,7 +231,7 @@ export default function Room({ roomId, name }: { roomId: string; name: string })
             settings={settings}
             onSeekLine={(start) => actions.seek(start)}
             onOpenEditor={() => setEditorOpen(true)}
-            onLoadDemo={() => void actions.loadScript(DEMO_SCRIPT)}
+            onLoadScript={(s) => void actions.loadScript(s)}
             onWordAdded={() => setWordCount(loadWordbook().length)}
           />
         </aside>

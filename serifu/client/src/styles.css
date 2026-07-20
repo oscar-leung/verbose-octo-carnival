@@ -122,23 +122,49 @@ code {
 /* ---------- landing ---------- */
 
 .landing {
+  position: relative;
   min-height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 24px;
+  overflow: hidden;
+}
+
+.landing-sky {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
 }
 
 .landing-card {
-  max-width: 560px;
+  position: relative;
+  z-index: 1;
+  max-width: 580px;
   width: 100%;
-  background: var(--panel);
+  background: rgba(22, 26, 34, 0.88);
+  backdrop-filter: blur(6px);
   border: 1px solid var(--border);
   border-radius: 16px;
   padding: 32px;
   display: flex;
   flex-direction: column;
   gap: 16px;
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.55);
+}
+
+.hero-line {
+  margin: 0;
+  font-size: 21px;
+  line-height: 2.2;
+  color: var(--accent);
+}
+
+.hero-line ruby rt {
+  font-size: 0.5em;
+  color: var(--muted);
 }
 
 .logo {
@@ -611,6 +637,28 @@ input[type='range'] {
   gap: 12px;
   padding: 30px;
   text-align: center;
+}
+
+.scene-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  max-width: 420px;
+}
+
+.scene-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  text-align: left;
+  padding: 9px 15px;
+}
+
+.scene-btn small {
+  color: var(--muted);
+  font-size: 12px;
 }
 
 .script-header {
