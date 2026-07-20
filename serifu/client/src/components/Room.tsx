@@ -9,6 +9,8 @@ import RehearsalBanner from './RehearsalBanner';
 import VoicePanel from './VoicePanel';
 import PracticeStats from './PracticeStats';
 import ScriptEditor from './ScriptEditor';
+import Wordbook from './Wordbook';
+import { loadWordbook } from '../lib/wordbook';
 import { DEMO_SCRIPT } from '../data/demoScript';
 
 export default function Room({ roomId, name }: { roomId: string; name: string }) {
@@ -26,6 +28,8 @@ export default function Room({ roomId, name }: { roomId: string; name: string })
   const [settings, setSettings] = useState<DisplaySettings>(loadSettings);
   const [userOffset, setUserOffset] = useState(0);
   const [editorOpen, setEditorOpen] = useState(false);
+  const [wordbookOpen, setWordbookOpen] = useState(false);
+  const [wordCount, setWordCount] = useState(() => loadWordbook().length);
   const [copied, setCopied] = useState(false);
   const [position, setPosition] = useState(0);
   const videoPosRef = useRef<number | null>(null);
@@ -142,6 +146,9 @@ export default function Room({ roomId, name }: { roomId: string; name: string })
             </span>
           ))}
         </div>
+        <button onClick={() => setWordbookOpen(true)} title="your saved words">
+          単語帳 {wordCount > 0 ? `(${wordCount})` : ''}
+        </button>
         <button onClick={() => setEditorOpen(true)}>台本 ✎</button>
       </header>
 
@@ -226,12 +233,19 @@ export default function Room({ roomId, name }: { roomId: string; name: string })
             onSeekLine={(start) => actions.seek(start)}
             onOpenEditor={() => setEditorOpen(true)}
             onLoadDemo={() => void actions.loadScript(DEMO_SCRIPT)}
+            onWordAdded={() => setWordCount(loadWordbook().length)}
           />
         </aside>
       </div>
 
       {editorOpen && (
         <ScriptEditor script={script} actions={actions} onClose={() => setEditorOpen(false)} />
+      )}
+      {wordbookOpen && (
+        <Wordbook
+          onClose={() => setWordbookOpen(false)}
+          onChanged={() => setWordCount(loadWordbook().length)}
+        />
       )}
     </div>
   );

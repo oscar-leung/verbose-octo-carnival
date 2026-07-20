@@ -719,6 +719,121 @@ input[type='range'] {
   font-size: 13.5px;
 }
 
+/* ---------- learn panel (vocab + grammar) ---------- */
+
+.learn {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 10px 12px;
+  background: rgba(126, 203, 255, 0.05);
+  border: 1px solid var(--accent-dim);
+  border-radius: 8px;
+}
+
+.learn.compact {
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin-top: 2px;
+}
+
+.learn-vocab {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.vocab-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 3px 6px 3px 10px;
+  font-size: 14px;
+}
+
+.vocab-chip ruby rt {
+  font-size: 0.55em;
+  color: var(--muted);
+}
+
+.vocab-en {
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+.vocab-add:disabled {
+  color: #7bd88f;
+  opacity: 1;
+}
+
+.learn-grammar {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13px;
+  color: var(--muted);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.grammar-p {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.learn-toggle.open {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.learn-empty {
+  font-size: 13px;
+}
+
+/* ---------- wordbook ---------- */
+
+.modal.wordbook {
+  width: min(560px, 100%);
+}
+
+.word-list {
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 80px;
+}
+
+.word-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.word-jp {
+  font-size: 17px;
+  min-width: 110px;
+}
+
+.word-jp ruby rt {
+  font-size: 0.55em;
+  color: var(--muted);
+}
+
+.word-en {
+  flex: 1;
+  color: var(--muted);
+  font-size: 14px;
+}
+
 .hover-reveal {
   filter: blur(4px);
   transition: filter 0.15s;

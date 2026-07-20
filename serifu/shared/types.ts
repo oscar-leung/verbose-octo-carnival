@@ -14,6 +14,19 @@ export interface Character {
   color: string;
 }
 
+/** A word worth learning from a line: surface, reading, English gloss. */
+export interface VocabItem {
+  w: string;
+  r?: string;
+  en: string;
+}
+
+/** A grammar pattern in a line: the pattern and a short English explanation. */
+export interface GrammarNote {
+  p: string;
+  en: string;
+}
+
 export interface ScriptLine {
   id: string;
   /** Character id, or null for narration / not-yet-assigned lines. */
@@ -23,6 +36,8 @@ export interface ScriptLine {
   end: number;
   tokens: RubyToken[];
   translation?: string;
+  vocab?: VocabItem[];
+  grammar?: GrammarNote[];
 }
 
 export interface SkitScript {

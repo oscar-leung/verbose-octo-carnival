@@ -216,6 +216,20 @@ check('editor shows all 12 demo lines', editorLines === 12);
 await pageA.screenshot({ path: `${SHOTS}/06-editor.png` });
 await pageA.click('.modal-footer button:has-text("cancel")');
 
+// ---- 11.5 Learn panel: vocab + grammar + wordbook ----
+await pageB.click('.line >> nth=0 >> .learn-toggle');
+await pageB.waitForSelector('.vocab-chip', { timeout: 5000 });
+const grammarText = await pageB.textContent('.learn-grammar');
+check('learn panel shows vocab + grammar in English', (grammarText ?? '').includes('agreement'));
+await pageB.click('.vocab-chip >> nth=0 >> .vocab-add');
+await pageB.waitForSelector('.room-header button:has-text("単語帳 (1)")', { timeout: 5000 });
+check('saving a word updates the wordbook count', true);
+await pageB.click('.room-header button:has-text("単語帳")');
+await pageB.waitForSelector('.word-row', { timeout: 5000 });
+const savedWord = await pageB.textContent('.word-row .word-jp');
+check('wordbook lists the saved word', (savedWord ?? '').includes('王都'));
+await pageB.click('.modal.wordbook .modal-header button');
+
 // ---- 12. Seek via script line click ----
 await pageB.click('.line >> nth=0 >> .line-time');
 await pageA.waitForFunction(() => {

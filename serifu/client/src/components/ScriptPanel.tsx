@@ -3,6 +3,7 @@ import type { RoomUser, SkitScript } from '../../../shared/types';
 import type { DisplaySettings } from '../lib/settings';
 import { formatTime } from '../lib/playback';
 import RubyText from './RubyText';
+import LearnPanel from './LearnPanel';
 
 interface Props {
   script: SkitScript | null;
@@ -14,6 +15,7 @@ interface Props {
   onSeekLine: (start: number) => void;
   onOpenEditor: () => void;
   onLoadDemo: () => void;
+  onWordAdded: () => void;
 }
 
 export default function ScriptPanel({
@@ -26,9 +28,20 @@ export default function ScriptPanel({
   onSeekLine,
   onOpenEditor,
   onLoadDemo,
+  onWordAdded,
 }: Props) {
   const listRef = useRef<HTMLDivElement | null>(null);
   const [follow, setFollow] = useState(true);
+  const [openLearn, setOpenLearn] = useState<Set<string>>(new Set());
+
+  const toggleLearn = (lineId: string) => {
+    setOpenLearn((prev) => {
+      const next = new Set(prev);
+      if (next.has(lineId)) next.delete(lineId);
+      else next.add(lineId);
+      return next;
+    });
+  };
 
   // Manual wheel/touch scrolling turns auto-follow off until re-enabled.
   useEffect(() => {
@@ -119,6 +132,15 @@ export default function ScriptPanel({
                       🔁
                     </button>
                   )}
+                  {(line.vocab?.length || line.grammar?.length) ? (
+                    <button
+                      className={openLearn.has(line.id) ? 'mini learn-toggle open' : 'mini learn-toggle'}
+                      title="vocab & grammar for this line"
+                      onClick={() => toggleLearn(line.id)}
+                    >
+                      学
+                    </button>
+                  ) : null}
                 </div>
                 <div className="line-text">
                   <RubyText tokens={line.tokens} furigana={settings.furigana} />
@@ -133,6 +155,9 @@ export default function ScriptPanel({
                   >
                     {line.translation}
                   </div>
+                )}
+                {openLearn.has(line.id) && (
+                  <LearnPanel line={line} onWordAdded={onWordAdded} />
                 )}
               </div>
             </div>

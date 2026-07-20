@@ -4,6 +4,7 @@ import type { RoomActions, SpeechAttemptEvent, SpeechAttemptHandler } from '../l
 import type { DisplaySettings } from '../lib/settings';
 import { scoreAttempt, SpeechListener, speechSupported } from '../lib/speech';
 import RubyText from './RubyText';
+import LearnPanel from './LearnPanel';
 
 interface Props {
   script: SkitScript;
@@ -154,6 +155,8 @@ export default function RehearsalBanner({
           ) : null}
         </div>
       )}
+
+      <LearnPanel line={line} compact />
 
       {!isMine && peerAttempt && (
         <div className={peerAttempt.passed ? 'peer-attempt pass' : 'peer-attempt'}>

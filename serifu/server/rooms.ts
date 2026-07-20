@@ -127,6 +127,39 @@ export function validateScript(script: unknown): string | null {
     ) {
       return 'line translations must be strings of at most 1000 characters';
     }
+    if (line.vocab !== undefined) {
+      if (!Array.isArray(line.vocab) || line.vocab.length > 20) {
+        return 'line vocab must be an array of at most 20 entries';
+      }
+      for (const v of line.vocab) {
+        if (typeof v !== 'object' || v === null) return 'vocab entries must be objects';
+        const vi = v as Record<string, unknown>;
+        if (typeof vi.w !== 'string' || !vi.w || vi.w.length > 100) {
+          return 'vocab words must be non-empty strings';
+        }
+        if (vi.r !== undefined && (typeof vi.r !== 'string' || vi.r.length > 100)) {
+          return 'vocab readings must be strings';
+        }
+        if (typeof vi.en !== 'string' || !vi.en || vi.en.length > 200) {
+          return 'vocab glosses must be non-empty strings';
+        }
+      }
+    }
+    if (line.grammar !== undefined) {
+      if (!Array.isArray(line.grammar) || line.grammar.length > 6) {
+        return 'line grammar must be an array of at most 6 entries';
+      }
+      for (const g of line.grammar) {
+        if (typeof g !== 'object' || g === null) return 'grammar entries must be objects';
+        const gn = g as Record<string, unknown>;
+        if (typeof gn.p !== 'string' || !gn.p || gn.p.length > 100) {
+          return 'grammar patterns must be non-empty strings';
+        }
+        if (typeof gn.en !== 'string' || !gn.en || gn.en.length > 300) {
+          return 'grammar explanations must be non-empty strings';
+        }
+      }
+    }
   }
   return null;
 }

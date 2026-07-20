@@ -42,6 +42,22 @@ describe('validateScript', () => {
   it('rejects non-object input', () => {
     expect(validateScript('nope')).not.toBeNull();
   });
+
+  it('accepts vocab and grammar annotations', () => {
+    const s = makeScript();
+    s.lines[0]!.vocab = [{ w: '約束', r: 'やくそく', en: 'promise' }];
+    s.lines[0]!.grammar = [{ p: '〜なら', en: 'conditional "if it\'s ~"' }];
+    expect(validateScript(s)).toBeNull();
+  });
+
+  it('rejects malformed vocab and grammar', () => {
+    const s = makeScript();
+    (s.lines[0] as unknown as Record<string, unknown>).vocab = [{ w: '', en: 'x' }];
+    expect(validateScript(s)).toMatch(/vocab/);
+    const s2 = makeScript();
+    (s2.lines[0] as unknown as Record<string, unknown>).grammar = [{ p: 'x' }];
+    expect(validateScript(s2)).toMatch(/grammar/);
+  });
 });
 
 describe('RoomStore basics', () => {
