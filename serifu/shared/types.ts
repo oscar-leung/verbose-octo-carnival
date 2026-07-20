@@ -40,10 +40,20 @@ export interface ScriptLine {
   grammar?: GrammarNote[];
 }
 
+/** A chapter marker: one iconic scene within an episode's script. */
+export interface SkitScene {
+  id: string;
+  title: string;
+  start: number;
+  end: number;
+}
+
 export interface SkitScript {
   title: string;
   characters: Character[];
   lines: ScriptLine[];
+  /** Optional iconic-scene chapters for jumping around the episode. */
+  scenes?: SkitScene[];
 }
 
 export interface RoomUser {

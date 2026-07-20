@@ -238,6 +238,22 @@ await pageA.waitForFunction(() => {
 }, { timeout: 5000 });
 check('clicking a line seeks everyone there', true);
 
+// ---- 13. Scene chapters: load the compilation, jump between 名場面 ----
+await pageB.click('.room-header button:has-text("台本")');
+await pageB.waitForSelector('.editor-tools select', { timeout: 5000 });
+await pageB.selectOption('.editor-tools select', '3'); // 名場面集 compilation
+await pageB.click('.modal-footer button:has-text("apply")');
+await pageB.waitForSelector('.scene-bar', { timeout: 5000 });
+const sceneChips = await pageB.$$eval('.scene-bar .chip.scene', (els) => els.map((e) => e.textContent));
+check('scene bar shows all three 名場面 chapters', sceneChips.length === 3 && sceneChips[1].includes('五十年後'));
+await pageB.click('.scene-bar .chip.scene >> nth=1');
+// B has no video, so its time display tracks the room clock directly (1:10+).
+await pageB.waitForFunction(() => {
+  const t = document.querySelector('.controls .time');
+  return t && /^1:1[0-9]/.test(t.textContent || '');
+}, { timeout: 5000 });
+check('clicking a scene chapter jumps the room clock there', true);
+
 console.log('---');
 for (const [label, ok] of results) if (!ok) console.log('FAILED:', label);
 console.log(`${results.filter(([, ok]) => ok).length}/${results.length} checks passed`);

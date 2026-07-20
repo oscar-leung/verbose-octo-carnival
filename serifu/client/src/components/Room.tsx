@@ -8,6 +8,7 @@ import CharacterBar from './CharacterBar';
 import RehearsalBanner from './RehearsalBanner';
 import VoicePanel from './VoicePanel';
 import PracticeStats from './PracticeStats';
+import BgmPlayer from './BgmPlayer';
 import ScriptEditor from './ScriptEditor';
 import Wordbook from './Wordbook';
 import { loadWordbook } from '../lib/wordbook';
@@ -187,9 +188,27 @@ export default function Room({ roomId, name }: { roomId: string; name: string })
             onOpenEditor={() => setEditorOpen(true)}
           />
           <PracticeStats users={state.users} stats={state.stats} selfId={selfId} />
+          <BgmPlayer />
         </section>
 
         <aside className="side">
+          {script?.scenes && script.scenes.length > 0 && (
+            <div className="scene-bar">
+              <span className="bar-label">名場面</span>
+              {script.scenes.map((sc) => (
+                <button
+                  key={sc.id}
+                  className={
+                    position >= sc.start && position < sc.end ? 'chip scene current' : 'chip scene'
+                  }
+                  onClick={() => actions.seek(sc.start)}
+                  title={`jump to ${sc.title}`}
+                >
+                  {sc.title}
+                </button>
+              ))}
+            </div>
+          )}
           <div className="settings-row">
             <label className="toggle">
               <input
