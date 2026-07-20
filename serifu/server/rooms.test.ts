@@ -43,6 +43,18 @@ describe('validateScript', () => {
     expect(validateScript('nope')).not.toBeNull();
   });
 
+  it('accepts scene chapters and rejects malformed ones', () => {
+    const s = makeScript();
+    s.scenes = [{ id: 's1', title: '約束', start: 0, end: 20 }];
+    expect(validateScript(s)).toBeNull();
+    const bad = makeScript();
+    (bad as unknown as Record<string, unknown>).scenes = [{ id: 's1', title: '', start: 0, end: 20 }];
+    expect(validateScript(bad)).toMatch(/scene/);
+    const inverted = makeScript();
+    inverted.scenes = [{ id: 's1', title: 'x', start: 30, end: 20 }];
+    expect(validateScript(inverted)).toMatch(/scene/);
+  });
+
   it('accepts vocab and grammar annotations', () => {
     const s = makeScript();
     s.lines[0]!.vocab = [{ w: '約束', r: 'やくそく', en: 'promise' }];

@@ -514,6 +514,60 @@ input[type='range'] {
 
 /* ---------- voice + characters ---------- */
 
+.scene-bar {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.chip.scene.current {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(126, 203, 255, 0.08);
+}
+
+.bgm-panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 6px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.bgm-volume {
+  width: 90px;
+}
+
+.bgm-note {
+  font-size: 12px;
+}
+
+.editor-scenes {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.scene-row {
+  display: grid;
+  grid-template-columns: 28px minmax(180px, 1fr) 70px 70px 30px;
+  gap: 6px;
+  align-items: center;
+}
+
+.scene-row input {
+  min-width: 0;
+  padding: 4px 8px;
+}
+
 .practice-stats {
   background: var(--panel);
   border: 1px solid var(--border);

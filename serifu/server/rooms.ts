@@ -86,6 +86,34 @@ export function validateScript(script: unknown): string | null {
   if (!Array.isArray(s.lines) || s.lines.length > 5000) {
     return 'lines must be an array of at most 5000 entries';
   }
+  if (s.scenes !== undefined) {
+    if (!Array.isArray(s.scenes) || s.scenes.length > 100) {
+      return 'scenes must be an array of at most 100 entries';
+    }
+    const sceneIds = new Set<string>();
+    for (const sc of s.scenes) {
+      if (typeof sc !== 'object' || sc === null) return 'scene entries must be objects';
+      const scene = sc as Record<string, unknown>;
+      if (typeof scene.id !== 'string' || !scene.id || scene.id.length > 64) {
+        return 'scene ids must be non-empty strings';
+      }
+      if (sceneIds.has(scene.id)) return `duplicate scene id: ${scene.id}`;
+      sceneIds.add(scene.id);
+      if (typeof scene.title !== 'string' || !scene.title || scene.title.length > 100) {
+        return 'scene titles must be non-empty strings';
+      }
+      if (
+        typeof scene.start !== 'number' ||
+        typeof scene.end !== 'number' ||
+        !Number.isFinite(scene.start) ||
+        !Number.isFinite(scene.end) ||
+        scene.start < 0 ||
+        scene.end < scene.start
+      ) {
+        return 'scene start/end must be finite numbers with 0 <= start <= end';
+      }
+    }
+  }
   const lineIds = new Set<string>();
   for (const l of s.lines) {
     if (typeof l !== 'object' || l === null) return 'line entries must be objects';

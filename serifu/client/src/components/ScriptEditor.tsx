@@ -21,6 +21,13 @@ interface DraftLine {
   translation: string;
 }
 
+interface DraftScene {
+  key: number;
+  title: string;
+  startText: string;
+  endText: string;
+}
+
 const CHAR_COLORS = [
   '#7ecbff',
   '#b4befe',
@@ -60,9 +67,19 @@ function looksLikeScript(value: unknown): value is SkitScript {
 }
 
 export default function ScriptEditor({ script, actions, onClose }: Props) {
+  const sceneToDraft = (s: { title: string; start: number; end: number }): DraftScene => ({
+    key: nextKey(),
+    title: s.title,
+    startText: s.start.toFixed(1),
+    endText: s.end.toFixed(1),
+  });
+
   const [title, setTitle] = useState(script?.title ?? '');
   const [chars, setChars] = useState<Character[]>(script?.characters ?? []);
   const [lines, setLines] = useState<DraftLine[]>(() => (script ? script.lines.map(lineToDraft) : []));
+  const [scenes, setScenes] = useState<DraftScene[]>(() =>
+    script?.scenes ? script.scenes.map(sceneToDraft) : []
+  );
   const [newCharName, setNewCharName] = useState('');
   const [pasteOpen, setPasteOpen] = useState(false);
   const [pasteText, setPasteText] = useState('');
@@ -78,6 +95,7 @@ export default function ScriptEditor({ script, actions, onClose }: Props) {
     setTitle(draft.title);
     setChars(draft.chars);
     setLines(draft.lines);
+    setScenes(s.scenes ? s.scenes.map(sceneToDraft) : []);
     setError(null);
   };
 
@@ -241,7 +259,24 @@ export default function ScriptEditor({ script, actions, onClose }: Props) {
       return null;
     }
     parsed.sort((a, b) => a.start - b.start);
-    return { title: title.trim() || 'Untitled scene', characters: chars, lines: parsed };
+    const parsedScenes = [];
+    for (const [i, sc] of scenes.entries()) {
+      if (!sc.title.trim()) continue;
+      const start = parseTimeInput(sc.startText);
+      const end = parseTimeInput(sc.endText);
+      if (start === null || end === null) {
+        setError(`Scene ${i + 1}: could not parse its time.`);
+        return null;
+      }
+      parsedScenes.push({ id: `s${i + 1}`, title: sc.title.trim(), start, end: Math.max(start, end) });
+    }
+    parsedScenes.sort((a, b) => a.start - b.start);
+    return {
+      title: title.trim() || 'Untitled scene',
+      characters: chars,
+      lines: parsed,
+      ...(parsedScenes.length > 0 ? { scenes: parsedScenes } : {}),
+    };
   };
 
   const saveCurrentToLibrary = () => {
@@ -409,6 +444,64 @@ export default function ScriptEditor({ script, actions, onClose }: Props) {
             }}
           />
           <button onClick={addCharacter}>＋ add</button>
+        </div>
+
+        <div className="editor-scenes">
+          <span className="bar-label">名場面 (scene chapters)</span>
+          {scenes.map((sc, i) => (
+            <span key={sc.key} className="scene-row">
+              <span className="line-index">{i + 1}</span>
+              <input
+                className="scene-title-input"
+                value={sc.title}
+                placeholder="scene title (e.g. 流星群の約束)"
+                onChange={(e) =>
+                  setScenes((prev) =>
+                    prev.map((x) => (x.key === sc.key ? { ...x, title: e.target.value } : x))
+                  )
+                }
+              />
+              <input
+                className="time-input"
+                value={sc.startText}
+                title="start"
+                onChange={(e) =>
+                  setScenes((prev) =>
+                    prev.map((x) => (x.key === sc.key ? { ...x, startText: e.target.value } : x))
+                  )
+                }
+              />
+              <input
+                className="time-input"
+                value={sc.endText}
+                title="end"
+                onChange={(e) =>
+                  setScenes((prev) =>
+                    prev.map((x) => (x.key === sc.key ? { ...x, endText: e.target.value } : x))
+                  )
+                }
+              />
+              <button
+                className="mini"
+                title="remove scene"
+                onClick={() => setScenes((prev) => prev.filter((x) => x.key !== sc.key))}
+              >
+                ✕
+              </button>
+            </span>
+          ))}
+          <button
+            onClick={() => {
+              const last = scenes[scenes.length - 1];
+              const start = (last && parseTimeInput(last.endText)) ?? 0;
+              setScenes([
+                ...scenes,
+                { key: nextKey(), title: '', startText: start.toFixed(1), endText: (start + 60).toFixed(1) },
+              ]);
+            }}
+          >
+            ＋ add scene
+          </button>
         </div>
 
         <p className="editor-hint">
