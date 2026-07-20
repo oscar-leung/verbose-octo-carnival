@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { loadName, saveName } from '../lib/settings';
+import NightSky from './NightSky';
 
 function randomRoomId(): string {
   return Math.random().toString(36).slice(2, 8);
@@ -39,20 +40,41 @@ export default function Landing() {
 
   return (
     <div className="landing">
+      <NightSky className="landing-sky" />
       <div className="landing-card">
         <h1 className="logo">
           Serifu <span className="logo-jp">台詞</span>
         </h1>
+        <p className="hero-line">
+          <ruby>
+            五十年<rt>ごじゅうねん</rt>
+          </ruby>
+          に
+          <ruby>
+            一度<rt>いちど</rt>
+          </ruby>
+          の
+          <ruby>
+            流星群<rt>りゅうせいぐん</rt>
+          </ruby>
+          みたいな
+          <ruby>
+            夜<rt>よる</rt>
+          </ruby>
+          を。
+        </p>
         <p className="tagline">
-          Practice Japanese by <strong>voicing your favorite anime scenes</strong> with friends —
-          synced video, a timed script with furigana, character roles, and voice chat.
+          Practice Japanese by <strong>voicing Frieren's journey</strong> with your own party —
+          the episode plays in sync, the video pauses at your character's line, you say it,
+          and the story rolls on. Furigana, translations, grammar notes, and voice chat included.
         </p>
         <ol className="howto">
-          <li>Create a room, send the link to your friends.</li>
-          <li>Everyone opens their own copy of the episode (a local video file).</li>
-          <li>Claim a character. In rehearsal mode the video pauses right at your line —
-            say it out loud, then continue and hear the real delivery.</li>
-          <li>Pause anytime to talk about grammar, vocab, or how good Himmel looks.</li>
+          <li>Create a room and send the link to your party.</li>
+          <li>Everyone opens their own copy of the episode (files stay on your device).</li>
+          <li>Claim フリーレン, フェルン, ヒンメル… — rehearsal mode pauses at your lines,
+            and speech scoring tells you how close you got.</li>
+          <li>Pause anytime to talk grammar, vocab, or the feels. 単語帳 collects the words
+            you meet for Anki.</li>
         </ol>
         <div className="landing-form">
           <input
@@ -78,8 +100,9 @@ export default function Landing() {
           {joinErr && <p className="error">{joinErr}</p>}
         </div>
         <p className="fineprint">
-          No accounts, nothing uploaded — video files stay on your device; only timing and the
-          script are shared with your room.
+          Three bundled Frieren practice scenes to start; import any episode's subtitles for the
+          rest of the journey. No accounts, nothing uploaded — only timing and the script are
+          shared with your room.
         </p>
       </div>
     </div>

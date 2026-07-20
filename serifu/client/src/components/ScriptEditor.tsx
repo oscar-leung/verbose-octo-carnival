@@ -4,7 +4,7 @@ import type { RoomActions } from '../lib/useRoom';
 import { parseCues, parseRubyText, rubyTokensToText } from '../lib/srt';
 import { parseTimeInput } from '../lib/playback';
 import { loadLibrary, removeFromLibrary, saveToLibrary, type LibraryEntry } from '../lib/scriptLibrary';
-import { DEMO_SCRIPT } from '../data/demoScript';
+import { DEMO_SCENES } from '../data/demoScenes';
 
 interface Props {
   script: SkitScript | null;
@@ -310,7 +310,23 @@ export default function ScriptEditor({ script, actions, onClose }: Props) {
             placeholder="scene title"
             maxLength={200}
           />
-          <button onClick={() => adoptScript(DEMO_SCRIPT)}>load demo scene</button>
+          <select
+            value=""
+            onChange={(e) => {
+              const scene = DEMO_SCENES[Number(e.target.value)];
+              if (scene) adoptScript(scene);
+            }}
+            title="load a bundled Frieren demo scene"
+          >
+            <option value="" disabled>
+              load demo scene…
+            </option>
+            {DEMO_SCENES.map((s, i) => (
+              <option key={s.title} value={i}>
+                {s.title}
+              </option>
+            ))}
+          </select>
           <label className="file-button">
             import .srt / .ass / .vtt / .json
             <input type="file" accept=".srt,.vtt,.ass,.ssa,.json,.txt" onChange={onImportFile} hidden />
