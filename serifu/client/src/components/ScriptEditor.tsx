@@ -8,6 +8,8 @@ import { DEMO_SCENES } from '../data/demoScenes';
 
 interface Props {
   script: SkitScript | null;
+  /** When set, the editor opens on this draft instead of the room script. */
+  initialScript?: SkitScript | null;
   actions: RoomActions;
   onClose: () => void;
 }
@@ -66,7 +68,8 @@ function looksLikeScript(value: unknown): value is SkitScript {
   );
 }
 
-export default function ScriptEditor({ script, actions, onClose }: Props) {
+export default function ScriptEditor({ script: roomScript, initialScript, actions, onClose }: Props) {
+  const script = initialScript ?? roomScript;
   const sceneToDraft = (s: { title: string; start: number; end: number }): DraftScene => ({
     key: nextKey(),
     title: s.title,

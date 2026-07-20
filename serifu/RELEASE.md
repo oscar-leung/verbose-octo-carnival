@@ -70,8 +70,37 @@ bridged in, which is the one genuinely native piece of future work.
 
 Ship the app, not the anime. Serifu contains no episode video or full
 transcripts — players load their own files and import their own subtitles.
-Keep it that way for anything public; the bundled demo scene is a short
-approximate excerpt for onboarding only.
+Keep it that way for anything public; the bundled demo scenes are short
+approximate excerpts for onboarding only.
+
+## Going commercial — read this before charging money
+
+The moment money changes hands, the rules tighten. What's defensible as a
+free fan tool becomes infringement as a product:
+
+- **You cannot sell Frieren.** The name 葬送のフリーレン, the characters,
+  episode transcripts, stills, and the OST belong to Shogakukan/Toho/
+  Madhouse. A paid app built on them without a license invites DMCA
+  takedowns — and Apple/Google reviewers ask for proof of rights when an
+  app uses third-party IP.
+- **What you CAN sell is the platform** — exactly what this codebase is:
+  a watch-party language-practice tool where users bring their own media
+  and subtitles. That's the proven, legal model of Language Reactor and
+  Migaku (both monetize tooling, not shows).
+- Practical path: (1) rebrand the public product as anime-agnostic
+  ("practice any show with your party"), with Frieren as *your* private
+  first use case; (2) replace bundled demo scenes with fully original
+  dialogue before charging; (3) monetize the service layer — hosted rooms,
+  server-side script galleries, per-seat subscriptions, TURN bandwidth;
+  (4) if you truly want official Frieren branding, that's a licensing
+  conversation with Shogakukan — real, but a business-development effort,
+  not a code change.
+- Store-side reality: Play Store ($25 once) and App Store ($99/yr)
+  accounts are yours to create; both review flows will go smoothly for a
+  neutral-branded tool and badly for an unlicensed anime-branded one.
+
+The 話数 episode browser is built for this model: every S1/S2 slot ships
+empty and is filled by each user's own subtitle imports.
 
 ## Release checklist (any platform)
 

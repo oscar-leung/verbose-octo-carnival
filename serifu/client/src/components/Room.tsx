@@ -11,7 +11,9 @@ import PracticeStats from './PracticeStats';
 import BgmPlayer from './BgmPlayer';
 import ScriptEditor from './ScriptEditor';
 import Wordbook from './Wordbook';
+import EpisodeBrowser from './EpisodeBrowser';
 import { loadWordbook } from '../lib/wordbook';
+import type { SkitScript } from '../../../shared/types';
 
 export default function Room({ roomId, name }: { roomId: string; name: string }) {
   const {
@@ -28,6 +30,8 @@ export default function Room({ roomId, name }: { roomId: string; name: string })
   const [settings, setSettings] = useState<DisplaySettings>(loadSettings);
   const [userOffset, setUserOffset] = useState(0);
   const [editorOpen, setEditorOpen] = useState(false);
+  const [editorInitial, setEditorInitial] = useState<SkitScript | null>(null);
+  const [episodesOpen, setEpisodesOpen] = useState(false);
   const [wordbookOpen, setWordbookOpen] = useState(false);
   const [wordCount, setWordCount] = useState(() => loadWordbook().length);
   const [copied, setCopied] = useState(false);
@@ -146,10 +150,20 @@ export default function Room({ roomId, name }: { roomId: string; name: string })
             </span>
           ))}
         </div>
+        <button onClick={() => setEpisodesOpen(true)} title="season & episode tracker">
+          話数
+        </button>
         <button onClick={() => setWordbookOpen(true)} title="your saved words">
           単語帳 {wordCount > 0 ? `(${wordCount})` : ''}
         </button>
-        <button onClick={() => setEditorOpen(true)}>台本 ✎</button>
+        <button
+          onClick={() => {
+            setEditorInitial(null);
+            setEditorOpen(true);
+          }}
+        >
+          台本 ✎
+        </button>
       </header>
 
       <div className="room-grid">
@@ -257,7 +271,27 @@ export default function Room({ roomId, name }: { roomId: string; name: string })
       </div>
 
       {editorOpen && (
-        <ScriptEditor script={script} actions={actions} onClose={() => setEditorOpen(false)} />
+        <ScriptEditor
+          script={script}
+          initialScript={editorInitial}
+          actions={actions}
+          onClose={() => {
+            setEditorOpen(false);
+            setEditorInitial(null);
+          }}
+        />
+      )}
+      {episodesOpen && (
+        <EpisodeBrowser
+          currentScript={script}
+          onLoadScript={(s) => void actions.loadScript(s)}
+          onPrepEpisode={(suggestedTitle) => {
+            setEpisodesOpen(false);
+            setEditorInitial({ title: suggestedTitle, characters: [], lines: [] });
+            setEditorOpen(true);
+          }}
+          onClose={() => setEpisodesOpen(false)}
+        />
       )}
       {wordbookOpen && (
         <Wordbook
