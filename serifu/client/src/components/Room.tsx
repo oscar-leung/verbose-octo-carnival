@@ -7,15 +7,29 @@ import ScriptPanel from './ScriptPanel';
 import CharacterBar from './CharacterBar';
 import RehearsalBanner from './RehearsalBanner';
 import VoicePanel from './VoicePanel';
+import PracticeStats from './PracticeStats';
 import ScriptEditor from './ScriptEditor';
+import Wordbook from './Wordbook';
+import { loadWordbook } from '../lib/wordbook';
 import { DEMO_SCRIPT } from '../data/demoScript';
 
 export default function Room({ roomId, name }: { roomId: string; name: string }) {
-  const { connected, selfId, state, script, joinError, actions, onSignal, serverNow } =
-    useRoom(roomId, name);
+  const {
+    connected,
+    selfId,
+    state,
+    script,
+    joinError,
+    actions,
+    onSignal,
+    onSpeechAttempt,
+    serverNow,
+  } = useRoom(roomId, name);
   const [settings, setSettings] = useState<DisplaySettings>(loadSettings);
   const [userOffset, setUserOffset] = useState(0);
   const [editorOpen, setEditorOpen] = useState(false);
+  const [wordbookOpen, setWordbookOpen] = useState(false);
+  const [wordCount, setWordCount] = useState(() => loadWordbook().length);
   const [copied, setCopied] = useState(false);
   const [position, setPosition] = useState(0);
   const videoPosRef = useRef<number | null>(null);
@@ -132,6 +146,9 @@ export default function Room({ roomId, name }: { roomId: string; name: string })
             </span>
           ))}
         </div>
+        <button onClick={() => setWordbookOpen(true)} title="your saved words">
+          単語帳 {wordCount > 0 ? `(${wordCount})` : ''}
+        </button>
         <button onClick={() => setEditorOpen(true)}>台本 ✎</button>
       </header>
 
@@ -149,7 +166,14 @@ export default function Room({ roomId, name }: { roomId: string; name: string })
               videoPosRef={videoPosRef}
             />
             {state.playback.pausedForLineId && script && (
-              <RehearsalBanner script={script} state={state} actions={actions} settings={settings} />
+              <RehearsalBanner
+                script={script}
+                state={state}
+                selfId={selfId}
+                actions={actions}
+                settings={settings}
+                onSpeechAttempt={onSpeechAttempt}
+              />
             )}
           </div>
           <VoicePanel selfId={selfId} users={state.users} actions={actions} onSignal={onSignal} />
@@ -159,9 +183,11 @@ export default function Room({ roomId, name }: { roomId: string; name: string })
             users={state.users}
             selfId={selfId}
             rehearsalEnabled={state.rehearsalEnabled}
+            passScore={state.passScore}
             actions={actions}
             onOpenEditor={() => setEditorOpen(true)}
           />
+          <PracticeStats users={state.users} stats={state.stats} selfId={selfId} />
         </section>
 
         <aside className="side">
@@ -207,12 +233,19 @@ export default function Room({ roomId, name }: { roomId: string; name: string })
             onSeekLine={(start) => actions.seek(start)}
             onOpenEditor={() => setEditorOpen(true)}
             onLoadDemo={() => void actions.loadScript(DEMO_SCRIPT)}
+            onWordAdded={() => setWordCount(loadWordbook().length)}
           />
         </aside>
       </div>
 
       {editorOpen && (
         <ScriptEditor script={script} actions={actions} onClose={() => setEditorOpen(false)} />
+      )}
+      {wordbookOpen && (
+        <Wordbook
+          onClose={() => setWordbookOpen(false)}
+          onChanged={() => setWordCount(loadWordbook().length)}
+        />
       )}
     </div>
   );

@@ -52,9 +52,51 @@ screenshots in `e2e/shots/`. Point it at a Chromium binary with
    apply. Timings off? The editor's *shift all* tool moves every line at once.
 4. **Claim your characters** in the 配役 bar.
 5. Press play. With **セリフで自動停止 (rehearsal mode)** on, the video pauses
-   at the start of every claimed line — the actor says it, hits continue
-   (or space), and the real delivery plays as instant feedback.
+   at the start of every claimed line. In Chrome/Edge the app then **listens**:
+   say your line, it's scored live against the script (kanji or kana reading,
+   0–100), and at **70+ the anime auto-resumes** — no clicking. Below that you
+   see your score and what it heard (もう一回！); everyone in the room watches
+   your attempts land in real time. No speech support? The continue button
+   (or space) always works.
 6. **Join voice** to talk it over; pause and replay lines as much as you like.
+7. Prep episodes one at a time in the editor and **save them to your episode
+   library** (エピソード書庫) — import ep. 2's subtitles next week, load ep. 1
+   back with one click.
+
+## Getting real episode subtitles
+
+The importer accepts `.srt`, `.vtt`, and `.ass/.ssa` (the format most Japanese
+subtitle archives use — ASS speaker names, when present, are auto-converted
+into characters with lines pre-assigned).
+
+- **[jimaku.cc](https://jimaku.cc/)** — dedicated Japanese-subtitle archive.
+  Frieren: [Season 1 (entry 729)](https://jimaku.cc/entry/729) and
+  [Season 2 (entry 11446)](https://jimaku.cc/entry/11446) have JP subs for
+  every episode. Free account; there's also an API (25 req/min) if we later
+  automate per-episode fetching.
+- **kitsunekko** — the older mirror many of jimaku's files came from.
+
+Workflow per episode: download the episode's JP subtitle file → 台本 editor →
+import → tag/verify speakers → *shift all* until line 1 matches your video →
+**save to エピソード書庫** → export JSON to share with friends. ~15 minutes per
+episode, once.
+
+## Voice chat behind strict NATs (optional TURN)
+
+Voice uses STUN by default, which covers most home networks. If two friends
+can't hear each other (symmetric NAT, campus/corporate Wi-Fi), give the server
+TURN credentials via environment variables — no code change needed; clients
+fetch them from `/api/ice`:
+
+```
+TURN_URLS=turn:your.relay:80,turn:your.relay:443?transport=tcp
+TURN_USERNAME=...
+TURN_CREDENTIAL=...
+```
+
+A [free metered.ca account](https://www.metered.ca/tools/openrelay/) includes
+20 GB/month of TURN relay — paste its credentials into Render's environment
+settings.
 
 ## Script format
 
@@ -115,6 +157,14 @@ Design notes:
 - **No persistence**: rooms live in memory and are garbage-collected ~30 min
   after emptying. Export your script JSON to keep it.
 
+## Phones
+
+Serifu is an installable PWA: on **Android**, Chrome → ⋮ → *Add to Home
+screen* gives a real standalone app with full speech scoring and voice chat.
+On **iOS**, Safari → Share → *Add to Home Screen* — everything works except
+speech scoring (no Web Speech API on iOS; iPhone players use the continue
+button). See `RELEASE.md` for the App Store / Play Store path.
+
 ## Deploying for your friends
 
 Ready-made configs are included:
@@ -141,11 +191,20 @@ Serifu ships with a short, approximate demo scene only. For real episodes,
 import subtitles you own/ripped yourself and keep rooms among friends —
 distributing full copyrighted transcripts or video is on you to avoid.
 
-## Roadmap ideas (v0.2+)
+## Speech scoring notes
+
+- Uses the browser's Web Speech API (`ja-JP`) — Chrome and Edge only; Firefox
+  and most iOS browsers fall back to the manual continue button.
+- Scoring is edit-distance similarity after normalization (katakana→hiragana,
+  punctuation stripped), taken against both the surface text and the furigana
+  reading, so 「おうとは…」 and 「王都は…」 both count.
+- Pass threshold is `PASS_SCORE` (70) in `client/src/lib/speech.ts`.
+
+## Roadmap ideas (v0.3+)
 
 - Auto-furigana for imported subtitles (kuromoji/kuroshiro).
 - Per-line recording + playback: compare your delivery with the original.
-- Speech recognition scoring (Web Speech API) for solo practice mode.
 - Vocab capture: tap a word in a line → SRS export (Anki/CSV).
 - Line loop mode (A-B repeat) and per-character "hide my lines until spoken".
-- Persistent script library per room, shareable script gallery.
+- Shareable episode gallery (server-side script library) for the full
+  S1+S2 release.

@@ -36,6 +36,29 @@ const store = new RoomStore();
 app.get('/healthz', (_req, res) => {
   res.json({ ok: true });
 });
+// ICE servers for voice chat. STUN alone covers most home networks; for
+// strict NATs set TURN_URLS (comma-separated), TURN_USERNAME, and
+// TURN_CREDENTIAL in the environment (e.g. a free metered.ca account) and
+// clients pick them up with no code change.
+app.get('/api/ice', (_req, res) => {
+  const iceServers: { urls: string; username?: string; credential?: string }[] = [
+    { urls: 'stun:stun.l.google.com:19302' },
+  ];
+  const turnUrls = (process.env.TURN_URLS ?? '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const username = process.env.TURN_USERNAME;
+  const credential = process.env.TURN_CREDENTIAL;
+  for (const urls of turnUrls) {
+    iceServers.push({
+      urls,
+      ...(username ? { username } : {}),
+      ...(credential ? { credential } : {}),
+    });
+  }
+  res.json({ iceServers });
+});
 app.use(express.static(distDir));
 // SPA fallback: any other GET serves the client shell (no-op in dev, where
 // the Vite dev server owns the pages and proxies /socket.io here).
@@ -115,6 +138,12 @@ io.on('connection', (socket: AppSocket) => {
     if (store.setRehearsal(roomId, p.enabled)) syncRoom(roomId);
   });
 
+  socket.on('rehearsal:threshold', (p) => {
+    const roomId = socket.data.roomId;
+    if (!roomId || typeof p?.score !== 'number') return;
+    if (store.setPassScore(roomId, p.score)) syncRoom(roomId);
+  });
+
   socket.on('rehearsal:pause', (p) => {
     const roomId = socket.data.roomId;
     if (!roomId || typeof p?.lineId !== 'string') return;
@@ -171,6 +200,34 @@ io.on('connection', (socket: AppSocket) => {
     const roomId = socket.data.roomId;
     if (!roomId || typeof p?.inVoice !== 'boolean' || typeof p?.muted !== 'boolean') return;
     if (store.setVoice(roomId, socket.id, p.inVoice, p.muted)) syncRoom(roomId);
+  });
+
+  socket.on('speech:attempt', (p) => {
+    const roomId = socket.data.roomId;
+    if (
+      !roomId ||
+      typeof p?.lineId !== 'string' ||
+      p.lineId.length > 64 ||
+      typeof p?.transcript !== 'string' ||
+      typeof p?.score !== 'number' ||
+      typeof p?.passed !== 'boolean'
+    ) {
+      return;
+    }
+    const user = store.get(roomId)?.users.get(socket.id);
+    if (!user) return;
+    // The room threshold is authoritative for pass/fail and the tally.
+    const passed = store.recordAttempt(roomId, socket.id, p.score);
+    if (passed === null) return;
+    io.to(roomId).emit('speech:attempt', {
+      lineId: p.lineId,
+      transcript: p.transcript.slice(0, 300),
+      score: Math.max(0, Math.min(100, Math.round(p.score))),
+      passed,
+      userId: socket.id,
+      userName: user.name,
+    });
+    syncRoom(roomId);
   });
 
   socket.on('webrtc:signal', (p) => {

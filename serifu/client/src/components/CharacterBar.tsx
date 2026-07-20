@@ -7,9 +7,16 @@ interface Props {
   users: RoomUser[];
   selfId: string;
   rehearsalEnabled: boolean;
+  passScore: number;
   actions: RoomActions;
   onOpenEditor: () => void;
 }
+
+const STRICTNESS_PRESETS = [
+  { score: 55, label: 'ゆるめ 55+' },
+  { score: 70, label: 'ふつう 70+' },
+  { score: 85, label: 'きびしめ 85+' },
+];
 
 export default function CharacterBar({
   script,
@@ -17,6 +24,7 @@ export default function CharacterBar({
   users,
   selfId,
   rehearsalEnabled,
+  passScore,
   actions,
   onOpenEditor,
 }: Props) {
@@ -75,6 +83,22 @@ export default function CharacterBar({
           onChange={(e) => actions.setRehearsal(e.target.checked)}
         />
         セリフで自動停止
+      </label>
+      <label className="toggle" title="Speech score needed to pass and auto-resume — shared by the whole room.">
+        判定
+        <select
+          value={passScore}
+          onChange={(e) => actions.setPassScore(Number(e.target.value))}
+        >
+          {STRICTNESS_PRESETS.map((p) => (
+            <option key={p.score} value={p.score}>
+              {p.label}
+            </option>
+          ))}
+          {!STRICTNESS_PRESETS.some((p) => p.score === passScore) && (
+            <option value={passScore}>{passScore}+</option>
+          )}
+        </select>
       </label>
     </div>
   );

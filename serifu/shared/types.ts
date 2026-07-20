@@ -14,6 +14,19 @@ export interface Character {
   color: string;
 }
 
+/** A word worth learning from a line: surface, reading, English gloss. */
+export interface VocabItem {
+  w: string;
+  r?: string;
+  en: string;
+}
+
+/** A grammar pattern in a line: the pattern and a short English explanation. */
+export interface GrammarNote {
+  p: string;
+  en: string;
+}
+
 export interface ScriptLine {
   id: string;
   /** Character id, or null for narration / not-yet-assigned lines. */
@@ -23,6 +36,8 @@ export interface ScriptLine {
   end: number;
   tokens: RubyToken[];
   translation?: string;
+  vocab?: VocabItem[];
+  grammar?: GrammarNote[];
 }
 
 export interface SkitScript {
@@ -49,17 +64,36 @@ export interface PlaybackState {
   pausedForLineId: string | null;
 }
 
+/** Running practice tally for one user in a room. */
+export interface UserStats {
+  attempts: number;
+  passes: number;
+  scoreSum: number;
+}
+
 export interface RoomState {
   roomId: string;
   users: RoomUser[];
   /** characterId -> userId */
   claims: Record<string, string>;
   rehearsalEnabled: boolean;
+  /** Score needed for a spoken attempt to pass and auto-resume (40-95). */
+  passScore: number;
+  /** userId -> practice tally; reset when a new script is loaded. */
+  stats: Record<string, UserStats>;
   playback: PlaybackState;
   scriptTitle: string | null;
   scriptVersion: number;
   /** Server clock at broadcast time; lets clients estimate clock offset. */
   serverNow: number;
+}
+
+/** One spoken attempt at a line, scored client-side and shared with the room. */
+export interface SpeechAttempt {
+  lineId: string;
+  transcript: string;
+  score: number;
+  passed: boolean;
 }
 
 /** WebRTC signaling payload relayed verbatim between two peers. */
@@ -89,6 +123,7 @@ export interface ClientToServerEvents {
   'playback:pause': (p: { position: number }) => void;
   'playback:seek': (p: { position: number }) => void;
   'rehearsal:set': (p: { enabled: boolean }) => void;
+  'rehearsal:threshold': (p: { score: number }) => void;
   'rehearsal:pause': (p: { lineId: string }) => void;
   'rehearsal:resume': () => void;
   'character:claim': (p: { characterId: string }) => void;
@@ -99,12 +134,14 @@ export interface ClientToServerEvents {
   ) => void;
   'voice:state': (p: { inVoice: boolean; muted: boolean }) => void;
   'webrtc:signal': (p: { to: string; data: SignalData }) => void;
+  'speech:attempt': (p: SpeechAttempt) => void;
 }
 
 export interface ServerToClientEvents {
   'room:state': (state: RoomState) => void;
   'script:state': (script: SkitScript | null) => void;
   'webrtc:signal': (p: { from: string; data: SignalData }) => void;
+  'speech:attempt': (p: SpeechAttempt & { userId: string; userName: string }) => void;
 }
 
 export const ROOM_ID_PATTERN = /^[a-z0-9-]{3,32}$/i;

@@ -4,6 +4,8 @@ export interface Cue {
   start: number;
   end: number;
   text: string;
+  /** Speaker name, when the subtitle format carries one (ASS "Name" field). */
+  name?: string;
 }
 
 // CJK Unified Ideographs plus the iteration/repetition marks that commonly
@@ -79,10 +81,70 @@ export function joinCueLines(lines: string[]): string {
 }
 
 /**
+ * Parse Advanced SubStation Alpha (.ass/.ssa) events into cues. This is the
+ * dominant format on Japanese subtitle archives like jimaku.cc. Field order
+ * comes from the [Events] Format line; override tags like {\pos(...)} are
+ * stripped, and the Name field (when the subber filled it in) is kept as a
+ * speaker hint so the editor can pre-assign characters.
+ */
+export function parseAss(input: string): Cue[] {
+  const lines = input
+    .replace(new RegExp(String.fromCharCode(0xfeff), 'g'), '')
+    .split(new RegExp(String.fromCharCode(13) + '?' + NL));
+  // Default V4+ field order, replaced if a Format: line is present.
+  let fields = ['Layer', 'Start', 'End', 'Style', 'Name', 'MarginL', 'MarginR', 'MarginV', 'Effect', 'Text'];
+  const cues: Cue[] = [];
+  const OVERRIDE_TAGS = new RegExp('[{][^{}]*[}]', 'g');
+  for (const raw of lines) {
+    const line = raw.trim();
+    if (/^Format:/i.test(line)) {
+      fields = line.slice(line.indexOf(':') + 1).split(',').map((f) => f.trim());
+      continue;
+    }
+    if (!/^Dialogue:/i.test(line)) continue;
+    const payload = line.slice(line.indexOf(':') + 1).trimStart();
+    const parts = payload.split(',');
+    if (parts.length < fields.length) continue;
+    const textIndex = fields.indexOf('Text');
+    const get = (name: string): string => {
+      const i = fields.indexOf(name);
+      return i >= 0 ? (parts[i] ?? '').trim() : '';
+    };
+    // Text is the last field and may itself contain commas.
+    const text = (textIndex >= 0 ? parts.slice(textIndex).join(',') : '')
+      .replace(OVERRIDE_TAGS, '')
+      .split(/\\[Nn]/)
+      .map((s) => s.replace(/\\h/g, ' ').trim())
+      .filter((s) => s.length > 0)
+      .reduce((acc, s) => (acc && endsWithAsciiWord(acc) ? `${acc} ${s}` : acc + s), '');
+    if (!text) continue;
+    const start = parseTimestamp(get('Start'));
+    const end = parseTimestamp(get('End'));
+    if (start === null || end === null) continue;
+    const name = get('Name');
+    cues.push({
+      start,
+      end: Math.max(start, end),
+      text,
+      ...(name && name !== '0' ? { name } : {}),
+    });
+  }
+  cues.sort((a, b) => a.start - b.start);
+  return cues;
+}
+
+/** True when content looks like an ASS/SSA file rather than SRT/VTT. */
+export function looksLikeAss(input: string): boolean {
+  return /^\s*\[Script Info\]/im.test(input) || /^Dialogue:/m.test(input);
+}
+
+/**
  * Parse SRT or WebVTT content into cues. Tolerates missing index lines,
  * VTT headers/NOTE/STYLE blocks, and cue settings after the timestamps.
+ * ASS/SSA input is detected and routed to parseAss.
  */
 export function parseCues(input: string): Cue[] {
+  if (looksLikeAss(input)) return parseAss(input);
   const normalized = input
     .replace(new RegExp(String.fromCharCode(0xfeff), 'g'), '')
     .replace(new RegExp(String.fromCharCode(13) + '?' + NL, 'g'), NL)

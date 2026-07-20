@@ -423,7 +423,99 @@ input[type='range'] {
   align-self: flex-start;
 }
 
+.speech-zone {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.speech-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 14px;
+}
+
+.mic-live {
+  color: var(--accent);
+  animation: pulse 1.2s infinite alternate;
+}
+
+.speech-interim {
+  color: var(--muted);
+  font-style: italic;
+}
+
+.score-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 999px;
+  padding: 4px 14px;
+  font-weight: 700;
+}
+
+.score-badge.pass {
+  background: rgba(123, 216, 143, 0.15);
+  border: 1px solid #7bd88f;
+  color: #7bd88f;
+  font-size: 18px;
+}
+
+.score-badge.fail {
+  background: rgba(255, 184, 108, 0.12);
+  border: 1px solid #ffb86c;
+  color: #ffb86c;
+}
+
+.score-badge small {
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.peer-attempt {
+  font-size: 14px;
+  color: var(--muted);
+  border-left: 3px solid #ffb86c;
+  padding-left: 10px;
+}
+
+.peer-attempt.pass {
+  border-left-color: #7bd88f;
+  color: #7bd88f;
+}
+
 /* ---------- voice + characters ---------- */
+
+.practice-stats {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 6px 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.stat-chip {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 2px 12px;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.line .replay {
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.line:hover .replay,
+.line.active .replay {
+  opacity: 1;
+}
 
 .voice-panel,
 .character-bar {
@@ -627,6 +719,121 @@ input[type='range'] {
   font-size: 13.5px;
 }
 
+/* ---------- learn panel (vocab + grammar) ---------- */
+
+.learn {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 10px 12px;
+  background: rgba(126, 203, 255, 0.05);
+  border: 1px solid var(--accent-dim);
+  border-radius: 8px;
+}
+
+.learn.compact {
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin-top: 2px;
+}
+
+.learn-vocab {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.vocab-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 3px 6px 3px 10px;
+  font-size: 14px;
+}
+
+.vocab-chip ruby rt {
+  font-size: 0.55em;
+  color: var(--muted);
+}
+
+.vocab-en {
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+.vocab-add:disabled {
+  color: #7bd88f;
+  opacity: 1;
+}
+
+.learn-grammar {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13px;
+  color: var(--muted);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.grammar-p {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.learn-toggle.open {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.learn-empty {
+  font-size: 13px;
+}
+
+/* ---------- wordbook ---------- */
+
+.modal.wordbook {
+  width: min(560px, 100%);
+}
+
+.word-list {
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 80px;
+}
+
+.word-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.word-jp {
+  font-size: 17px;
+  min-width: 110px;
+}
+
+.word-jp ruby rt {
+  font-size: 0.55em;
+  color: var(--muted);
+}
+
+.word-en {
+  flex: 1;
+  color: var(--muted);
+  font-size: 14px;
+}
+
 .hover-reveal {
   filter: blur(4px);
   transition: filter 0.15s;
@@ -709,11 +916,16 @@ input[type='range'] {
   resize: vertical;
 }
 
-.editor-chars {
+.editor-chars,
+.editor-library {
   display: flex;
   gap: 8px;
   align-items: center;
   flex-wrap: wrap;
+}
+
+.editor-library select {
+  min-width: 220px;
 }
 
 .editor-hint {
@@ -762,13 +974,31 @@ input[type='range'] {
 /* ---------- responsive ---------- */
 
 @media (max-width: 1000px) {
-  .room-grid {
-    grid-template-columns: 1fr;
-    overflow-y: auto;
+  /* On phones the page scrolls as one column; only the script list keeps
+     its own internal scroll. Fixed viewport heights squeeze the stage row
+     and make panels overlap. */
+  .room {
+    height: auto;
+    min-height: 100%;
   }
 
+  .room-grid {
+    flex: none;
+    grid-template-columns: 1fr;
+    grid-auto-rows: auto;
+  }
+
+  .stage,
   .side {
-    min-height: 420px;
+    min-height: 0;
+  }
+
+  .script-panel {
+    flex: none;
+  }
+
+  .line-list {
+    max-height: 65vh;
   }
 
   .video-panel video {

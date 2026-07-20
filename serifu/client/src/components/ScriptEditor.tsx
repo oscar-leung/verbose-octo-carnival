@@ -3,6 +3,7 @@ import type { Character, ScriptLine, SkitScript } from '../../../shared/types';
 import type { RoomActions } from '../lib/useRoom';
 import { parseCues, parseRubyText, rubyTokensToText } from '../lib/srt';
 import { parseTimeInput } from '../lib/playback';
+import { loadLibrary, removeFromLibrary, saveToLibrary, type LibraryEntry } from '../lib/scriptLibrary';
 import { DEMO_SCRIPT } from '../data/demoScript';
 
 interface Props {
@@ -68,6 +69,9 @@ export default function ScriptEditor({ script, actions, onClose }: Props) {
   const [shiftText, setShiftText] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [library, setLibrary] = useState<LibraryEntry[]>(loadLibrary);
+  const [libSelection, setLibSelection] = useState('');
+  const [notice, setNotice] = useState<string | null>(null);
 
   const adoptScript = (s: SkitScript) => {
     const draft = scriptToDraft(s);
@@ -96,19 +100,34 @@ export default function ScriptEditor({ script, actions, onClose }: Props) {
     }
     const cues = parseCues(trimmed);
     if (cues.length === 0) {
-      setError('No subtitle cues found — is that an SRT/VTT file?');
+      setError('No subtitle cues found — is that an SRT/VTT/ASS file?');
       return;
     }
+    // ASS files sometimes carry speaker names — turn them into characters
+    // and pre-assign the lines, so tagging is already done.
+    const speakerNames = [...new Set(cues.map((c) => c.name).filter((n): n is string => !!n))];
+    const speakerChars: Character[] = speakerNames.map((name, i) => ({
+      id: `c${i + 1}`,
+      name,
+      color: CHAR_COLORS[i % CHAR_COLORS.length] ?? '#7ecbff',
+    }));
+    const idByName = new Map(speakerChars.map((c) => [c.name, c.id]));
+    if (speakerChars.length > 0) setChars(speakerChars);
     setTitle((t) => t || sourceName);
     setLines(
       cues.map((cue) => ({
         key: nextKey(),
-        character: '',
+        character: (cue.name && idByName.get(cue.name)) || '',
         startText: cue.start.toFixed(1),
         endText: cue.end.toFixed(1),
         text: cue.text,
         translation: '',
       }))
+    );
+    setNotice(
+      speakerChars.length > 0
+        ? `imported ${cues.length} lines with ${speakerChars.length} speakers auto-detected`
+        : `imported ${cues.length} lines — assign speakers with the dropdowns`
     );
     setError(null);
   };
@@ -225,6 +244,32 @@ export default function ScriptEditor({ script, actions, onClose }: Props) {
     return { title: title.trim() || 'Untitled scene', characters: chars, lines: parsed };
   };
 
+  const saveCurrentToLibrary = () => {
+    const s = buildScript();
+    if (!s) return;
+    if (saveToLibrary(s)) {
+      setLibrary(loadLibrary());
+      setNotice(`saved 「${s.title}」 to this browser's library`);
+      setError(null);
+    } else {
+      setError('Could not save — browser storage is full or blocked.');
+    }
+  };
+
+  const loadFromLibrary = () => {
+    const entry = library.find((e) => e.title === libSelection);
+    if (!entry) return;
+    adoptScript(entry.script);
+    setNotice(`loaded 「${entry.title}」 — apply to room when ready`);
+  };
+
+  const deleteFromLibrary = () => {
+    if (!libSelection) return;
+    removeFromLibrary(libSelection);
+    setLibrary(loadLibrary());
+    setLibSelection('');
+  };
+
   const exportJson = () => {
     const s = buildScript();
     if (!s) return;
@@ -267,8 +312,8 @@ export default function ScriptEditor({ script, actions, onClose }: Props) {
           />
           <button onClick={() => adoptScript(DEMO_SCRIPT)}>load demo scene</button>
           <label className="file-button">
-            import .srt / .vtt / .json
-            <input type="file" accept=".srt,.vtt,.json,.txt" onChange={onImportFile} hidden />
+            import .srt / .ass / .vtt / .json
+            <input type="file" accept=".srt,.vtt,.ass,.ssa,.json,.txt" onChange={onImportFile} hidden />
           </label>
           <button onClick={() => setPasteOpen((v) => !v)}>
             {pasteOpen ? 'hide paste box' : 'paste subtitles'}
@@ -285,6 +330,26 @@ export default function ScriptEditor({ script, actions, onClose }: Props) {
             <button onClick={applyShift}>apply</button>
           </span>
           <button onClick={exportJson}>export JSON</button>
+        </div>
+
+        <div className="editor-library">
+          <span className="bar-label">エピソード書庫</span>
+          <select value={libSelection} onChange={(e) => setLibSelection(e.target.value)}>
+            <option value="">— saved episodes ({library.length}) —</option>
+            {library.map((entry) => (
+              <option key={entry.title} value={entry.title}>
+                {entry.title}
+              </option>
+            ))}
+          </select>
+          <button disabled={!libSelection} onClick={loadFromLibrary}>
+            load
+          </button>
+          <button className="mini" disabled={!libSelection} onClick={deleteFromLibrary} title="delete from library">
+            ✕
+          </button>
+          <button onClick={saveCurrentToLibrary}>save current</button>
+          {notice && <span className="muted">{notice}</span>}
         </div>
 
         {pasteOpen && (

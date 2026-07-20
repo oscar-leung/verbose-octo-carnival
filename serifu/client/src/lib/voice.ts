@@ -1,6 +1,6 @@
 import type { SignalData } from '../../../shared/types';
 
-const ICE_SERVERS: RTCIceServer[] = [{ urls: 'stun:stun.l.google.com:19302' }];
+const DEFAULT_ICE_SERVERS: RTCIceServer[] = [{ urls: 'stun:stun.l.google.com:19302' }];
 
 interface PeerConn {
   pc: RTCPeerConnection;
@@ -20,6 +20,7 @@ export class VoiceMesh {
   private peers = new Map<string, PeerConn>();
   private localStream: MediaStream | null = null;
   private muted = false;
+  private iceServers: RTCIceServer[] = DEFAULT_ICE_SERVERS;
 
   constructor(
     private selfId: string,
@@ -33,6 +34,16 @@ export class VoiceMesh {
 
   async start(): Promise<void> {
     if (this.localStream) return;
+    // Server-provided ICE config (may include TURN via env vars); STUN fallback.
+    try {
+      const res = await fetch('/api/ice');
+      const body = (await res.json()) as { iceServers?: RTCIceServer[] };
+      if (Array.isArray(body.iceServers) && body.iceServers.length > 0) {
+        this.iceServers = body.iceServers;
+      }
+    } catch {
+      // Keep the default STUN-only config.
+    }
     this.localStream = await navigator.mediaDevices.getUserMedia({
       audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
       video: false,
@@ -105,7 +116,7 @@ export class VoiceMesh {
   }
 
   private addPeer(peerId: string): PeerConn {
-    const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+    const pc = new RTCPeerConnection({ iceServers: this.iceServers });
     const peer: PeerConn = {
       pc,
       polite: this.selfId > peerId,

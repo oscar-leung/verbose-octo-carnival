@@ -3,6 +3,7 @@ import type {
   RoomState,
   RoomUser,
   SkitScript,
+  UserStats,
 } from '../shared/types';
 import { MAX_USERS_PER_ROOM } from '../shared/types';
 
@@ -30,6 +31,10 @@ export interface Room {
   /** characterId -> userId */
   claims: Map<string, string>;
   rehearsalEnabled: boolean;
+  /** Score needed for a spoken attempt to pass (40-95). */
+  passScore: number;
+  /** userId -> practice tally, reset on script change. */
+  stats: Map<string, UserStats>;
   playback: PlaybackState;
   script: SkitScript | null;
   scriptVersion: number;
@@ -37,6 +42,10 @@ export interface Room {
   rehearsalCooldowns: Map<string, number>;
   emptySince: number | null;
 }
+
+export const DEFAULT_PASS_SCORE = 70;
+export const MIN_PASS_SCORE = 40;
+export const MAX_PASS_SCORE = 95;
 
 function sanitizeName(raw: string): string {
   const cleaned = raw.replace(/[\u0000-\u001f\u007f]/g, '').trim();
@@ -118,6 +127,39 @@ export function validateScript(script: unknown): string | null {
     ) {
       return 'line translations must be strings of at most 1000 characters';
     }
+    if (line.vocab !== undefined) {
+      if (!Array.isArray(line.vocab) || line.vocab.length > 20) {
+        return 'line vocab must be an array of at most 20 entries';
+      }
+      for (const v of line.vocab) {
+        if (typeof v !== 'object' || v === null) return 'vocab entries must be objects';
+        const vi = v as Record<string, unknown>;
+        if (typeof vi.w !== 'string' || !vi.w || vi.w.length > 100) {
+          return 'vocab words must be non-empty strings';
+        }
+        if (vi.r !== undefined && (typeof vi.r !== 'string' || vi.r.length > 100)) {
+          return 'vocab readings must be strings';
+        }
+        if (typeof vi.en !== 'string' || !vi.en || vi.en.length > 200) {
+          return 'vocab glosses must be non-empty strings';
+        }
+      }
+    }
+    if (line.grammar !== undefined) {
+      if (!Array.isArray(line.grammar) || line.grammar.length > 6) {
+        return 'line grammar must be an array of at most 6 entries';
+      }
+      for (const g of line.grammar) {
+        if (typeof g !== 'object' || g === null) return 'grammar entries must be objects';
+        const gn = g as Record<string, unknown>;
+        if (typeof gn.p !== 'string' || !gn.p || gn.p.length > 100) {
+          return 'grammar patterns must be non-empty strings';
+        }
+        if (typeof gn.en !== 'string' || !gn.en || gn.en.length > 300) {
+          return 'grammar explanations must be non-empty strings';
+        }
+      }
+    }
   }
   return null;
 }
@@ -139,6 +181,8 @@ export class RoomStore {
         users: new Map(),
         claims: new Map(),
         rehearsalEnabled: true,
+        passScore: DEFAULT_PASS_SCORE,
+        stats: new Map(),
         playback: {
           isPlaying: false,
           position: 0,
@@ -182,6 +226,7 @@ export class RoomStore {
   leave(roomId: string, userId: string): boolean {
     const room = this.rooms.get(roomId);
     if (!room || !room.users.delete(userId)) return false;
+    room.stats.delete(userId);
     for (const [charId, ownerId] of room.claims) {
       if (ownerId === userId) room.claims.delete(charId);
     }
@@ -232,6 +277,27 @@ export class RoomStore {
       pausedForLineId: null,
     };
     return true;
+  }
+
+  setPassScore(roomId: string, score: number): boolean {
+    const room = this.rooms.get(roomId);
+    if (!room || !Number.isFinite(score)) return false;
+    room.passScore = Math.min(MAX_PASS_SCORE, Math.max(MIN_PASS_SCORE, Math.round(score)));
+    return true;
+  }
+
+  /** Tally a spoken attempt; returns whether it passed at the room threshold. */
+  recordAttempt(roomId: string, userId: string, score: number): boolean | null {
+    const room = this.rooms.get(roomId);
+    if (!room || !room.users.has(userId) || !Number.isFinite(score)) return null;
+    const clamped = Math.min(100, Math.max(0, Math.round(score)));
+    const passed = clamped >= room.passScore;
+    const stats = room.stats.get(userId) ?? { attempts: 0, passes: 0, scoreSum: 0 };
+    stats.attempts += 1;
+    stats.scoreSum += clamped;
+    if (passed) stats.passes += 1;
+    room.stats.set(userId, stats);
+    return passed;
   }
 
   setRehearsal(roomId: string, enabled: boolean): boolean {
@@ -321,6 +387,7 @@ export class RoomStore {
     room.script = sorted;
     room.scriptVersion += 1;
     room.rehearsalCooldowns.clear();
+    room.stats.clear();
     room.playback.pausedForLineId = null;
     const validChars = new Set(sorted.characters.map((c) => c.id));
     for (const charId of [...room.claims.keys()]) {
@@ -337,6 +404,8 @@ export class RoomStore {
       users: [...room.users.values()],
       claims: Object.fromEntries(room.claims),
       rehearsalEnabled: room.rehearsalEnabled,
+      passScore: room.passScore,
+      stats: Object.fromEntries([...room.stats.entries()].map(([id, s]) => [id, { ...s }])),
       playback: { ...room.playback },
       scriptTitle: room.script?.title ?? null,
       scriptVersion: room.scriptVersion,
