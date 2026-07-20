@@ -254,6 +254,20 @@ await pageB.waitForFunction(() => {
 }, { timeout: 5000 });
 check('clicking a scene chapter jumps the room clock there', true);
 
+// ---- 14. Episode browser: both seasons slotted, link current script ----
+await pageB.click('.room-header button:has-text("話数")');
+await pageB.waitForSelector('.episode-row', { timeout: 5000 });
+const epNums = await pageB.$$eval('.episode-row .ep-num', (els) => els.map((e) => e.textContent));
+check('episode browser lists Season 1 and Season 2 slots',
+  epNums.includes('S1E1') && epNums.includes('S1E28') && epNums.includes('S2E1'));
+// Link the room's current script to S1E1 (⤓), status flips to 台本あり
+// only once it's in the library — so just verify the link button works
+// and the title autofills.
+await pageB.click('.episode-row:has(.ep-num:has-text("S1E1")) button[title*="link"]');
+const epTitle = await pageB.inputValue('.episode-row:has(.ep-num:has-text("S1E1")) .ep-title');
+check('linking an episode autofills its title from the room script', epTitle.length > 0);
+await pageB.click('.modal.episodes .modal-header button');
+
 console.log('---');
 for (const [label, ok] of results) if (!ok) console.log('FAILED:', label);
 console.log(`${results.filter(([, ok]) => ok).length}/${results.length} checks passed`);
