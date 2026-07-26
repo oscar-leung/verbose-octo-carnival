@@ -254,6 +254,24 @@ await pageB.waitForFunction(() => {
 }, { timeout: 5000 });
 check('clicking a scene chapter jumps the room clock there', true);
 
+// ---- 13.5 Mastery tracker: the spoken pass fed the ledger; review works ----
+// Page A passed the ハイター line via fake speech, so its vocab/grammar
+// (王都, にぎやか, 〜も, 〜ですね) should be tracked with a due badge.
+await pageA.waitForSelector('.room-header button:has-text("習得 (4)")', { timeout: 5000 });
+check('spoken pass feeds the mastery ledger (4 items due)', true);
+await pageA.click('.room-header button:has-text("習得")');
+await pageA.waitForSelector('.mastery-row', { timeout: 5000 });
+const masteryFronts = await pageA.$$eval('.mastery-row .mastery-front', (els) => els.map((e) => e.textContent));
+check('mastery list contains the spoken line items', masteryFronts.some((t) => (t ?? '').includes('王都')));
+await pageA.click('button:has-text("▶ review")');
+await pageA.waitForSelector('.review-front', { timeout: 5000 });
+await pageA.click('button:has-text("show answer")');
+await pageA.click('button:has-text("○ knew it")');
+await pageA.waitForSelector('.review-front', { timeout: 5000 });
+check('review session grades and advances', true);
+await pageA.click('button:has-text("end review")');
+await pageA.click('.modal.mastery .modal-header button');
+
 // ---- 14. Episode browser: both seasons slotted, link current script ----
 await pageB.click('.room-header button:has-text("話数")');
 await pageB.waitForSelector('.episode-row', { timeout: 5000 });
