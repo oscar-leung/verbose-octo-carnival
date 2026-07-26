@@ -3,6 +3,7 @@ import type { RoomState, SkitScript } from '../../../shared/types';
 import type { RoomActions, SpeechAttemptEvent, SpeechAttemptHandler } from '../lib/useRoom';
 import type { DisplaySettings } from '../lib/settings';
 import { scoreAttempt, SpeechListener, speechSupported } from '../lib/speech';
+import { recordExposure } from '../lib/mastery';
 import RubyText from './RubyText';
 import LearnPanel from './LearnPanel';
 
@@ -13,6 +14,7 @@ interface Props {
   actions: RoomActions;
   settings: DisplaySettings;
   onSpeechAttempt: (handler: SpeechAttemptHandler) => () => void;
+  onMasteryChanged?: () => void;
 }
 
 /**
@@ -28,6 +30,7 @@ export default function RehearsalBanner({
   actions,
   settings,
   onSpeechAttempt,
+  onMasteryChanged,
 }: Props) {
   const lineId = state.playback.pausedForLineId;
   const line = script.lines.find((l) => l.id === lineId);
@@ -80,6 +83,21 @@ export default function RehearsalBanner({
           passedRef.current = true;
           setPassed(true);
           listener.stop();
+          // A spoken pass feeds the mastery ledger with the line's items.
+          recordExposure([
+            ...(line.vocab ?? []).map((v) => ({
+              kind: 'vocab' as const,
+              front: v.w,
+              ...(v.r ? { reading: v.r } : {}),
+              back: v.en,
+            })),
+            ...(line.grammar ?? []).map((g) => ({
+              kind: 'grammar' as const,
+              front: g.p,
+              back: g.en,
+            })),
+          ]);
+          onMasteryChanged?.();
           // A short beat so the actor sees their score before the anime rolls.
           setTimeout(() => actions.rehearsalResume(), 700);
         }

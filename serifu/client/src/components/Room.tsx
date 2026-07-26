@@ -12,7 +12,9 @@ import BgmPlayer from './BgmPlayer';
 import ScriptEditor from './ScriptEditor';
 import Wordbook from './Wordbook';
 import EpisodeBrowser from './EpisodeBrowser';
+import MasteryPanel from './MasteryPanel';
 import { loadWordbook } from '../lib/wordbook';
+import { dueEntries, loadMastery } from '../lib/mastery';
 import type { SkitScript } from '../../../shared/types';
 
 export default function Room({ roomId, name }: { roomId: string; name: string }) {
@@ -33,6 +35,9 @@ export default function Room({ roomId, name }: { roomId: string; name: string })
   const [editorInitial, setEditorInitial] = useState<SkitScript | null>(null);
   const [episodesOpen, setEpisodesOpen] = useState(false);
   const [wordbookOpen, setWordbookOpen] = useState(false);
+  const [masteryOpen, setMasteryOpen] = useState(false);
+  const [masteryDue, setMasteryDue] = useState(() => dueEntries(loadMastery(), Date.now()).length);
+  const refreshMastery = () => setMasteryDue(dueEntries(loadMastery(), Date.now()).length);
   const [wordCount, setWordCount] = useState(() => loadWordbook().length);
   const [copied, setCopied] = useState(false);
   const [position, setPosition] = useState(0);
@@ -153,6 +158,9 @@ export default function Room({ roomId, name }: { roomId: string; name: string })
         <button onClick={() => setEpisodesOpen(true)} title="season & episode tracker">
           話数
         </button>
+        <button onClick={() => setMasteryOpen(true)} title="grammar & vocab mastery tracker">
+          習得 {masteryDue > 0 ? `(${masteryDue})` : ''}
+        </button>
         <button onClick={() => setWordbookOpen(true)} title="your saved words">
           単語帳 {wordCount > 0 ? `(${wordCount})` : ''}
         </button>
@@ -187,6 +195,7 @@ export default function Room({ roomId, name }: { roomId: string; name: string })
                 actions={actions}
                 settings={settings}
                 onSpeechAttempt={onSpeechAttempt}
+                onMasteryChanged={refreshMastery}
               />
             )}
           </div>
@@ -297,6 +306,15 @@ export default function Room({ roomId, name }: { roomId: string; name: string })
         <Wordbook
           onClose={() => setWordbookOpen(false)}
           onChanged={() => setWordCount(loadWordbook().length)}
+        />
+      )}
+      {masteryOpen && (
+        <MasteryPanel
+          onClose={() => {
+            setMasteryOpen(false);
+            refreshMastery();
+          }}
+          onChanged={refreshMastery}
         />
       )}
     </div>

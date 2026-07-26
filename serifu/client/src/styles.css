@@ -897,6 +897,127 @@ input[type='range'] {
   font-size: 13px;
 }
 
+/* ---------- mastery tracker ---------- */
+
+.modal.mastery {
+  width: min(620px, 100%);
+}
+
+.mastery-bands {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.band-chip {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 3px 13px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.band-chip strong {
+  color: var(--text);
+}
+
+.band-chip.band-マスター strong {
+  color: #7bd88f;
+}
+
+.band-chip.band-定着 strong {
+  color: var(--accent);
+}
+
+.mastery-list {
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-height: 100px;
+}
+
+.mastery-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.band-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: #556;
+}
+
+.band-dot.band-学習中 {
+  background: #f9e2af;
+}
+
+.band-dot.band-定着 {
+  background: var(--accent);
+}
+
+.band-dot.band-マスター {
+  background: #7bd88f;
+}
+
+.mastery-front {
+  font-size: 16px;
+  min-width: 130px;
+}
+
+.mastery-front ruby rt {
+  font-size: 0.55em;
+  color: var(--muted);
+}
+
+.mastery-back {
+  flex: 1;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.mastery-meta {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.review-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 26px 16px;
+  text-align: center;
+}
+
+.review-front {
+  margin: 0;
+  font-size: 34px;
+  line-height: 1.9;
+}
+
+.review-front ruby rt {
+  font-size: 0.5em;
+  color: var(--muted);
+}
+
+.review-back {
+  margin: 0;
+  color: var(--muted);
+  font-size: 16px;
+}
+
+.end-review {
+  margin-top: 6px;
+}
+
 /* ---------- episode browser ---------- */
 
 .modal.episodes {
