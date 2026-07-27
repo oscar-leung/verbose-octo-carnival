@@ -1,24 +1,35 @@
 import { useEffect, useState } from 'react';
 import Landing from './components/Landing';
 import Room from './components/Room';
+import SoloPractice from './components/SoloPractice';
+import { publicScene } from './data/demoScenes';
 import { loadName, saveName } from './lib/settings';
 
-function parseRoomFromHash(hash: string): string | null {
-  const m = /^#\/r\/([A-Za-z0-9-]{3,32})$/.exec(hash);
-  return m?.[1]?.toLowerCase() ?? null;
+type Route = { kind: 'landing' } | { kind: 'room'; roomId: string } | { kind: 'solo'; slug: string };
+
+function parseRoute(hash: string): Route {
+  const room = /^#\/r\/([A-Za-z0-9-]{3,32})$/.exec(hash);
+  if (room?.[1]) return { kind: 'room', roomId: room[1].toLowerCase() };
+  const solo = /^#\/p\/([A-Za-z0-9-]{1,64})$/.exec(hash);
+  if (solo?.[1]) return { kind: 'solo', slug: solo[1].toLowerCase() };
+  return { kind: 'landing' };
 }
 
 export default function App() {
-  const [roomId, setRoomId] = useState<string | null>(() => parseRoomFromHash(location.hash));
+  const [route, setRoute] = useState<Route>(() => parseRoute(location.hash));
 
   useEffect(() => {
-    const onHashChange = () => setRoomId(parseRoomFromHash(location.hash));
+    const onHashChange = () => setRoute(parseRoute(location.hash));
     window.addEventListener('hashchange', onHashChange);
     return () => window.removeEventListener('hashchange', onHashChange);
   }, []);
 
-  if (!roomId) return <Landing />;
-  return <RoomGate roomId={roomId} />;
+  if (route.kind === 'room') return <RoomGate roomId={route.roomId} />;
+  if (route.kind === 'solo') {
+    const script = publicScene(route.slug);
+    if (script) return <SoloPractice slug={route.slug} script={script} />;
+  }
+  return <Landing />;
 }
 
 function RoomGate({ roomId }: { roomId: string }) {

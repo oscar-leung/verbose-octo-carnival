@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { loadName, saveName } from '../lib/settings';
+import { PUBLIC_SCENES } from '../data/demoScenes';
 import NightSky from './NightSky';
 
 function randomRoomId(): string {
@@ -99,8 +100,18 @@ export default function Landing() {
           </div>
           {joinErr && <p className="error">{joinErr}</p>}
         </div>
+        <div className="solo-links">
+          <span className="bar-label">一人で練習 — solo memory practice, no room needed:</span>
+          <div className="row">
+            {PUBLIC_SCENES.map((p) => (
+              <a key={p.slug} className="chip" href={`#/p/${p.slug}`}>
+                {p.script.title.replace('葬送のフリーレン — ', '').replace('葬送のフリーレン ', '')}
+              </a>
+            ))}
+          </div>
+        </div>
         <p className="fineprint">
-          Three bundled Frieren practice scenes to start; import any episode's subtitles for the
+          Bundled Frieren practice scenes to start; import any episode's subtitles for the
           rest of the journey. No accounts, nothing uploaded — only timing and the script are
           shared with your room.
         </p>

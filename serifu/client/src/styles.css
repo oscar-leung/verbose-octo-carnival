@@ -897,6 +897,158 @@ input[type='range'] {
   font-size: 13px;
 }
 
+/* ---------- solo practice ---------- */
+
+.solo {
+  position: relative;
+  min-height: 100%;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 24px 16px 60px;
+  overflow: hidden;
+}
+
+.solo-card {
+  position: relative;
+  z-index: 1;
+  width: min(680px, 100%);
+  background: rgba(22, 26, 34, 0.9);
+  backdrop-filter: blur(6px);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 22px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.55);
+}
+
+.solo-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.solo-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.solo-progress {
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.solo-bar {
+  height: 6px;
+  background: #202634;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.solo-bar i {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.3s;
+}
+
+.solo-line {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.solo-who {
+  font-size: 13.5px;
+  font-weight: 700;
+}
+
+.solo-line .jp {
+  margin: 0;
+  font-size: clamp(20px, 4.5vw, 27px);
+  line-height: 2.15;
+  min-height: 2.2em;
+}
+
+.solo-en {
+  margin: 0;
+  font-size: 14px;
+}
+
+.solo-en.prompt {
+  color: var(--accent);
+  font-size: 15px;
+}
+
+.solo-controls {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.hide-levels {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.chip.current {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(126, 203, 255, 0.08);
+}
+
+.solo-nav {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+}
+
+.solo-done {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 10px 0;
+}
+
+.solo-celebrate {
+  margin: 0;
+  font-size: 22px;
+}
+
+.solo-footer {
+  font-size: 12.5px;
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+}
+
+.solo-footer a {
+  color: var(--accent);
+}
+
+.solo-links {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.solo-links a {
+  text-decoration: none;
+  color: var(--text);
+}
+
 /* ---------- mastery tracker ---------- */
 
 .modal.mastery {

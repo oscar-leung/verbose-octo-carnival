@@ -286,6 +286,18 @@ const epTitle = await pageB.inputValue('.episode-row:has(.ep-num:has-text("S1E1"
 check('linking an episode autofills its title from the room script', epTitle.length > 0);
 await pageB.click('.modal.episodes .modal-header button');
 
+// ---- 15. Public solo practice page (shareable /#/p/<slug> URL) ----
+await pageA.goto(`${BASE}/#/p/meteor-promise`);
+await pageA.waitForSelector('.solo-title', { timeout: 5000 });
+const soloTitle = await pageA.textContent('.solo-title');
+check('solo practice page loads from its public URL', (soloTitle ?? '').includes('流星群'));
+// Fake speech: wrong utterance fails, then the correct line 1 passes → line 2.
+await pageA.waitForSelector('.solo-progress:has-text("2 /")', { timeout: 15000 });
+check('solo: passing a spoken line advances to the next', true);
+await pageA.click('.hide-levels .chip:has-text("暗記")');
+const hiddenJp = await pageA.textContent('.solo-line .jp');
+check('solo: 暗記 hide level masks the line', (hiddenJp ?? '').includes('＿'));
+
 console.log('---');
 for (const [label, ok] of results) if (!ok) console.log('FAILED:', label);
 console.log(`${results.filter(([, ok]) => ok).length}/${results.length} checks passed`);
