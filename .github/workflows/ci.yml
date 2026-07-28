@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: typecheck · unit · build · e2e
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: serifu
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: serifu/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck (strict, client + server)
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Production build (PWA)
+        run: npm run build
+
+      - name: Install Chromium for E2E
+        # Version must match playwright-core in package.json so the browser
+        # registry paths line up.
+        run: npx playwright@1.55.0 install --with-deps chromium
+
+      - name: E2E — two-browser demo against the production build
+        run: |
+          PORT=4123 npm start &
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:4123/healthz && break
+            sleep 1
+          done
+          npm run e2e
+
+      - name: Upload E2E screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-screenshots
+          path: serifu/e2e/shots
+          if-no-files-found: ignore
