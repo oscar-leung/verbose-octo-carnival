@@ -113,7 +113,7 @@ export default function Landing() {
         <p className="fineprint">
           Bundled Frieren practice scenes to start; import any episode's subtitles for the
           rest of the journey. No accounts, nothing uploaded — only timing and the script are
-          shared with your room.
+          shared with your room. <a href="/privacy.html">Privacy</a>
         </p>
       </div>
     </div>

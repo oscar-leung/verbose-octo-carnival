@@ -59,7 +59,9 @@ app.get('/api/ice', (_req, res) => {
   }
   res.json({ iceServers });
 });
-app.use(express.static(distDir));
+// dotfiles: 'allow' so /.well-known/assetlinks.json (Play Store TWA domain
+// verification) is served rather than ignored.
+app.use(express.static(distDir, { dotfiles: 'allow' }));
 // SPA fallback: any other GET serves the client shell (no-op in dev, where
 // the Vite dev server owns the pages and proxies /socket.io here).
 app.use((req, res, next) => {
