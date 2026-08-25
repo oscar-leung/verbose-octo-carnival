@@ -12,3 +12,7 @@ services:
     envVars:
       - key: NODE_VERSION
         value: 22.12.0
+      # Set to your Buy Me a Coffee / Ko-fi page URL to show ☕ support links
+      # in the app (build-time — redeploy after changing).
+      - key: VITE_SUPPORT_URL
+        sync: false

@@ -114,6 +114,14 @@ export default function Landing() {
           Bundled Frieren practice scenes to start; import any episode's subtitles for the
           rest of the journey. No accounts, nothing uploaded — only timing and the script are
           shared with your room. <a href="/privacy.html">Privacy</a>
+          {import.meta.env.VITE_SUPPORT_URL && (
+            <>
+              {' · '}
+              <a href={import.meta.env.VITE_SUPPORT_URL} target="_blank" rel="noreferrer">
+                ☕ Buy me a coffee
+              </a>
+            </>
+          )}
         </p>
       </div>
     </div>
