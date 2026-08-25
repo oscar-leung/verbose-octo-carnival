@@ -418,6 +418,457 @@ export const SCENE_FERN: SkitScript = {
   ],
 };
 
+/** Stark scolded for dessert, then owning his fear before a fight (casual masculine speech). */
+export const SCENE_STARK: SkitScript = {
+  title: '葬送のフリーレン — シュタルクの覚悟 (デモ)',
+  characters: [
+    { id: 'stark', name: 'シュタルク', color: '#f38ba8' },
+    { id: 'fern', name: 'フェルン', color: '#f5c2e7' },
+    { id: 'frieren', name: 'フリーレン', color: '#7ecbff' },
+  ],
+  lines: [
+    {
+      id: 'st-1',
+      character: 'fern',
+      start: 5,
+      end: 9.5,
+      tokens: [
+        { t: 'シュタルク' },
+        { t: '様', r: 'さま' },
+        { t: '、また' },
+        { t: '甘', r: 'あま' },
+        { t: 'いものを' },
+        { t: '食', r: 'た' },
+        { t: 'べてばかりですね。' },
+      ],
+      translation: "Stark-sama, you're eating nothing but sweets again.",
+      vocab: [
+        { w: '甘いもの', r: 'あまいもの', en: 'sweets, sweet things' },
+        { w: 'また', en: 'again' },
+      ],
+      grammar: [
+        { p: '〜てばかり', en: 'doing nothing but ~ — a mild complaint about a habit' },
+      ],
+    },
+    {
+      id: 'st-2',
+      character: 'stark',
+      start: 10,
+      end: 14.5,
+      tokens: [
+        { t: '別', r: 'べつ' },
+        { t: 'にいいだろ。' },
+        { t: '俺', r: 'おれ' },
+        { t: 'の' },
+        { t: '金', r: 'かね' },
+        { t: 'で' },
+        { t: '買', r: 'か' },
+        { t: 'ったんだし。' },
+      ],
+      translation: "What's the big deal? I bought it with my own money.",
+      vocab: [
+        { w: '別に', r: 'べつに', en: 'not particularly; (with いい) "it\'s fine, isn\'t it"' },
+        { w: '俺', r: 'おれ', en: 'I, me — rough masculine first person' },
+      ],
+      grammar: [
+        { p: '〜だろ', en: 'casual masculine "right? / isn\'t it" — clipped だろう' },
+        { p: '〜し', en: 'gives a reason and trails off' },
+      ],
+    },
+    {
+      id: 'st-3',
+      character: 'fern',
+      start: 15,
+      end: 19.5,
+      tokens: [
+        { t: '夕食', r: 'ゆうしょく' },
+        { t: 'の' },
+        { t: '前', r: 'まえ' },
+        { t: 'だと' },
+        { t: '言', r: 'い' },
+        { t: 'ったのに。' },
+      ],
+      translation: 'Even though I told you it was almost dinnertime.',
+      vocab: [{ w: '夕食', r: 'ゆうしょく', en: 'dinner, evening meal' }],
+      grammar: [
+        { p: '〜のに', en: 'reproachful "even though…" — the complaint hangs in the air' },
+      ],
+    },
+    {
+      id: 'st-4',
+      character: 'frieren',
+      start: 20,
+      end: 24.5,
+      tokens: [
+        { t: '二人', r: 'ふたり' },
+        { t: 'とも、やめな。' },
+        { t: '魔物', r: 'まもの' },
+        { t: 'が' },
+        { t: '近', r: 'ちか' },
+        { t: 'くにいるよ。' },
+      ],
+      translation: "Cut it out, you two. There's a monster nearby.",
+      vocab: [
+        { w: '魔物', r: 'まもの', en: 'monster, demon beast' },
+        { w: '近く', r: 'ちかく', en: 'nearby, the vicinity' },
+      ],
+      grammar: [
+        { p: '〜な (やめな)', en: 'soft command — clipped なさい: "stop it"' },
+      ],
+    },
+    {
+      id: 'st-5',
+      character: 'stark',
+      start: 25,
+      end: 28.5,
+      tokens: [
+        { t: 'は？' },
+        { t: '聞', r: 'き' },
+        { t: 'いてないんだけど…。' },
+      ],
+      translation: "Huh? Nobody told me about that…",
+      vocab: [{ w: '聞く', r: 'きく', en: 'to hear, to be told' }],
+      grammar: [
+        { p: '〜んだけど', en: 'trailing complaint: "…you know" — objecting softly' },
+      ],
+    },
+    {
+      id: 'st-6',
+      character: 'frieren',
+      start: 29,
+      end: 33.5,
+      tokens: [
+        { t: 'シュタルク、' },
+        { t: '前', r: 'まえ' },
+        { t: 'に' },
+        { t: '出', r: 'で' },
+        { t: 'ろ。' },
+        { t: '斧', r: 'おの' },
+        { t: 'を' },
+        { t: '構', r: 'かま' },
+        { t: 'えて。' },
+      ],
+      translation: 'Stark, get up front. Ready your axe.',
+      vocab: [
+        { w: '斧', r: 'おの', en: 'axe' },
+        { w: '構える', r: 'かまえる', en: 'to take a stance, to ready (a weapon)' },
+      ],
+      grammar: [
+        { p: '命令形 (出ろ)', en: 'imperative form — blunt direct order: "get out (front)!"' },
+      ],
+    },
+    {
+      id: 'st-7',
+      character: 'stark',
+      start: 34,
+      end: 38.5,
+      tokens: [
+        { t: '正直', r: 'しょうじき' },
+        { t: '、' },
+        { t: '足', r: 'あし' },
+        { t: 'が' },
+        { t: '震', r: 'ふる' },
+        { t: 'えてるんだ。' },
+      ],
+      translation: "Honestly… my legs are shaking.",
+      vocab: [
+        { w: '正直', r: 'しょうじき', en: 'honestly, to be honest' },
+        { w: '震える', r: 'ふるえる', en: 'to tremble, to shake' },
+      ],
+      grammar: [
+        { p: '〜てる', en: 'casual contraction of 〜ている: ongoing state' },
+      ],
+    },
+    {
+      id: 'st-8',
+      character: 'fern',
+      start: 39,
+      end: 42.5,
+      tokens: [
+        { t: '逃', r: 'に' },
+        { t: 'げるのですか。' },
+      ],
+      translation: 'Are you going to run away?',
+      vocab: [{ w: '逃げる', r: 'にげる', en: 'to run away, to flee' }],
+      grammar: [
+        { p: '〜のですか', en: 'polite question pressing for an explanation' },
+      ],
+    },
+    {
+      id: 'st-9',
+      character: 'stark',
+      start: 43,
+      end: 48.5,
+      tokens: [
+        { t: 'いや。' },
+        { t: '怖', r: 'こわ' },
+        { t: 'いけど、やるしかない。' },
+        { t: '俺', r: 'おれ' },
+        { t: 'は' },
+        { t: '戦士', r: 'せんし' },
+        { t: 'だからな。' },
+      ],
+      translation: "No. I'm scared, but there's nothing to do except fight. I'm a warrior, after all.",
+      vocab: [
+        { w: '怖い', r: 'こわい', en: 'scary; scared' },
+        { w: '戦士', r: 'せんし', en: 'warrior' },
+      ],
+      grammar: [
+        { p: '〜しかない', en: '"have no choice but to ~" — the only option left' },
+        { p: '〜からな', en: 'masculine "because, you know" — reason with bravado' },
+      ],
+    },
+    {
+      id: 'st-10',
+      character: 'frieren',
+      start: 49,
+      end: 53.5,
+      tokens: [
+        { t: 'それでいい。' },
+        { t: '震', r: 'ふる' },
+        { t: 'えていても、' },
+        { t: '前', r: 'まえ' },
+        { t: 'に' },
+        { t: '立', r: 'た' },
+        { t: 'てるのが' },
+        { t: '勇者', r: 'ゆうしゃ' },
+        { t: 'だよ。' },
+      ],
+      translation: "That's all you need. Standing at the front even while trembling — that's what a hero is.",
+      vocab: [
+        { w: '勇者', r: 'ゆうしゃ', en: 'hero, brave one' },
+        { w: '立つ', r: 'たつ', en: 'to stand' },
+      ],
+      grammar: [
+        { p: '〜ていても', en: '"even while ~ing" — the state doesn\'t stop the action' },
+      ],
+    },
+  ],
+};
+
+/** The morning of Fern's mage exam: nerves, review, and encouragement (polite vs casual). */
+export const SCENE_EXAM: SkitScript = {
+  title: '葬送のフリーレン — 魔法試験の朝 (デモ)',
+  characters: [
+    { id: 'fern', name: 'フェルン', color: '#f5c2e7' },
+    { id: 'frieren', name: 'フリーレン', color: '#7ecbff' },
+  ],
+  lines: [
+    {
+      id: 'ex-1',
+      character: 'fern',
+      start: 5,
+      end: 9.5,
+      tokens: [
+        { t: 'フリーレン' },
+        { t: '様', r: 'さま' },
+        { t: '、' },
+        { t: '今日', r: 'きょう' },
+        { t: 'はいよいよ' },
+        { t: '試験', r: 'しけん' },
+        { t: 'の' },
+        { t: '日', r: 'ひ' },
+        { t: 'ですね。' },
+      ],
+      translation: "Frieren-sama, today is finally the day of the exam.",
+      vocab: [
+        { w: '試験', r: 'しけん', en: 'exam, test' },
+        { w: 'いよいよ', en: 'finally, at last (the moment arrives)' },
+      ],
+      grammar: [
+        { p: '〜ですね', en: 'polite ね — sharing the moment; Fern always speaks politely' },
+      ],
+    },
+    {
+      id: 'ex-2',
+      character: 'frieren',
+      start: 10,
+      end: 13.5,
+      tokens: [
+        { t: 'そうだね。' },
+        { t: '緊張', r: 'きんちょう' },
+        { t: 'してる？' },
+      ],
+      translation: 'That it is. Are you nervous?',
+      vocab: [{ w: '緊張する', r: 'きんちょうする', en: 'to be nervous, to tense up' }],
+      grammar: [
+        { p: 'plain form＋？', en: 'casual question by intonation alone — Frieren\'s relaxed register, opposite Fern\'s polite です／ます' },
+      ],
+    },
+    {
+      id: 'ex-3',
+      character: 'fern',
+      start: 14,
+      end: 18.5,
+      tokens: [
+        { t: '少', r: 'すこ' },
+        { t: 'し。' },
+        { t: '昨夜', r: 'ゆうべ' },
+        { t: 'は' },
+        { t: '考', r: 'かんが' },
+        { t: 'えすぎて' },
+        { t: '眠', r: 'ねむ' },
+        { t: 'れませんでした。' },
+      ],
+      translation: "A little. Last night I thought about it too much and couldn't sleep.",
+      vocab: [
+        { w: '昨夜', r: 'ゆうべ', en: 'last night' },
+        { w: '眠れる', r: 'ねむれる', en: 'to be able to sleep (potential form)' },
+      ],
+      grammar: [
+        { p: '〜すぎる', en: 'to do ~ too much — 考えすぎる = overthink' },
+      ],
+    },
+    {
+      id: 'ex-4',
+      character: 'frieren',
+      start: 19,
+      end: 23.5,
+      tokens: [
+        { t: '心配', r: 'しんぱい' },
+        { t: 'しすぎだよ。' },
+        { t: '普段', r: 'ふだん' },
+        { t: '通', r: 'どお' },
+        { t: 'りにやれば' },
+        { t: '受', r: 'う' },
+        { t: 'かるよ。' },
+      ],
+      translation: "You're worrying too much. If you just do it like you always do, you'll pass.",
+      vocab: [
+        { w: '普段通り', r: 'ふだんどおり', en: 'as usual, the way one always does' },
+        { w: '受かる', r: 'うかる', en: 'to pass (an exam)' },
+      ],
+      grammar: [
+        { p: '〜ば', en: 'conditional: "if you do ~, then…" — やれば受かる' },
+        { p: '〜すぎ', en: 'noun form of すぎる: "too much (worrying)"' },
+      ],
+    },
+    {
+      id: 'ex-5',
+      character: 'fern',
+      start: 24,
+      end: 28.5,
+      tokens: [
+        { t: 'もう' },
+        { t: '一度', r: 'いちど' },
+        { t: 'だけ、' },
+        { t: '防御', r: 'ぼうぎょ' },
+        { t: '魔法', r: 'まほう' },
+        { t: 'の' },
+        { t: '復習', r: 'ふくしゅう' },
+        { t: 'をしてもいいですか。' },
+      ],
+      translation: 'May I review the defensive spells just one more time?',
+      vocab: [
+        { w: '復習', r: 'ふくしゅう', en: 'review (of what one has studied)' },
+        { w: '防御', r: 'ぼうぎょ', en: 'defense' },
+      ],
+      grammar: [
+        { p: '〜てもいいですか', en: 'polite request for permission: "may I ~?"' },
+      ],
+    },
+    {
+      id: 'ex-6',
+      character: 'frieren',
+      start: 29,
+      end: 33.5,
+      tokens: [
+        { t: 'いいよ。じゃあ、' },
+        { t: '忘', r: 'わす' },
+        { t: 'れないように' },
+        { t: '一番', r: 'いちばん' },
+        { t: '大事', r: 'だいじ' },
+        { t: 'なところだけね。' },
+      ],
+      translation: "Sure. Then just the most important part, so you don't forget it.",
+      vocab: [
+        { w: '忘れる', r: 'わすれる', en: 'to forget' },
+        { w: '大事', r: 'だいじ', en: 'important' },
+      ],
+      grammar: [
+        { p: '〜ないように', en: '"so that ~ not happen" — purpose: so you don\'t forget' },
+      ],
+    },
+    {
+      id: 'ex-7',
+      character: 'fern',
+      start: 34,
+      end: 38.5,
+      tokens: [
+        { t: 'もし' },
+        { t: '落', r: 'お' },
+        { t: 'ちたら、どうすれば' },
+        { t: 'いいのでしょうか。' },
+      ],
+      translation: 'If I fail… what should I do?',
+      vocab: [{ w: '落ちる', r: 'おちる', en: 'to fail (an exam); to fall' }],
+      grammar: [
+        { p: 'どうすればいい', en: '"what should (I) do?" — ば conditional inside a set phrase' },
+      ],
+    },
+    {
+      id: 'ex-8',
+      character: 'frieren',
+      start: 39,
+      end: 43.5,
+      tokens: [
+        { t: '大丈夫', r: 'だいじょうぶ' },
+        { t: '。フェルンなら' },
+        { t: '大丈夫', r: 'だいじょうぶ' },
+        { t: 'だよ。' },
+      ],
+      translation: "It's fine. If it's you, Fern, you'll be fine.",
+      vocab: [{ w: '大丈夫', r: 'だいじょうぶ', en: 'all right, fine, no problem' }],
+      grammar: [
+        { p: '〜なら大丈夫', en: 'classic reassurance: "if it\'s you, it\'ll be okay"' },
+      ],
+    },
+    {
+      id: 'ex-9',
+      character: 'frieren',
+      start: 44,
+      end: 48.5,
+      tokens: [
+        { t: '合格', r: 'ごうかく' },
+        { t: 'できるように、' },
+        { t: '私', r: 'わたし' },
+        { t: 'も' },
+        { t: '祈', r: 'いの' },
+        { t: 'っておくよ。' },
+      ],
+      translation: "I'll be hoping you pass, too.",
+      vocab: [
+        { w: '合格', r: 'ごうかく', en: 'passing (an exam)' },
+        { w: '祈る', r: 'いのる', en: 'to pray, to hope' },
+      ],
+      grammar: [
+        { p: '〜ように (祈る)', en: 'hope/wish: "praying that ~ comes true"' },
+        { p: '〜ておく', en: 'do in advance / keep doing for later' },
+      ],
+    },
+    {
+      id: 'ex-10',
+      character: 'fern',
+      start: 49,
+      end: 53.5,
+      tokens: [
+        { t: 'はい。' },
+        { t: '行', r: 'い' },
+        { t: 'ってまいります、フリーレン' },
+        { t: '様', r: 'さま' },
+        { t: '。' },
+      ],
+      translation: "Yes. I'm off, Frieren-sama.",
+      vocab: [
+        { w: '行ってまいります', r: 'いってまいります', en: 'humble "I\'m off" — formal 行ってきます' },
+      ],
+      grammar: [
+        { p: '〜てまいります', en: 'humble form of 〜ていきます — extra-polite leave-taking' },
+      ],
+    },
+  ],
+};
+
 function shiftLines(source: SkitScript, offset: number, prefix: string): ScriptLine[] {
   return source.lines.map((line) => ({
     ...line,
@@ -457,6 +908,8 @@ export const DEMO_SCENES: SkitScript[] = [
   DEMO_SCRIPT,
   SCENE_FUNERAL,
   SCENE_FERN,
+  SCENE_STARK,
+  SCENE_EXAM,
   SCENE_COMPILATION,
 ];
 
@@ -465,6 +918,8 @@ export const PUBLIC_SCENES: { slug: string; script: SkitScript }[] = [
   { slug: 'meteor-promise', script: DEMO_SCRIPT },
   { slug: 'himmel-funeral', script: SCENE_FUNERAL },
   { slug: 'fern-magic', script: SCENE_FERN },
+  { slug: 'stark-resolve', script: SCENE_STARK },
+  { slug: 'exam-morning', script: SCENE_EXAM },
   { slug: 'iconic-scenes', script: SCENE_COMPILATION },
 ];
 

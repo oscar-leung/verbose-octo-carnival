@@ -241,7 +241,7 @@ check('clicking a line seeks everyone there', true);
 // ---- 13. Scene chapters: load the compilation, jump between 名場面 ----
 await pageB.click('.room-header button:has-text("台本")');
 await pageB.waitForSelector('.editor-tools select', { timeout: 5000 });
-await pageB.selectOption('.editor-tools select', '3'); // 名場面集 compilation
+await pageB.selectOption('.editor-tools select', { label: '葬送のフリーレン 名場面集 (デモ)' });
 await pageB.click('.modal-footer button:has-text("apply")');
 await pageB.waitForSelector('.scene-bar', { timeout: 5000 });
 const sceneChips = await pageB.$$eval('.scene-bar .chip.scene', (els) => els.map((e) => e.textContent));
