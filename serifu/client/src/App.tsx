@@ -37,6 +37,31 @@ function RoomGate({ roomId }: { roomId: string }) {
   const [draft, setDraft] = useState('');
   const [entered, setEntered] = useState(() => loadName().length > 0);
 
+  // The static demo (GitHub Pages) has no server, so rooms can never
+  // connect there — say so instead of spinning forever.
+  if (import.meta.env.VITE_STATIC_DEMO) {
+    return (
+      <div className="landing">
+        <div className="landing-card">
+          <h1 className="logo">
+            Serifu <span className="logo-jp">台詞</span>
+          </h1>
+          <p>
+            ⚠️ <strong>Static demo — rooms don't run here.</strong> Solo practice works fully:
+          </p>
+          <div className="row">
+            <a className="chip" href="#/p/meteor-promise">
+              🎬 Episode 1: 流星群の約束
+            </a>
+            <a className="chip" href="#/p/iconic-scenes">
+              名場面集 (full arc)
+            </a>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (!entered) {
     return (
       <div className="landing">
