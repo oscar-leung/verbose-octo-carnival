@@ -47,11 +47,7 @@ function RoomGate({ roomId }: { roomId: string }) {
             Serifu <span className="logo-jp">台詞</span>
           </h1>
           <p>
-            <strong>This is the static demo</strong> — rooms (synced video, friends, voice chat)
-            need the full Serifu server and don't run on this page.
-          </p>
-          <p className="muted">
-            What works right here: solo memory practice with live speech scoring —
+            ⚠️ <strong>Static demo — rooms don't run here.</strong> Solo practice works fully:
           </p>
           <div className="row">
             <a className="chip" href="#/p/meteor-promise">
@@ -61,10 +57,6 @@ function RoomGate({ roomId }: { roomId: string }) {
               名場面集 (full arc)
             </a>
           </div>
-          <p className="fineprint">
-            Room links work on the full deployment — ask the person who sent you this link for
-            the app's real address.
-          </p>
         </div>
       </div>
     );

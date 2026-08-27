@@ -65,23 +65,11 @@ export default function Landing() {
           を。
         </p>
         <p className="tagline">
-          Practice Japanese by <strong>voicing Frieren's journey</strong> with your own party —
-          the episode plays in sync, the video pauses at your character's line, you say it,
-          and the story rolls on. Furigana, translations, grammar notes, and voice chat included.
+          Watch together, <strong>speak your character's lines</strong> — the video pauses at
+          your line and rolls on when you nail it.
         </p>
-        <ol className="howto">
-          <li>Create a room and send the link to your party.</li>
-          <li>Everyone opens their own copy of the episode (files stay on your device).</li>
-          <li>Claim フリーレン, フェルン, ヒンメル… — rehearsal mode pauses at your lines,
-            and speech scoring tells you how close you got.</li>
-          <li>Pause anytime to talk grammar, vocab, or the feels. 単語帳 collects the words
-            you meet for Anki.</li>
-        </ol>
         {import.meta.env.VITE_STATIC_DEMO ? (
-          <p className="muted">
-            ⚠️ This is the static demo — creating rooms needs the full Serifu server. The solo
-            scenes below work completely, speech scoring included.
-          </p>
+          <p className="muted">⚠️ Static demo — rooms need the full app. Solo scenes below work fully.</p>
         ) : (
         <div className="landing-form">
           <input
@@ -108,7 +96,7 @@ export default function Landing() {
         </div>
         )}
         <div className="solo-links">
-          <span className="bar-label">一人で練習 — solo memory practice, no room needed:</span>
+          <span className="bar-label">一人で練習 — solo practice:</span>
           <div className="row">
             {PUBLIC_SCENES.map((p) => (
               <a key={p.slug} className="chip" href={`#/p/${p.slug}`}>
@@ -118,9 +106,7 @@ export default function Landing() {
           </div>
         </div>
         <p className="fineprint">
-          Bundled Frieren practice scenes to start; import any episode's subtitles for the
-          rest of the journey. No accounts, nothing uploaded — only timing and the script are
-          shared with your room. <a href="/privacy.html">Privacy</a>
+          No accounts. Your videos stay on your device. <a href="/privacy.html">Privacy</a>
           {import.meta.env.VITE_SUPPORT_URL && (
             <>
               {' · '}
