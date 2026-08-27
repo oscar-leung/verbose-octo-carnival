@@ -19,7 +19,7 @@ __pycache__/
 *.log
 
 # Generated CSV outputs (be explicit, don't blanket-ignore)
-data/*.csv
+/data/*.csv
 runs/**/*.csv
 linkedin_runs/**/*.csv
 gmass_contacts_master.csv
@@ -51,7 +51,7 @@ linkedin_runs/
 runs/
 
 # Old run data files (moved to data/)
-data/
+/data/
 
 # Chrome persistent profile (contains session cookies)
 .chrome-handshake-profile/

@@ -256,6 +256,14 @@ export default function SoloPractice({ slug, script }: Props) {
         <footer className="solo-footer muted">
           Solo memory practice — for the full experience (synced episode video, friends, voice
           chat, rehearsal auto-pause), <a href="#/">create a room</a>.
+          {import.meta.env.VITE_SUPPORT_URL && (
+            <>
+              {' '}Enjoying it?{' '}
+              <a href={import.meta.env.VITE_SUPPORT_URL} target="_blank" rel="noreferrer">
+                ☕ Buy me a coffee
+              </a>
+            </>
+          )}
         </footer>
       </div>
     </div>
