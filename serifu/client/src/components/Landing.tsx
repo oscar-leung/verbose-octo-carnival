@@ -77,6 +77,12 @@ export default function Landing() {
           <li>Pause anytime to talk grammar, vocab, or the feels. 単語帳 collects the words
             you meet for Anki.</li>
         </ol>
+        {import.meta.env.VITE_STATIC_DEMO ? (
+          <p className="muted">
+            ⚠️ This is the static demo — creating rooms needs the full Serifu server. The solo
+            scenes below work completely, speech scoring included.
+          </p>
+        ) : (
         <div className="landing-form">
           <input
             value={name}
@@ -100,6 +106,7 @@ export default function Landing() {
           </div>
           {joinErr && <p className="error">{joinErr}</p>}
         </div>
+        )}
         <div className="solo-links">
           <span className="bar-label">一人で練習 — solo memory practice, no room needed:</span>
           <div className="row">
