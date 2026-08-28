@@ -3,7 +3,6 @@
   "version": "1.0.0",
   "description": "11/10/23 - added 001-installing-workday-paystubs.py The script uses Selenium and other libraries in Python to automate the process of logging into a Workday portal, navigating to the \"My Payslips\" section, and downloading paystubs as PDFs. It reads login credentials from a JSON file, interacts with web elements, and utilizes keypress simulwations to trigger the download of PDFs. The script also extracts and prints data from a table on the webpage. Note: Some parts of the script are commented out, and there are explanations and debug prints throughout. The primary goal seems to be automating the extraction and download of paystub information from a Workday portal.",
   "main": "index.js",
-  "scripts": {},
   "repository": {
     "type": "git",
     "url": "git+https://github.com/oscar-leung/verbose-octo-carnival.git"
@@ -16,6 +15,17 @@
     "url": "https://github.com/oscar-leung/verbose-octo-carnival/issues"
   },
   "homepage": "https://github.com/oscar-leung/verbose-octo-carnival#readme",
+  "scripts": {
+    "v5:scrape": "node v5/linkedin_scraper.mjs",
+    "v5:scrape:headed": "node v5/linkedin_scraper.mjs --headed",
+    "v5:apply": "node v5/linkedin_scraper.mjs --apply --headed",
+    "v5:check": "node --check v5/linkedin_scraper.mjs && node --check v5/lib/config.mjs && node --check v5/lib/stealth.mjs && node --check v5/lib/output.mjs && node --check v5/lib/selectors.mjs && node --check v5/lib/human.mjs && node --check v5/lib/apply_modal.mjs && node --check v5/lib/gsheets.mjs",
+    "test": "node --test tests/v5_smoke.test.mjs"
+  },
+  "dependencies": {
+    "playwright": "^1.55.0",
+    "googleapis": "^144.0.0"
+  },
   "devDependencies": {
     "@playwright/test": "^1.55.0",
     "@types/node": "^24.3.0"
