@@ -1,0 +1,311 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Resume Bullet Rewriter</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-stone-50 text-stone-900 antialiased">
+  <main class="mx-auto max-w-4xl px-6 py-12">
+    <header class="mb-10 flex items-start justify-between gap-6">
+      <div>
+        <h1 class="font-serif text-4xl font-semibold tracking-tight">Resume Bullet Rewriter</h1>
+        <p class="mt-2 text-stone-600">
+          Paste a job description and your raw experience. Get 5-8 tailored bullets optimized for that role.
+        </p>
+      </div>
+      <div id="status-pill" class="shrink-0 rounded-full border border-stone-300 bg-white px-3 py-1 text-xs text-stone-700">
+        {% if billing_enabled %}
+          <span id="status-text">{{ free_remaining }} of {{ free_limit }} free today</span>
+        {% else %}
+          <span id="status-text">free mode</span>
+        {% endif %}
+      </div>
+    </header>
+
+    <form id="rewrite-form" class="space-y-6">
+      <div>
+        <label for="job_description" class="block text-sm font-medium text-stone-800">
+          Job description
+        </label>
+        <textarea
+          id="job_description"
+          name="job_description"
+          rows="8"
+          required
+          placeholder="Paste the full job description here..."
+          class="mt-2 w-full resize-y rounded-md border border-stone-300 bg-white p-3 text-sm shadow-sm focus:border-stone-900 focus:outline-none focus:ring-1 focus:ring-stone-900"
+        ></textarea>
+      </div>
+
+      <div>
+        <label for="experience" class="block text-sm font-medium text-stone-800">
+          Your experience / existing bullets
+        </label>
+        <textarea
+          id="experience"
+          name="experience"
+          rows="10"
+          required
+          placeholder="Paste your current bullets, a rough brain dump, or a LinkedIn copy-paste. Include numbers, tools, and scale where you remember them."
+          class="mt-2 w-full resize-y rounded-md border border-stone-300 bg-white p-3 text-sm shadow-sm focus:border-stone-900 focus:outline-none focus:ring-1 focus:ring-stone-900"
+        ></textarea>
+      </div>
+
+      <div class="flex items-center gap-4">
+        <button
+          type="submit"
+          id="submit-btn"
+          class="inline-flex items-center rounded-md bg-stone-900 px-5 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-stone-700 disabled:cursor-not-allowed disabled:bg-stone-400"
+        >
+          Rewrite my bullets
+        </button>
+        {% if billing_enabled %}
+        <button
+          type="button"
+          id="upgrade-btn"
+          class="text-sm text-stone-600 underline-offset-4 hover:text-stone-900 hover:underline"
+        >
+          Unlimited for $7/mo →
+        </button>
+        {% endif %}
+        <button
+          type="button"
+          id="have-key-btn"
+          class="ml-auto text-xs text-stone-500 hover:text-stone-800"
+        >
+          I have an unlock key
+        </button>
+      </div>
+    </form>
+
+    <section id="output" class="mt-12 hidden">
+      <h2 class="font-serif text-2xl font-semibold">Tailored bullets</h2>
+      <ul id="bullets" class="mt-4 space-y-3"></ul>
+      <div id="meta" class="mt-8 border-t border-stone-200 pt-6 text-sm text-stone-600"></div>
+    </section>
+
+    <section id="error" class="mt-8 hidden rounded-md border border-red-300 bg-red-50 p-4 text-sm text-red-800"></section>
+
+    <section id="paywall" class="mt-8 hidden rounded-md border border-stone-300 bg-white p-6 shadow-sm">
+      <h3 class="font-serif text-xl font-semibold">Out of free rewrites</h3>
+      <p class="mt-2 text-sm text-stone-600">
+        You've used your {{ free_limit }} free rewrites for today. Upgrade to Pro for unlimited use — $7/mo, cancel anytime.
+      </p>
+      <button
+        id="paywall-checkout"
+        class="mt-4 inline-flex items-center rounded-md bg-stone-900 px-5 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-stone-700"
+      >
+        Subscribe — $7/mo
+      </button>
+    </section>
+
+    <section id="unlock-modal" class="mt-8 hidden rounded-md border border-stone-300 bg-white p-6 shadow-sm">
+      <h3 class="font-serif text-lg font-semibold">Paste your unlock key</h3>
+      <p class="mt-1 text-sm text-stone-600">You received this after subscribing. It'll be saved to this browser.</p>
+      <div class="mt-3 flex gap-2">
+        <input
+          id="unlock-input"
+          type="text"
+          placeholder="paste key here"
+          class="flex-1 rounded-md border border-stone-300 bg-white p-2 text-sm font-mono shadow-sm focus:border-stone-900 focus:outline-none focus:ring-1 focus:ring-stone-900"
+        />
+        <button
+          id="unlock-save"
+          class="rounded-md bg-stone-900 px-4 py-2 text-sm font-medium text-white hover:bg-stone-700"
+        >
+          Save
+        </button>
+      </div>
+      <div id="unlock-msg" class="mt-2 text-xs"></div>
+    </section>
+  </main>
+
+  <script>
+    const BILLING_ENABLED = {{ 'true' if billing_enabled else 'false' }};
+    const FREE_LIMIT = {{ free_limit }};
+    const form = document.getElementById("rewrite-form");
+    const btn = document.getElementById("submit-btn");
+    const output = document.getElementById("output");
+    const bulletsEl = document.getElementById("bullets");
+    const metaEl = document.getElementById("meta");
+    const errorEl = document.getElementById("error");
+    const statusText = document.getElementById("status-text");
+    const paywall = document.getElementById("paywall");
+    const unlockModal = document.getElementById("unlock-modal");
+    const unlockInput = document.getElementById("unlock-input");
+    const unlockSave = document.getElementById("unlock-save");
+    const unlockMsg = document.getElementById("unlock-msg");
+    const haveKeyBtn = document.getElementById("have-key-btn");
+    const upgradeBtn = document.getElementById("upgrade-btn");
+    const paywallCheckout = document.getElementById("paywall-checkout");
+
+    const UNLOCK_STORAGE_KEY = "resume_rewriter_unlock_key";
+
+    function getUnlockKey() {
+      return localStorage.getItem(UNLOCK_STORAGE_KEY) || "";
+    }
+
+    function setUnlocked(active) {
+      statusText.textContent = active ? "Pro — unlimited" : statusText.textContent;
+    }
+
+    async function refreshStatusPill() {
+      const key = getUnlockKey();
+      if (!key) return;
+      try {
+        const res = await fetch("/api/unlock-check", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ unlock_key: key }),
+        });
+        const data = await res.json();
+        if (data.active) {
+          setUnlocked(true);
+        } else {
+          localStorage.removeItem(UNLOCK_STORAGE_KEY);
+        }
+      } catch (e) { /* ignore */ }
+    }
+
+    // Handle key arriving via query param from /unlocked → home
+    const url = new URL(window.location.href);
+    const incomingKey = url.searchParams.get("unlock_key");
+    if (incomingKey) {
+      localStorage.setItem(UNLOCK_STORAGE_KEY, incomingKey);
+      url.searchParams.delete("unlock_key");
+      window.history.replaceState({}, "", url.toString());
+    }
+
+    refreshStatusPill();
+
+    haveKeyBtn.addEventListener("click", () => {
+      unlockModal.classList.toggle("hidden");
+      unlockInput.value = getUnlockKey();
+      unlockInput.focus();
+    });
+
+    unlockSave.addEventListener("click", async () => {
+      const key = unlockInput.value.trim();
+      if (!key) return;
+      const res = await fetch("/api/unlock-check", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ unlock_key: key }),
+      });
+      const data = await res.json();
+      if (data.active) {
+        localStorage.setItem(UNLOCK_STORAGE_KEY, key);
+        unlockMsg.textContent = "Unlocked. You're on Pro.";
+        unlockMsg.className = "mt-2 text-xs text-emerald-700";
+        setUnlocked(true);
+        setTimeout(() => unlockModal.classList.add("hidden"), 1000);
+      } else {
+        unlockMsg.textContent = "Key not recognized or inactive.";
+        unlockMsg.className = "mt-2 text-xs text-red-700";
+      }
+    });
+
+    async function startCheckout() {
+      const res = await fetch("/api/checkout", { method: "POST" });
+      const data = await res.json();
+      if (data.checkout_url) {
+        window.location = data.checkout_url;
+      } else {
+        errorEl.textContent = data.error || "Could not start checkout.";
+        errorEl.classList.remove("hidden");
+      }
+    }
+
+    if (upgradeBtn) upgradeBtn.addEventListener("click", startCheckout);
+    if (paywallCheckout) paywallCheckout.addEventListener("click", startCheckout);
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      errorEl.classList.add("hidden");
+      output.classList.add("hidden");
+      paywall.classList.add("hidden");
+      btn.disabled = true;
+      btn.textContent = "Thinking...";
+
+      const payload = {
+        job_description: document.getElementById("job_description").value,
+        experience: document.getElementById("experience").value,
+      };
+
+      const headers = { "Content-Type": "application/json" };
+      const key = getUnlockKey();
+      if (key) headers["X-Unlock-Key"] = key;
+
+      try {
+        const res = await fetch("/api/rewrite", {
+          method: "POST",
+          headers,
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+
+        if (res.status === 429 && data.code === "rate_limited") {
+          if (BILLING_ENABLED && data.upgrade_available) {
+            paywall.classList.remove("hidden");
+          } else {
+            errorEl.textContent = "Free daily limit reached. Try again tomorrow.";
+            errorEl.classList.remove("hidden");
+          }
+          return;
+        }
+
+        if (!res.ok) {
+          errorEl.textContent = data.error || "Something went wrong.";
+          errorEl.classList.remove("hidden");
+          return;
+        }
+
+        if (data.unlocked) {
+          setUnlocked(true);
+        } else if (typeof data.free_remaining === "number" && BILLING_ENABLED) {
+          statusText.textContent = `${data.free_remaining} of ${FREE_LIMIT} free today`;
+        }
+
+        bulletsEl.innerHTML = "";
+        for (const bullet of data.bullets || []) {
+          const li = document.createElement("li");
+          li.className = "flex gap-3 rounded-md border border-stone-200 bg-white p-3 text-sm shadow-sm";
+          li.innerHTML = `
+            <span class="mt-0.5 select-none text-stone-400">•</span>
+            <span class="flex-1 leading-relaxed">${escapeHtml(bullet)}</span>
+            <button class="copy-btn shrink-0 rounded border border-stone-300 px-2 py-1 text-xs text-stone-600 hover:bg-stone-100">copy</button>
+          `;
+          li.querySelector(".copy-btn").addEventListener("click", () => {
+            navigator.clipboard.writeText(bullet);
+          });
+          bulletsEl.appendChild(li);
+        }
+
+        const kw = (data.keywords_matched || []).join(", ");
+        metaEl.innerHTML = `
+          ${kw ? `<p><strong class="text-stone-800">Keywords matched:</strong> ${escapeHtml(kw)}</p>` : ""}
+          ${data.notes ? `<p class="mt-2"><strong class="text-stone-800">Notes:</strong> ${escapeHtml(data.notes)}</p>` : ""}
+        `;
+        output.classList.remove("hidden");
+      } catch (err) {
+        errorEl.textContent = "Network error. Try again.";
+        errorEl.classList.remove("hidden");
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Rewrite my bullets";
+      }
+    });
+
+    function escapeHtml(s) {
+      return String(s)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+  </script>
+</body>
+</html>
