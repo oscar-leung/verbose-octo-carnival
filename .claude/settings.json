@@ -24,7 +24,15 @@
       "Bash(git -C /Users/oscarleung/verbose-octo-carnival branch)",
       "Bash(git -C /Users/oscarleung/verbose-octo-carnival log --oneline -5)",
       "Bash(git -C /Users/oscarleung/verbose-octo-carnival diff --cached --stat)",
-      "Bash(python -m py_compile scripts/038_greenhouse_apply.py)"
+      "Bash(python -m py_compile scripts/038_greenhouse_apply.py)",
+      "Bash(python3 -c \"import anthropic; print\\(anthropic.__version__\\)\")",
+      "Bash(git commit -m ' *)",
+      "Bash(curl -s -I -A \"Mozilla/5.0 \\(Macintosh; Intel Mac OS X 10_15_7\\) AppleWebKit/537.36 \\(KHTML, like Gecko\\) Chrome/120.0 Safari/537.36\" \"https://www.safeway.com/weeklyad\")",
+      "Bash(curl -s -A \"Mozilla/5.0 \\(Macintosh; Intel Mac OS X 10_15_7\\) AppleWebKit/537.36 \\(KHTML, like Gecko\\) Chrome/120.0 Safari/537.36\" \"https://www.safeway.com/weeklyad\" -o safeway_wa.html)",
+      "Bash(grep -oE '.{40}galleryPath[^}]{0,400}' main.js)",
+      "Bash(grep -oE '\\\\?[a-zA-Z]+=[^\"&]{0,20}\\(&[a-zA-Z]+=[^\"&]{0,20}\\){1,8}' main.js)",
+      "Bash(grep -oE '\"[a-z.]*apim[.a-z]*key\"[^,]{0,60}' main.js)",
+      "Bash(grep -oE 'subscription-key\"[^,}]{0,80}' main.js)"
     ],
     "additionalDirectories": [
       "/tmp"
