@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Update the host to the custom domain when one is connected. -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://oscar-leung.github.io/verbose-octo-carnival/</loc></url>
+  <url><loc>https://oscar-leung.github.io/verbose-octo-carnival/guide/</loc></url>
+  <url><loc>https://oscar-leung.github.io/verbose-octo-carnival/guide/speaking-practice-with-anime.html</loc></url>
+  <url><loc>https://oscar-leung.github.io/verbose-octo-carnival/guide/shadowing-japanese.html</loc></url>
+  <url><loc>https://oscar-leung.github.io/verbose-octo-carnival/guide/watch-party-language-learning.html</loc></url>
+  <url><loc>https://oscar-leung.github.io/verbose-octo-carnival/privacy.html</loc></url>
+</urlset>
