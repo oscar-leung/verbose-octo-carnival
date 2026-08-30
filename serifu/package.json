@@ -13,7 +13,7 @@
     "start": "NODE_ENV=production tsx server/index.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.server.json",
     "test": "vitest run",
-    "e2e": "node e2e/demo.mjs"
+    "e2e": "node e2e/demo.mjs && node e2e/mobile.mjs"
   },
   "dependencies": {
     "express": "^5.1.0",
