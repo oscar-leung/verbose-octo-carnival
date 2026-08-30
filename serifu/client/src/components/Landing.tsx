@@ -106,7 +106,9 @@ export default function Landing() {
           </div>
         </div>
         <p className="fineprint">
-          No accounts. Your videos stay on your device. <a href="/privacy.html">Privacy</a>
+          No accounts. Your videos stay on your device. <a href="guide/">Guides</a>
+          {' · '}
+          <a href="privacy.html">Privacy</a>
           {import.meta.env.VITE_SUPPORT_URL && (
             <>
               {' · '}
