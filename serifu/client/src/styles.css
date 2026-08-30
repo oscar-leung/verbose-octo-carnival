@@ -1454,3 +1454,114 @@ input[type='range'] {
     grid-column: 2 / -1;
   }
 }
+
+/* Desktop: header carries the tool buttons; the mobile-only blocks hide. */
+.mobile-nav,
+.more-actions {
+  display: none;
+}
+
+/* ---------- phone layout: three tabs, one thing at a time ---------- */
+
+@media (max-width: 720px) {
+  .room {
+    padding-bottom: calc(64px + env(safe-area-inset-bottom));
+  }
+
+  /* Header slims down to identity + invite; tools live in the ⚙️ tab. */
+  .room-header > button:not(.chip),
+  .room-header .user-chips {
+    display: none;
+  }
+
+  /* Tab routing: show only the current tab's panels. */
+  .room-grid .video-wrap,
+  .room-grid .character-bar,
+  .room-grid .voice-panel,
+  .room-grid .practice-stats,
+  .room-grid .bgm-panel,
+  .room-grid .scene-bar,
+  .room-grid .settings-row,
+  .room-grid .script-panel,
+  .room-grid .more-actions {
+    display: none;
+  }
+
+  .room-grid.mtab-stage .video-wrap,
+  .room-grid.mtab-stage .character-bar,
+  .room-grid.mtab-script .scene-bar,
+  .room-grid.mtab-script .script-panel,
+  .room-grid.mtab-more .more-actions,
+  .room-grid.mtab-more .settings-row,
+  .room-grid.mtab-more .voice-panel,
+  .room-grid.mtab-more .practice-stats,
+  .room-grid.mtab-more .bgm-panel {
+    display: flex;
+  }
+
+  .room-grid.mtab-more .more-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .line-list {
+    max-height: none;
+  }
+
+  /* Bottom tab bar. */
+  .mobile-nav {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 40;
+    display: flex;
+    background: rgba(22, 26, 34, 0.97);
+    border-top: 1px solid var(--border);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .mnav-btn {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 8px 0 6px;
+    background: none;
+    border: none;
+    border-radius: 0;
+    color: var(--muted);
+    font-size: 11.5px;
+  }
+
+  .mnav-btn.current {
+    color: var(--accent);
+  }
+
+  .mnav-icon {
+    font-size: 19px;
+    line-height: 1;
+  }
+
+  /* Fat-finger friendliness. */
+  button,
+  .chip,
+  select {
+    min-height: 42px;
+  }
+
+  button.mini {
+    min-height: 34px;
+    min-width: 34px;
+  }
+
+  .mnav-btn {
+    min-height: 52px;
+  }
+
+  input[type='range'] {
+    height: 28px;
+  }
+}

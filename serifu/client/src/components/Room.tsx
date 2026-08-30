@@ -38,6 +38,13 @@ export default function Room({ roomId, name }: { roomId: string; name: string })
   const [masteryOpen, setMasteryOpen] = useState(false);
   const [masteryDue, setMasteryDue] = useState(() => dueEntries(loadMastery(), Date.now()).length);
   const refreshMastery = () => setMasteryDue(dueEntries(loadMastery(), Date.now()).length);
+  /** Phone layout: which of the three tabs is showing (no effect on desktop). */
+  const [mobileTab, setMobileTab] = useState<'stage' | 'script' | 'more'>('stage');
+  const pausedForLine = state?.playback.pausedForLineId;
+  useEffect(() => {
+    // The rehearsal moment always brings the stage forward on phones.
+    if (pausedForLine) setMobileTab('stage');
+  }, [pausedForLine]);
   const [wordCount, setWordCount] = useState(() => loadWordbook().length);
   const [copied, setCopied] = useState(false);
   const [position, setPosition] = useState(0);
@@ -174,7 +181,7 @@ export default function Room({ roomId, name }: { roomId: string; name: string })
         </button>
       </header>
 
-      <div className="room-grid">
+      <div className={`room-grid mtab-${mobileTab}`}>
         <section className="stage">
           <div className="video-wrap">
             <VideoPanel
@@ -232,6 +239,19 @@ export default function Room({ roomId, name }: { roomId: string; name: string })
               ))}
             </div>
           )}
+          <div className="more-actions">
+            <button onClick={() => setEpisodesOpen(true)}>話数</button>
+            <button onClick={() => setMasteryOpen(true)}>習得 {masteryDue > 0 ? `(${masteryDue})` : ''}</button>
+            <button onClick={() => setWordbookOpen(true)}>単語帳 {wordCount > 0 ? `(${wordCount})` : ''}</button>
+            <button
+              onClick={() => {
+                setEditorInitial(null);
+                setEditorOpen(true);
+              }}
+            >
+              台本 ✎
+            </button>
+          </div>
           <div className="settings-row">
             <label className="toggle">
               <input
@@ -278,6 +298,25 @@ export default function Room({ roomId, name }: { roomId: string; name: string })
           />
         </aside>
       </div>
+
+      <nav className="mobile-nav" aria-label="sections">
+        {(
+          [
+            ['stage', '🎬', 'ステージ'],
+            ['script', '📖', '台本'],
+            ['more', '⚙️', 'その他'],
+          ] as const
+        ).map(([tab, icon, label]) => (
+          <button
+            key={tab}
+            className={mobileTab === tab ? 'mnav-btn current' : 'mnav-btn'}
+            onClick={() => setMobileTab(tab)}
+          >
+            <span className="mnav-icon">{icon}</span>
+            {label}
+          </button>
+        ))}
+      </nav>
 
       {editorOpen && (
         <ScriptEditor
