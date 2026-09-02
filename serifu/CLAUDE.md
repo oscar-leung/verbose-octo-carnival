@@ -51,8 +51,16 @@ Oscar review → squash merge → Render auto-deploys main. No direct pushes.
 
 ## Agent team (.claude/agents/)
 
-Delegate, don't do everything in the main loop: `content-writer` (new
-annotated scenes), `growth-marketer` (anime-agnostic copy),
-`biz-strategist` (monetization decisions), `release-captain` (PR/CI/
-deploy shepherding). Their definitions carry the constraints; keep them
-in sync with this file.
+Delegate, don't do everything in the main loop:
+- `frontend-dev` / `backend-dev` — implementation (client UI vs.
+  server/realtime); pair them for full-stack features
+- `ux-designer` — screenshot-driven design audits and specs, which
+  frontend-dev implements
+- `code-query` — read-only codebase questions, no edits
+- `content-writer` — new annotated scenes and vocab/grammar packs
+- `growth-marketer` (copy) + `campaign-manager` (sequencing, the
+  docs/growth/CAMPAIGN.md ledger) — marketing
+- `biz-strategist` — monetization decisions
+- `release-captain` — PR/CI/deploy shepherding
+
+Their definitions carry the constraints; keep them in sync with this file.
