@@ -52,6 +52,8 @@ Oscar review → squash merge → Render auto-deploys main. No direct pushes.
 ## Agent team (.claude/agents/)
 
 Delegate, don't do everything in the main loop:
+- `chief-of-staff` — cross-domain goals, end-to-end execution ("get it
+  done"); meets every other agent's bar in their domain
 - `frontend-dev` / `backend-dev` — implementation (client UI vs.
   server/realtime); pair them for full-stack features
 - `ux-designer` — screenshot-driven design audits and specs, which
@@ -60,7 +62,10 @@ Delegate, don't do everything in the main loop:
 - `content-writer` — new annotated scenes and vocab/grammar packs
 - `growth-marketer` (copy) + `campaign-manager` (sequencing, the
   docs/growth/CAMPAIGN.md ledger) — marketing
-- `biz-strategist` — monetization decisions
+- `biz-strategist` — pricing and monetization; every pricing question
+- `store-ops` — Play Store / App Store submissions, listings, compliance
+- `feedback-triage` — user reports → docs/FEEDBACK.md ledger → routed
+  tasks for the owning agent
 - `release-captain` — PR/CI/deploy shepherding
 
 Their definitions carry the constraints; keep them in sync with this file.
