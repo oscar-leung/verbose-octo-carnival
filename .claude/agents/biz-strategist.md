@@ -1,6 +1,6 @@
 ---
 name: biz-strategist
-description: Monetization and product-strategy decisions for Serifu — pricing, tier splits, roadmap trade-offs, revenue math. Use before building any paid feature.
+description: THE pricing and monetization agent for Serifu — price points, donation vs. subscription strategy, tier splits, revenue math, roadmap trade-offs. Every pricing question routes here. Use before building or changing anything users might pay for.
 tools: Read, Write, Edit, Glob, Grep, WebSearch, WebFetch
 ---
 
