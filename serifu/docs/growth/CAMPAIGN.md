@@ -18,12 +18,15 @@ Last updated: 2026-09-03
 | SEO guide: watch-party language learning | `public/guide/watch-party-language-learning.html` | Organic search; highest-intent CTA into the app | **Shipped** |
 | SEO guide #4: Japanese subtitle files (.srt/.vtt/.ass) | `public/guide/japanese-subtitle-files.html` | Organic search (highest volume in plan); money-path CTA into the app; in hub + sitemap | **Shipped** |
 | SEO guide #7: scared to speak Japanese | `public/guide/scared-to-speak-japanese.html` | Organic search ("japanese speaking anxiety"); shareable evergreen, soft CTA; in hub + sitemap | **Shipped** |
+| SEO guide #5: furigana practice | `public/guide/furigana-practice.html` | Organic search ("furigana reader", "japanese subtitles with furigana"); pairs with #4; in hub + sitemap | **Shipped** |
+| SEO guide #8: sentence SRS | `public/guide/sentence-srs.html` | Organic search ("sentence srs japanese"); wordbook/Anki-export tie-in; pairs with #10; in hub + sitemap | **Shipped** |
+| SEO guide #10: speech recognition scoring | `public/guide/speech-recognition-japanese.html` | Organic search ("japanese pronunciation checker app"); honest-explainer trust piece; pairs with #8; in hub + sitemap | **Shipped** |
 | Guide hub | `public/guide/index.html` | Hub-and-spoke internal linking | **Shipped** |
 | og-image share card + meta tags | site `<head>` + og image in `public/` | Makes every Reddit/HN/X link unfurl properly — free CTR on all social pushes | **Shipped** |
 | robots.txt + sitemap.xml | `public/robots.txt`, `public/sitemap.xml` | Search Console submission (§3.1). Note: sitemap host must be updated when the custom domain lands | **Shipped** |
 | Store-listing pack (title, descriptions, keywords, shot list) | `docs/growth/store-listing.md` | Play Console listing (§3.6) | **Shipped**, unused until Play Console exists |
 | Launch posts ×4 (r/LearnJapanese, r/languagelearning, Show HN, X thread) | `docs/growth/launch-posts.md` | Community launch sequence (§3.3), one at a time | **Shipped**, awaiting sequence gate |
-| SEO content plan (10 articles; 5 written, 5 remaining) | `docs/growth/seo-content-plan.md` | Governs guide production; §6 briefs for #4 and #7 fulfilled 2026-09-03 | **Shipped** (plan) |
+| SEO content plan (10 articles; 8 written, 2 remaining: #2 group shadowing, #9 comparison) | `docs/growth/seo-content-plan.md` | Governs guide production; §6 briefs for #4 and #7 fulfilled 2026-09-03 | **Shipped** (plan) |
 | ☕ support-link code (footer, Landing + SoloPractice) | `client/src/components/Landing.tsx:112`, `SoloPractice.tsx:259` | Renders only when `VITE_SUPPORT_URL` is set — dormant until Ko-fi exists (§3.2) | **Shipped, dormant** |
 
 ## 2. Sequencing gates (why nothing else moves yet)
@@ -145,3 +148,8 @@ is our best-tested voice for this feeling.
 - 2026-09-03 — growth-marketer shipped articles #4 (`guide/japanese-subtitle-files.html`)
   and #7 (`guide/scared-to-speak-japanese.html`) per the §6 briefs; both added to the
   guide hub and `sitemap.xml`. §6 briefs fulfilled.
+- 2026-09-03 — growth-marketer shipped wave two: articles #5 (`guide/furigana-practice.html`),
+  #8 (`guide/sentence-srs.html`), and #10 (`guide/speech-recognition-japanese.html`);
+  all three added to the guide hub and `sitemap.xml`. Content plan now 8/10 shipped;
+  remaining: #2 (group shadowing — partially covered by shipped shadowing + watch-party
+  guides) and #9 (comparison — hold until closer to launch traffic; decays fastest).

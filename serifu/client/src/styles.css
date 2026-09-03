@@ -1650,3 +1650,51 @@ input[type='range'] {
     justify-content: center;
   }
 }
+
+/* ---- Session restore prompt (server restarts wipe in-memory rooms) ---- */
+
+.restore-prompt {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 8px 12px 0;
+  padding: 10px 14px;
+  background: var(--panel-2);
+  border: 1px solid var(--accent-dim);
+  border-radius: var(--radius);
+}
+
+.restore-prompt .restore-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.restore-prompt .restore-text .muted {
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.restore-prompt button {
+  min-height: 42px; /* phone-first touch target */
+  white-space: nowrap;
+}
+
+.restore-prompt .restore-accept {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+}
+
+@media (max-width: 720px) {
+  .restore-prompt {
+    flex-wrap: wrap;
+  }
+
+  .restore-prompt .restore-text {
+    flex-basis: 100%;
+  }
+}

@@ -367,6 +367,91 @@ await pageA.click('.hide-levels .chip:has-text("暗記")');
 const hiddenJp = await pageA.textContent('.solo-line .jp');
 check('solo: 暗記 hide level masks the line', (hiddenJp ?? '').includes('＿'));
 
+// ---- 16. Session restore: a snapshot revives a server-wiped room ----
+// A real mid-suite server restart is impractical, so emulate the user
+// experience: B rejoins a FRESH room id (same empty state a restarted
+// server presents) holding a pre-seeded localStorage snapshot for it.
+// First: the live room has been writing its own snapshot all along.
+const origRoomId = /#\/r\/([a-z0-9-]+)/.exec(roomUrl)?.[1];
+const liveSnap = await pageB.evaluate(
+  (key) => JSON.parse(localStorage.getItem(key) ?? 'null'),
+  `serifu:roomSnapshot:${origRoomId}`
+);
+check('room continuously snapshots script + claims (by name) to localStorage',
+  liveSnap !== null &&
+  (liveSnap.script?.title ?? '').includes('フリーレン') &&
+  liveSnap.claims?.['ヒンメル'] === 'Yuki' &&
+  typeof liveSnap.savedAt === 'number');
+
+const freshRoom = `restore${Date.now().toString(36)}`;
+const restoreScript = {
+  title: 'リストア試験',
+  characters: [
+    { id: 'rc1', name: 'ハイター', color: '#ffb86c' },
+    { id: 'rc2', name: 'ヒンメル', color: '#7ecbff' },
+  ],
+  lines: [
+    { id: 'rl1', character: 'rc1', start: 0, end: 2, tokens: [{ t: 'こんにちは' }] },
+    { id: 'rl2', character: 'rc2', start: 3, end: 5, tokens: [{ t: 'さようなら' }] },
+  ],
+};
+const restoreSnapshot = {
+  script: restoreScript,
+  claims: { ヒンメル: 'Yuki', ハイター: 'Oscar' }, // by NAME — ids die with the server
+  passScore: 85,
+  rehearsalEnabled: false,
+  savedAt: Date.now(),
+};
+await pageB.evaluate(
+  ([key, json]) => localStorage.setItem(key, json),
+  [`serifu:roomSnapshot:${freshRoom}`, JSON.stringify(restoreSnapshot)]
+);
+// B's name (Yuki) is already remembered, so the room gate auto-joins.
+await pageB.goto(`${BASE}/#/r/${freshRoom}`);
+await pageB.waitForSelector('.restore-prompt', { timeout: 5000 });
+const promptText = (await pageB.textContent('.restore-prompt')) ?? '';
+check('restore prompt offers the snapshot for an empty room',
+  promptText.includes('復元') && promptText.includes('リストア試験'));
+await pageB.screenshot({ path: `${SHOTS}/07-restore-prompt.png` });
+await pageB.click('.restore-prompt .restore-accept');
+await pageB.waitForSelector('.script-header h2', { timeout: 5000 });
+check('accepting reloads the snapshotted script',
+  ((await pageB.textContent('.script-header h2')) ?? '').includes('リストア試験'));
+await pageB.waitForSelector('.char-pill.mine:has-text("ヒンメル")', { timeout: 5000 });
+check('restore re-claims only YOUR previous role (matched by name)',
+  !(await pageB.isVisible('.char-pill.mine:has-text("ハイター")')));
+const restoredSettings = await pageB.evaluate(() => ({
+  passScore: document.querySelector('.character-bar .pass-toggle select')?.value,
+  rehearsal: document.querySelector('.character-bar .rehearsal-toggle input')?.checked,
+}));
+check('restore re-applies pass score + rehearsal toggle',
+  restoredSettings.passScore === '85' && restoredSettings.rehearsal === false);
+
+// Declining, on another fresh room, must dismiss without clearing the snapshot.
+const declineRoom = `decline${Date.now().toString(36)}`;
+await pageA.evaluate(
+  ([key, json]) => localStorage.setItem(key, json),
+  [`serifu:roomSnapshot:${declineRoom}`, JSON.stringify(restoreSnapshot)]
+);
+// A's name (Oscar) is already remembered, so the room gate auto-joins.
+await pageA.goto(`${BASE}/#/r/${declineRoom}`);
+await pageA.waitForSelector('.restore-prompt', { timeout: 5000 });
+await pageA.click('.restore-prompt .restore-decline');
+await pageA.waitForSelector('.restore-prompt', { state: 'detached', timeout: 3000 });
+const keptSnapshot = await pageA.evaluate(
+  (key) => localStorage.getItem(key) !== null,
+  `serifu:roomSnapshot:${declineRoom}`
+);
+check('declining dismisses the prompt but keeps the snapshot', keptSnapshot);
+
+// ---- 16. Auto-furigana button in the editor (dictionary load itself is
+// CDN-only, so E2E stops at the button; the lib helpers are unit-tested) ----
+await pageB.click('.room-header button:has-text("台本")');
+await pageB.waitForSelector('.editor-tools', { timeout: 5000 });
+check('editor offers ふりがな自動付与 / auto-furigana',
+  await pageB.isVisible('.editor-tools button:has-text("auto-furigana")'));
+await pageB.click('.modal-footer button:has-text("cancel")');
+
 console.log('---');
 for (const [label, ok] of results) if (!ok) console.log('FAILED:', label);
 console.log(`${results.filter(([, ok]) => ok).length}/${results.length} checks passed`);

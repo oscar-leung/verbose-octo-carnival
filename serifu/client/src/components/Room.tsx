@@ -15,6 +15,15 @@ import EpisodeBrowser from './EpisodeBrowser';
 import MasteryPanel from './MasteryPanel';
 import { loadWordbook } from '../lib/wordbook';
 import { dueEntries, loadMastery } from '../lib/mastery';
+import {
+  buildRoomSnapshot,
+  isSnapshotFresh,
+  loadRoomSnapshot,
+  ownClaimedCharacterIds,
+  saveRoomSnapshot,
+  type RoomSnapshot,
+} from '../lib/roomSnapshot';
+import RestorePrompt from './RestorePrompt';
 import type { SkitScript } from '../../../shared/types';
 
 export default function Room({ roomId, name }: { roomId: string; name: string }) {
@@ -49,6 +58,71 @@ export default function Room({ roomId, name }: { roomId: string; name: string })
   const [copied, setCopied] = useState(false);
   const [position, setPosition] = useState(0);
   const videoPosRef = useRef<number | null>(null);
+  /** Snapshot offered for one-tap restore after a server restart wiped the room. */
+  const [restoreSnap, setRestoreSnap] = useState<RoomSnapshot | null>(null);
+  const [restoreDismissed, setRestoreDismissed] = useState(false);
+
+  // Keep a per-room localStorage snapshot of what matters (script, claims by
+  // name, rehearsal settings) so a free-tier server restart isn't fatal.
+  // The signature keeps the (potentially large) script serialization off the
+  // hot path — room:state broadcasts arrive on every playback event.
+  const snapSig = useMemo(() => {
+    if (!script || !state || state.scriptVersion === 0) return null;
+    return JSON.stringify([
+      state.scriptVersion,
+      state.claims,
+      state.passScore,
+      state.rehearsalEnabled,
+      state.users.map((u) => [u.id, u.name]),
+    ]);
+  }, [script, state]);
+  useEffect(() => {
+    if (!snapSig || !script || !state) return;
+    // Guard against hash navigation between rooms: for one render the OLD
+    // room's script/state can coexist with the NEW roomId prop — never save
+    // one room's session under another room's key.
+    if (state.roomId !== roomId) return;
+    saveRoomSnapshot(roomId, buildRoomSnapshot(script, state, Date.now()));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [snapSig, roomId]);
+
+  // Entering a different room resets the offer state.
+  useEffect(() => {
+    setRestoreSnap(null);
+    setRestoreDismissed(false);
+  }, [roomId]);
+
+  // On (re)join: if the server room has no script but we hold a fresh
+  // snapshot for this roomId, offer to restore. If someone else loads a
+  // script first (their own restore, or a fresh one), the offer withdraws.
+  const scriptVersion = state?.scriptVersion;
+  useEffect(() => {
+    if (scriptVersion === undefined) return;
+    if (scriptVersion > 0) {
+      setRestoreSnap(null);
+      return;
+    }
+    if (restoreDismissed) return;
+    const snap = loadRoomSnapshot(roomId);
+    if (snap && isSnapshotFresh(snap, Date.now())) setRestoreSnap(snap);
+  }, [scriptVersion, roomId, restoreDismissed]);
+
+  const selfName = state?.users.find((u) => u.id === selfId)?.name ?? name;
+  const acceptRestore = async () => {
+    const snap = restoreSnap;
+    if (!snap) return;
+    setRestoreSnap(null);
+    setRestoreDismissed(true);
+    const r = await actions.loadScript(snap.script);
+    if (!r.ok) return; // server refused (e.g. stale/oversized) — leave the room as-is
+    actions.setRehearsal(snap.rehearsalEnabled);
+    actions.setPassScore(snap.passScore);
+    // Re-claim only OUR previous role(s), matched by character name; the
+    // others re-claim theirs when they accept their own prompts.
+    for (const charId of ownClaimedCharacterIds(snap, selfName)) {
+      actions.claim(charId);
+    }
+  };
 
   const updateSettings = (next: DisplaySettings) => {
     setSettings(next);
@@ -180,6 +254,18 @@ export default function Room({ roomId, name }: { roomId: string; name: string })
           台本 ✎ <small>edit script</small>
         </button>
       </header>
+
+      {restoreSnap && (
+        <RestorePrompt
+          snapshot={restoreSnap}
+          onAccept={() => void acceptRestore()}
+          onDecline={() => {
+            // Dismiss for this visit only; the snapshot itself is kept.
+            setRestoreSnap(null);
+            setRestoreDismissed(true);
+          }}
+        />
+      )}
 
       <div className={`room-grid mtab-${mobileTab}`}>
         <section className="stage">
