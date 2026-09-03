@@ -2,6 +2,7 @@ import { useState, type ChangeEvent } from 'react';
 import type { Character, ScriptLine, SkitScript } from '../../../shared/types';
 import type { RoomActions } from '../lib/useRoom';
 import { parseCues, parseRubyText, rubyTokensToText } from '../lib/srt';
+import { hasKanji } from '../lib/furigana';
 import { parseTimeInput } from '../lib/playback';
 import { loadLibrary, removeFromLibrary, saveToLibrary, type LibraryEntry } from '../lib/scriptLibrary';
 import { DEMO_SCENES } from '../data/demoScenes';
@@ -89,6 +90,7 @@ export default function ScriptEditor({ script: roomScript, initialScript, action
   const [shiftText, setShiftText] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [furiProgress, setFuriProgress] = useState<{ done: number; total: number } | null>(null);
   const [library, setLibrary] = useState<LibraryEntry[]>(loadLibrary);
   const [libSelection, setLibSelection] = useState('');
   const [notice, setNotice] = useState<string | null>(null);
@@ -219,6 +221,37 @@ export default function ScriptEditor({ script: roomScript, initialScript, action
         translation: '',
       },
     ]);
+  };
+
+  const autoFurigana = async () => {
+    // Only lines with kanji and zero existing readings — hand annotations
+    // (and imports that already carry ruby) are never clobbered.
+    const targets = lines.filter(
+      (l) => hasKanji(l.text) && !parseRubyText(l.text).some((tok) => tok.r)
+    );
+    if (targets.length === 0) {
+      setNotice('ふりがなを付ける行がありません — every line already has readings');
+      return;
+    }
+    setError(null);
+    setFuriProgress({ done: 0, total: targets.length });
+    try {
+      const { tokenizeToRuby } = await import('../lib/furigana');
+      for (const [i, target] of targets.entries()) {
+        const tokens = await tokenizeToRuby(target.text);
+        const text = rubyTokensToText(tokens);
+        setLines((prev) => prev.map((l) => (l.key === target.key ? { ...l, text } : l)));
+        setFuriProgress({ done: i + 1, total: targets.length });
+        // Let the progress counter paint between lines.
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      }
+      setNotice(`ふりがなを ${targets.length} 行に付与しました`);
+    } catch {
+      setError(
+        '辞書を読み込めませんでした — could not load the furigana dictionary (offline?). Nothing was changed on the remaining lines.'
+      );
+    }
+    setFuriProgress(null);
   };
 
   const applyShift = () => {
@@ -371,6 +404,13 @@ export default function ScriptEditor({ script: roomScript, initialScript, action
           </label>
           <button onClick={() => setPasteOpen((v) => !v)}>
             {pasteOpen ? 'hide paste box' : 'paste subtitles'}
+          </button>
+          <button
+            disabled={furiProgress !== null}
+            onClick={() => void autoFurigana()}
+            title="add readings to every line that has none (dictionary loads from CDN on first use)"
+          >
+            {furiProgress ? `ふりがな ${furiProgress.done}/${furiProgress.total}…` : 'ふりがな自動付与 / auto-furigana'}
           </button>
           <span className="shift-tool">
             shift all
