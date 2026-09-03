@@ -205,6 +205,14 @@ export default function SoloPractice({ slug, script }: Props) {
                   👁 チラ見 (hold)
                 </button>
               )}
+              <label className="toggle">
+                判定
+                <select value={threshold} onChange={(e) => setThreshold(Number(e.target.value))}>
+                  <option value={55}>ゆるめ 55+</option>
+                  <option value={70}>ふつう 70+</option>
+                  <option value={85}>きびしめ 85+</option>
+                </select>
+              </label>
             </div>
 
             <div className="speech-status">
@@ -234,14 +242,6 @@ export default function SoloPractice({ slug, script }: Props) {
               <button disabled={index === 0} onClick={() => setIndex((i) => Math.max(0, i - 1))}>
                 ← prev
               </button>
-              <label className="toggle">
-                判定
-                <select value={threshold} onChange={(e) => setThreshold(Number(e.target.value))}>
-                  <option value={55}>ゆるめ 55+</option>
-                  <option value={70}>ふつう 70+</option>
-                  <option value={85}>きびしめ 85+</option>
-                </select>
-              </label>
               <button onClick={markPassed}>✓ said it — next</button>
               <button
                 disabled={index >= lines.length - 1}

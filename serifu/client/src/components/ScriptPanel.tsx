@@ -162,6 +162,9 @@ export default function ScriptPanel({
                         ? 'line-translation hover-reveal'
                         : 'line-translation'
                     }
+                    // Tap (:active) or keyboard focus reveals; hover alone
+                    // never fires on phones.
+                    tabIndex={settings.translation === 'hover' ? 0 : undefined}
                   >
                     {line.translation}
                   </div>

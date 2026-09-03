@@ -36,6 +36,12 @@ check('stage tab: video visible', await page.isVisible('.video-wrap'));
 check('stage tab: script hidden', !(await page.isVisible('.script-panel')));
 await page.screenshot({ path: `${SHOTS}/m1-stage.png` });
 
+// ---- empty stage: video-less escape hatch straight to the script ----
+check('stage tab: 台本へ escape link visible', await page.isVisible('.placeholder-script-link'));
+await page.click('.placeholder-script-link');
+await page.waitForSelector('.script-panel');
+check('台本へ link switches to the script tab', await page.isVisible('.script-panel'));
+
 // ---- script tab: load a scene, lines appear ----
 await page.click('.mnav-btn:has-text("台本")');
 await page.waitForSelector('.scene-list');
@@ -45,6 +51,29 @@ check('script tab: scene loads and lines render', true);
 check('script tab: video hidden', !(await page.isVisible('.video-wrap')));
 check('script tab: no horizontal scroll', await noHScroll());
 await page.screenshot({ path: `${SHOTS}/m2-script.png` });
+
+// ---- translation reveal: blurred until pressed (no hover on phones) ----
+const translation = page.locator('.line-translation.hover-reveal').first();
+await translation.scrollIntoViewIfNeeded();
+check(
+  'script tab: translation blurred (タップ mode)',
+  (await translation.evaluate((el) => getComputedStyle(el).filter)).includes('blur')
+);
+const tBox = await translation.boundingBox();
+await page.mouse.move(tBox.x + 10, tBox.y + tBox.height / 2);
+await page.mouse.down();
+const pressRevealed = await page
+  .waitForFunction(
+    () => {
+      const el = document.querySelector('.line-translation.hover-reveal');
+      return el && getComputedStyle(el).filter === 'none';
+    },
+    { timeout: 3000 }
+  )
+  .then(() => true)
+  .catch(() => false);
+await page.mouse.up();
+check('script tab: pressing a translation reveals it', pressRevealed);
 
 // ---- more tab: tools grid + settings ----
 await page.click('.mnav-btn:has-text("その他")');
@@ -63,6 +92,25 @@ check('touch targets: nav buttons ≥ 44px tall', await page.evaluate(() => {
   const b = document.querySelector('.mnav-btn');
   return b && b.getBoundingClientRect().height >= 44;
 }));
+
+// ---- solo practice: primary action stays under the thumb ----
+await page.goto(`${BASE}/#/p/meteor-promise`);
+await page.waitForSelector('.solo-nav');
+check('solo: no horizontal scroll', await noHScroll());
+check('solo: next/skip nav sticky within the first viewport', await page.evaluate(() => {
+  const nav = document.querySelector('.solo-nav');
+  if (!nav) return false;
+  const r = nav.getBoundingClientRect();
+  return getComputedStyle(nav).position === 'sticky' && r.bottom <= window.innerHeight + 1;
+}));
+check('solo: hide levels render as one four-column row', await page.evaluate(() => {
+  const chips = [...document.querySelectorAll('.hide-levels .chip')];
+  return (
+    chips.length === 4 &&
+    new Set(chips.map((c) => Math.round(c.getBoundingClientRect().top))).size === 1
+  );
+}));
+await page.screenshot({ path: `${SHOTS}/m4-solo.png` });
 
 console.log('---');
 for (const [label, ok] of results) if (!ok) console.log('FAILED:', label);
