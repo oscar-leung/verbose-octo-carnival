@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import express from 'express';
 import { Server, type Socket } from 'socket.io';
 import { RoomStore } from './rooms';
+import { createBucket, tryTake } from './rateLimit';
 import {
   MAX_SCRIPT_JSON_BYTES,
   ROOM_ID_PATTERN,
@@ -32,6 +33,12 @@ const io = new Server<ClientToServerEvents, ServerToClientEvents, Record<string,
 );
 
 const store = new RoomStore();
+
+// Per-socket event rate limit. Generous on purpose: normal usage (playback
+// sync, rehearsal, rapid speech retries) stays far below it; only a runaway
+// or abusive client ever hits it. Exceeding events are dropped silently.
+const RATE_LIMIT_EVENTS = 40;
+const RATE_LIMIT_WINDOW_MS = 10_000;
 
 app.get('/healthz', (_req, res) => {
   res.json({ ok: true });
@@ -88,6 +95,27 @@ function leaveCurrentRoom(socket: AppSocket): void {
 }
 
 io.on('connection', (socket: AppSocket) => {
+  const bucket = createBucket(RATE_LIMIT_EVENTS, RATE_LIMIT_WINDOW_MS, Date.now());
+  let droppedEvents = 0;
+  socket.use((event, next) => {
+    if (tryTake(bucket, Date.now())) {
+      next();
+      return;
+    }
+    // Drop silently: no error to the client, no disconnect. Log once.
+    droppedEvents += 1;
+    if (droppedEvents === 1) {
+      console.warn(
+        `[serifu] rate limit exceeded by socket ${socket.id}; dropping events (first: ${String(event[0])})`
+      );
+    }
+  });
+  socket.on('disconnect', () => {
+    if (droppedEvents > 0) {
+      console.warn(`[serifu] socket ${socket.id} disconnected; ${droppedEvents} events were rate-limited`);
+    }
+  });
+
   socket.on('room:join', (p, ack) => {
     if (typeof ack !== 'function') return;
     if (typeof p?.roomId !== 'string' || !ROOM_ID_PATTERN.test(p.roomId)) {
@@ -249,6 +277,32 @@ io.on('connection', (socket: AppSocket) => {
 
 const gcTimer = setInterval(() => store.gc(30 * 60_000), 10 * 60_000);
 gcTimer.unref();
+
+// Hourly sweep: reap rooms with no accepted events for >24h even if
+// half-dead sockets are still nominally joined; kick those sockets out so
+// their next join starts clean.
+const IDLE_ROOM_MAX_MS = 24 * 60 * 60_000;
+const sweepTimer = setInterval(() => {
+  const removed = store.sweepIdle(IDLE_ROOM_MAX_MS);
+  for (const roomId of removed) {
+    // Detach lingering sockets so their stale roomId can't touch a future
+    // room recreated under the same id.
+    void io
+      .in(roomId)
+      .fetchSockets()
+      .then((sockets) => {
+        for (const s of sockets) {
+          s.data.roomId = undefined;
+          s.leave(roomId);
+        }
+      })
+      .catch(() => {});
+  }
+  if (removed.length > 0) {
+    console.log(`[serifu] swept ${removed.length} idle room(s): ${removed.join(', ')}`);
+  }
+}, 60 * 60_000);
+sweepTimer.unref();
 
 server.listen(PORT, () => {
   console.log(`[serifu] listening on http://localhost:${PORT}`);

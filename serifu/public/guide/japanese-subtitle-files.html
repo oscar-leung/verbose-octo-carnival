@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="dark">
+<title>How to Get Japanese Subtitles for Any Show (.srt, .vtt, .ass Explained)</title>
+<meta name="description" content="Where to find Japanese subtitle files, how to extract them from media you own, and what .srt, .vtt, and .ass actually mean — with an honest note on legality.">
+<style>
+  body { margin: 0; background: #0e1014; color: #e8eaf0; font-family: 'Hiragino Sans', 'Yu Gothic UI', 'Noto Sans JP', system-ui, sans-serif; line-height: 1.7; }
+  main { max-width: 640px; margin: 0 auto; padding: 40px 20px 80px; }
+  h1 { font-size: 26px; line-height: 1.35; } h1 span { color: #7ecbff; }
+  h2 { font-size: 17px; margin-top: 28px; color: #7ecbff; }
+  h3 { font-size: 15px; margin-top: 20px; color: #e8eaf0; }
+  p, li { color: #c7cdd8; font-size: 15px; }
+  a { color: #7ecbff; }
+  ol li, ul li { margin-bottom: 6px; }
+  .updated { color: #98a2b3; font-size: 13px; }
+  .more { border-top: 1px solid #2a2f3a; margin-top: 40px; padding-top: 20px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>How to Get Japanese Subtitles for Any Show <span>(.srt, .vtt, .ass Explained)</span></h1>
+  <p class="updated">Updated September 2026</p>
+
+  <p>If you want to use the shows you love as actual study material — for
+  shadowing, sentence mining, or <a href="speaking-practice-with-anime.html">speaking
+  practice</a> — you need the Japanese text of what's being said, timed to the
+  audio. Streaming services rarely give you that: many titles ship English
+  subtitles only, and even when Japanese subs exist you can't select the text,
+  look words up, or study a line before it plays.</p>
+
+  <p>The fix is a subtitle <em>file</em>: a small text file (.srt, .vtt, or
+  .ass) containing every line of dialogue with timestamps. Once you have one,
+  any decent video player or study tool can display it, and you can read the
+  script like a document. This guide covers where learners actually find
+  these files, what the three formats mean, and which one to prefer.</p>
+
+  <h2>Where to find Japanese subtitle files</h2>
+
+  <h3>1. Community subtitle archives</h3>
+  <p>The Japanese-learning community has maintained subtitle archives for
+  years. The best-known are the kitsunekko-style archives and their modern
+  successor <a href="https://jimaku.cc" rel="nofollow">Jimaku</a>, which host
+  Japanese subtitle files for thousands of shows and films, organized by
+  title, free to download. Search the original Japanese title if the romaji
+  search comes up empty, and check the file list for the exact episode
+  numbering your video uses — batch uploads sometimes number specials
+  differently.</p>
+
+  <h3>2. Extracting from media you own</h3>
+  <p>If you own a copy of the show, the subtitles may already be inside it.
+  Japanese Blu-rays and many digital files carry Japanese subtitle tracks
+  (originally for deaf and hard-of-hearing viewers — which is great for
+  learners, since they transcribe nearly everything). Two free tools do the
+  extraction:</p>
+  <ul>
+    <li><strong>MKVToolNix</strong> (<code>mkvextract</code>) pulls subtitle
+    tracks out of .mkv files in seconds, usually as .ass or .srt.</li>
+    <li><strong>FFmpeg</strong> works on almost any container:
+    <code>ffmpeg -i episode.mkv -map 0:s:0 subs.srt</code> extracts the first
+    subtitle track. List tracks first with <code>ffmpeg -i episode.mkv</code>
+    to find the Japanese one.</li>
+  </ul>
+  <p>Blu-ray subtitles are sometimes stored as images (PGS) rather than text;
+  converting those to text needs an OCR step (SubtitleEdit does this well).
+  It's more work, but it's also the most reliable source there is — the
+  timing matches your video perfectly because it came from your video.</p>
+
+  <h3>3. When only English subs exist</h3>
+  <p>Some shows genuinely have no Japanese subtitle file anywhere. Your
+  options: use the audio plus an English file as a rough timing guide,
+  transcribe short scenes yourself (a fantastic exercise at intermediate
+  level), or pick a different show — with thousands of titles covered by the
+  archives, there's no shame in choosing material that's easy to study.</p>
+
+  <h2>A quick, honest word on legality</h2>
+  <p>Subtitle files occupy a gray area: a transcript of a show's dialogue is
+  a derivative of a copyrighted script, and downloading one for a show you
+  don't own is unauthorized distribution in most jurisdictions, even though
+  enforcement against individual learners is essentially unheard of. The
+  clean path is to study subtitles alongside media you legitimately own or
+  stream — extraction from your own discs and files is the strongest ground.
+  We're not your lawyers; know your local rules and make your own call.</p>
+
+  <h2>.srt vs .vtt vs .ass — what the formats mean</h2>
+
+  <h3>.srt — the plain one</h3>
+  <p>SubRip is the oldest and simplest format: a numbered list of cues, each
+  with a start/end timestamp and the text. No styling, no positioning, no
+  metadata — just timing and words. That simplicity is why everything
+  supports it. If a tool accepts only one format, it's .srt, and any other
+  format can be converted down to it.</p>
+
+  <h3>.vtt — the web-native one</h3>
+  <p>WebVTT is essentially .srt modernized for the browser: same
+  cue-and-timestamp structure, plus optional positioning and styling, and
+  it's what the HTML5 <code>&lt;track&gt;</code> element expects. If you're
+  studying in a browser-based tool or building anything on the web, .vtt is
+  the lingua franca. Converting .srt ⇄ .vtt is nearly lossless.</p>
+
+  <h3>.ass — the rich one (and why learners should care)</h3>
+  <p>Advanced SubStation Alpha is the format fan typesetters use: fonts,
+  colors, screen positioning, karaoke effects. Most of that is cosmetic for
+  a learner — but one field matters a lot: each dialogue line carries a
+  <strong>Name/Actor tag</strong> identifying <em>who is speaking</em>.
+  Well-made .ass files are effectively a screenplay with character names on
+  every line. If you ever want to practice by taking a role — reading one
+  character's lines while a friend takes another — that speaker data is
+  gold, and .srt/.vtt simply don't have a standard place for it.</p>
+
+  <h2>Checking and fixing your file</h2>
+  <ul>
+    <li><strong>Encoding:</strong> if the Japanese shows up as garbage
+    characters (mojibake), re-save the file as UTF-8. SubtitleEdit or any
+    code editor can do it.</li>
+    <li><strong>Timing drift:</strong> if subs start in sync and slowly
+    drift, your video's frame rate differs from the sub's source. Subtitle
+    editors can rescale timing in one operation.</li>
+    <li><strong>Offset:</strong> if every line is uniformly early or late
+    (different cuts of the opening, usually), shift the whole track by a
+    fixed amount — most players can do this live with a hotkey.</li>
+  </ul>
+
+  <h2>From file to speaking practice</h2>
+  <p>A subtitle file on disk is study <em>potential</em>; the win is turning
+  it into something you read, say, and drill. This is the workflow
+  <a href="../">Serifu</a> automates: import an .srt, .vtt, or .ass file and
+  it becomes a scrollable script with furigana over the kanji — and because
+  it reads .ass speaker tags, each of you can claim a character and rehearse
+  a scene together, with the app pausing at your lines and scoring your
+  delivery. It's free and runs in the browser.</p>
+  <p><strong>→ <a href="../">Bring a subtitle file and start a practice room</a></strong>
+  — or <a href="../#/p/meteor-promise">try a ready-made solo scene first</a>,
+  no account needed.</p>
+
+  <h2>FAQ</h2>
+  <h3>Which format should I prefer if I have a choice?</h3>
+  <p>.ass, if it has speaker names — you can always convert down to
+  .srt/.vtt, but you can't conjure speaker data back. Otherwise .srt is
+  fine; it works everywhere.</p>
+  <h3>Do Japanese subtitles match the audio exactly?</h3>
+  <p>Very closely, but not always word-for-word. Closed-caption-style tracks
+  occasionally compress long lines slightly for reading speed. For study
+  purposes the differences are minor, and hearing them is itself good
+  listening practice.</p>
+  <h3>Can I convert between the formats?</h3>
+  <p>Yes — SubtitleEdit (free, open source) and FFmpeg both convert between
+  all three. Just remember conversion to .srt strips styling and speaker
+  tags permanently.</p>
+
+  <div class="more">
+    <h2>More guides</h2>
+    <ul>
+      <li><a href="speaking-practice-with-anime.html">How to Practice Speaking Japanese with Anime (Without a Tutor)</a></li>
+      <li><a href="shadowing-japanese.html">Japanese Shadowing: the Complete Beginner's Method</a></li>
+      <li><a href="watch-party-language-learning.html">Learning a Language with Friends: the Watch-Party Method</a></li>
+    </ul>
+    <p><a href="../">← Serifu — practice speaking Japanese with the shows you love</a></p>
+  </div>
+</main>
+</body>
+</html>

@@ -26,6 +26,11 @@ const noHScroll = () =>
 await page.goto(BASE);
 await page.waitForSelector('.landing-card');
 check('landing: no horizontal scroll at 390px', await noHScroll());
+check(
+  'landing: 3 solo chips + もっと見る keep the first viewport short',
+  (await page.$$eval('.solo-links a.chip', (els) => els.length)) === 3 &&
+    (await page.isVisible('.solo-links button:has-text("もっと見る")'))
+);
 
 // ---- room: stage tab is the default ----
 await page.fill('input[placeholder*="名前"]', 'Sumaho');
@@ -83,11 +88,26 @@ check(
   (await page.isVisible('.more-actions button:has-text("単語帳")')) &&
     (await page.isVisible('.settings-row'))
 );
+check(
+  'more tab: tool buttons carry EN sublabels',
+  await page.isVisible('.more-actions button small:has-text("wordbook")')
+);
+check(
+  'more tab: auto-pause + 判定 settings live here',
+  (await page.isVisible('.settings-row .mobile-room-setting:has-text("セリフで自動停止")')) &&
+    (await page.isVisible('.settings-row .mobile-room-setting select'))
+);
 await page.screenshot({ path: `${SHOTS}/m3-more.png` });
 
 // ---- back to stage ----
 await page.click('.mnav-btn:has-text("ステージ")');
 check('stage tab again: video back', await page.isVisible('.video-wrap'));
+check(
+  'stage tab: only claim chips — rehearsal settings moved to その他',
+  (await page.isVisible('.character-bar .char-pill')) &&
+    !(await page.isVisible('.character-bar .rehearsal-toggle')) &&
+    !(await page.isVisible('.character-bar .pass-toggle'))
+);
 check('touch targets: nav buttons ≥ 44px tall', await page.evaluate(() => {
   const b = document.querySelector('.mnav-btn');
   return b && b.getBoundingClientRect().height >= 44;
@@ -97,6 +117,10 @@ check('touch targets: nav buttons ≥ 44px tall', await page.evaluate(() => {
 await page.goto(`${BASE}/#/p/meteor-promise`);
 await page.waitForSelector('.solo-nav');
 check('solo: no horizontal scroll', await noHScroll());
+check(
+  'solo: header shows the scene name, not the series prefix',
+  !(((await page.textContent('.solo-title')) ?? '').includes('葬送のフリーレン'))
+);
 check('solo: next/skip nav sticky within the first viewport', await page.evaluate(() => {
   const nav = document.querySelector('.solo-nav');
   if (!nav) return false;

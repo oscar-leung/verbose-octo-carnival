@@ -4,7 +4,7 @@ import { expectedPosition, findActiveLineId } from '../lib/playback';
 import { loadSettings, saveSettings, type DisplaySettings } from '../lib/settings';
 import VideoPanel from './VideoPanel';
 import ScriptPanel from './ScriptPanel';
-import CharacterBar from './CharacterBar';
+import CharacterBar, { STRICTNESS_PRESETS } from './CharacterBar';
 import RehearsalBanner from './RehearsalBanner';
 import VoicePanel from './VoicePanel';
 import PracticeStats from './PracticeStats';
@@ -163,13 +163,13 @@ export default function Room({ roomId, name }: { roomId: string; name: string })
           ))}
         </div>
         <button onClick={() => setEpisodesOpen(true)} title="season & episode tracker">
-          話数
+          話数 <small>episodes</small>
         </button>
         <button onClick={() => setMasteryOpen(true)} title="grammar & vocab mastery tracker">
-          習得 {masteryDue > 0 ? `(${masteryDue})` : ''}
+          習得 {masteryDue > 0 ? `(${masteryDue})` : ''} <small>mastery</small>
         </button>
         <button onClick={() => setWordbookOpen(true)} title="your saved words">
-          単語帳 {wordCount > 0 ? `(${wordCount})` : ''}
+          単語帳 {wordCount > 0 ? `(${wordCount})` : ''} <small>wordbook</small>
         </button>
         <button
           onClick={() => {
@@ -177,7 +177,7 @@ export default function Room({ roomId, name }: { roomId: string; name: string })
             setEditorOpen(true);
           }}
         >
-          台本 ✎
+          台本 ✎ <small>edit script</small>
         </button>
       </header>
 
@@ -241,16 +241,22 @@ export default function Room({ roomId, name }: { roomId: string; name: string })
             </div>
           )}
           <div className="more-actions">
-            <button onClick={() => setEpisodesOpen(true)}>話数</button>
-            <button onClick={() => setMasteryOpen(true)}>習得 {masteryDue > 0 ? `(${masteryDue})` : ''}</button>
-            <button onClick={() => setWordbookOpen(true)}>単語帳 {wordCount > 0 ? `(${wordCount})` : ''}</button>
+            <button onClick={() => setEpisodesOpen(true)}>
+              話数 <small>episodes</small>
+            </button>
+            <button onClick={() => setMasteryOpen(true)}>
+              習得 {masteryDue > 0 ? `(${masteryDue})` : ''} <small>mastery</small>
+            </button>
+            <button onClick={() => setWordbookOpen(true)}>
+              単語帳 {wordCount > 0 ? `(${wordCount})` : ''} <small>wordbook</small>
+            </button>
             <button
               onClick={() => {
                 setEditorInitial(null);
                 setEditorOpen(true);
               }}
             >
-              台本 ✎
+              台本 ✎ <small>edit script</small>
             </button>
           </div>
           <div className="settings-row">
@@ -276,6 +282,38 @@ export default function Room({ roomId, name }: { roomId: string; name: string })
                 <option value="show">表示 / show</option>
                 <option value="hover">タップ / tap</option>
                 <option value="hide">隠す / hide</option>
+              </select>
+            </label>
+            {/* Room-level rehearsal settings live here on phones (audit-01
+                finding 5); desktop keeps them in the character bar. */}
+            <label
+              className="toggle mobile-room-setting"
+              title="Auto-pause the video at the start of every claimed line so its actor can say it first."
+            >
+              <input
+                type="checkbox"
+                checked={state.rehearsalEnabled}
+                onChange={(e) => actions.setRehearsal(e.target.checked)}
+              />
+              セリフで自動停止
+            </label>
+            <label
+              className="toggle mobile-room-setting"
+              title="Speech score needed to pass and auto-resume — shared by the whole room."
+            >
+              判定
+              <select
+                value={state.passScore}
+                onChange={(e) => actions.setPassScore(Number(e.target.value))}
+              >
+                {STRICTNESS_PRESETS.map((p) => (
+                  <option key={p.score} value={p.score}>
+                    {p.label}
+                  </option>
+                ))}
+                {!STRICTNESS_PRESETS.some((p) => p.score === state.passScore) && (
+                  <option value={state.passScore}>{state.passScore}+</option>
+                )}
               </select>
             </label>
             <label className="toggle offset" title="Shift your local video vs. the room (for different encodes/cuts)">
