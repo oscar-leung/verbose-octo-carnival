@@ -12,7 +12,7 @@ interface Props {
   onOpenEditor: () => void;
 }
 
-const STRICTNESS_PRESETS = [
+export const STRICTNESS_PRESETS = [
   { score: 55, label: 'ゆるめ 55+' },
   { score: 70, label: 'ふつう 70+' },
   { score: 85, label: 'きびしめ 85+' },
@@ -84,7 +84,7 @@ export default function CharacterBar({
         />
         セリフで自動停止
       </label>
-      <label className="toggle" title="Speech score needed to pass and auto-resume — shared by the whole room.">
+      <label className="toggle pass-toggle" title="Speech score needed to pass and auto-resume — shared by the whole room.">
         判定
         <select
           value={passScore}

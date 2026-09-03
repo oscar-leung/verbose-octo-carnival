@@ -131,7 +131,11 @@ export default function SoloPractice({ slug, script }: Props) {
           <a className="chip" href="#/">
             ← Serifu
           </a>
-          <h1 className="solo-title">{script.title}</h1>
+          <h1 className="solo-title">
+            {/* Strip the series prefix so a 390px viewport shows the part
+                that identifies THIS scene (audit-01 finding 9). */}
+            {script.title.replace('葬送のフリーレン — ', '').replace('葬送のフリーレン ', '')}
+          </h1>
           <button className="chip" onClick={copyLink}>
             {copied ? '✓ copied' : 'share ⧉'}
           </button>
@@ -254,16 +258,7 @@ export default function SoloPractice({ slug, script }: Props) {
         ) : null}
 
         <footer className="solo-footer muted">
-          Solo memory practice — for the full experience (synced episode video, friends, voice
-          chat, rehearsal auto-pause), <a href="#/">create a room</a>.
-          {import.meta.env.VITE_SUPPORT_URL && (
-            <>
-              {' '}Enjoying it?{' '}
-              <a href={import.meta.env.VITE_SUPPORT_URL} target="_blank" rel="noreferrer">
-                ☕ Buy me a coffee
-              </a>
-            </>
-          )}
+          友達と一緒に観るなら → <a href="#/">create a room</a>
         </footer>
       </div>
     </div>

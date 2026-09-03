@@ -1466,6 +1466,21 @@ input[type='range'] {
   display: none;
 }
 
+/* Tool buttons carry an EN sublabel — Japanese-first with English support
+   (audit-01 finding 4): inline on desktop, block on mobile. */
+.room-header > button small,
+.more-actions button small {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--muted);
+}
+
+/* Room-level rehearsal settings duplicate into the その他 tab on phones
+   (audit-01 finding 5); desktop keeps them in the character bar. */
+.settings-row .mobile-room-setting {
+  display: none;
+}
+
 /* ---------- phone layout: three tabs, one thing at a time ---------- */
 
 @media (max-width: 720px) {
@@ -1508,6 +1523,21 @@ input[type='range'] {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 10px;
+  }
+
+  .more-actions button small {
+    display: block;
+  }
+
+  /* Stage tab keeps only the claim chips; the auto-pause toggle and 判定
+     select live with the other settings in その他 (audit-01 finding 5). */
+  .character-bar .rehearsal-toggle,
+  .character-bar .pass-toggle {
+    display: none;
+  }
+
+  .settings-row .mobile-room-setting {
+    display: inline-flex;
   }
 
   .line-list {

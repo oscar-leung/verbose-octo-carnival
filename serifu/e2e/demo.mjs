@@ -111,12 +111,39 @@ const pageA = await ctxA.newPage();
 pageA.on('pageerror', (e) => console.log('A pageerror:', e.message));
 await pageA.goto(BASE);
 await pageA.screenshot({ path: `${SHOTS}/01-landing.png` });
+
+// Solo chips: 3 up front, no (デモ) noise per chip, もっと見る expands to all.
+await pageA.waitForSelector('.solo-links .chip');
+const soloChips = await pageA.$$eval('.solo-links a.chip', (els) => els.map((e) => e.textContent ?? ''));
+check('landing: 3 solo chips, デモ said once in the label',
+  soloChips.length === 3 && soloChips.every((t) => !t.includes('デモ')) &&
+  ((await pageA.textContent('.solo-links .bar-label')) ?? '').includes('デモ台本'));
+await pageA.click('.solo-links button:has-text("もっと見る")');
+const expanded = await pageA
+  .waitForFunction(
+    () =>
+      document.querySelectorAll('.solo-links a.chip').length > 3 &&
+      !document.querySelector('.solo-links button'),
+    { timeout: 3000 }
+  )
+  .then(() => true)
+  .catch(() => false);
+check('landing: もっと見る expands to all solo scenes', expanded);
+
 await pageA.fill('input[placeholder*="名前"]', 'Oscar');
 await pageA.click('button:has-text("Create a room")');
 await pageA.waitForURL(/#\/r\//, { timeout: 5000 });
 await pageA.waitForSelector('.room-header', { timeout: 5000 });
 const roomUrl = pageA.url();
 check('user A created + joined room', /#\/r\/[a-z0-9]+/.test(roomUrl));
+
+// Header tools are Japanese-first with EN sublabels (audit-01 finding 4).
+const headerSubs = await pageA.$$eval('.room-header > button small', (els) =>
+  els.map((e) => e.textContent ?? '')
+);
+check('header tools carry EN sublabels (episodes/mastery/wordbook/edit script)',
+  headerSubs.includes('episodes') && headerSubs.includes('mastery') &&
+  headerSubs.includes('wordbook') && headerSubs.includes('edit script'));
 
 // ---- 3. User B joins via the link ----
 const ctxB = await browser.newContext({ viewport: { width: 1440, height: 900 } });
@@ -172,6 +199,13 @@ await pageB.waitForSelector('.char-pill:has-text("ハイター")[disabled]', { t
 await pageB.click('.char-pill:has-text("ヒンメル")');
 await pageA.waitForSelector('.char-pill:has-text("ヒンメル")[disabled]', { timeout: 5000 });
 check('character claims sync both ways', true);
+
+// Desktop keeps the rehearsal settings in the character bar; the mobile
+// duplicates in the settings row stay hidden (audit-01 finding 5).
+check('rehearsal settings live in the character bar on desktop',
+  (await pageA.isVisible('.character-bar .rehearsal-toggle')) &&
+  (await pageA.isVisible('.character-bar .pass-toggle')) &&
+  !(await pageA.isVisible('.settings-row .mobile-room-setting')));
 
 // ---- 6. A loads their local "episode" file ----
 await pageA.setInputFiles('.video-placeholder input[type="file"]', episodePath);
@@ -321,6 +355,11 @@ await pageA.goto(`${BASE}/#/p/meteor-promise`);
 await pageA.waitForSelector('.solo-title', { timeout: 5000 });
 const soloTitle = await pageA.textContent('.solo-title');
 check('solo practice page loads from its public URL', (soloTitle ?? '').includes('流星群'));
+check('solo: title drops the series prefix, keeps the scene name',
+  !(soloTitle ?? '').includes('葬送のフリーレン'));
+const soloFooter = ((await pageA.textContent('.solo-footer')) ?? '').trim();
+check('solo: footer is the one-line room pointer',
+  soloFooter === '友達と一緒に観るなら → create a room');
 // Fake speech: wrong utterance fails, then the correct line 1 passes → line 2.
 await pageA.waitForSelector('.solo-progress:has-text("2 /")', { timeout: 15000 });
 check('solo: passing a spoken line advances to the next', true);

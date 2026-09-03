@@ -11,6 +11,10 @@ export default function Landing() {
   const [name, setName] = useState(loadName);
   const [joinCode, setJoinCode] = useState('');
   const [joinErr, setJoinErr] = useState<string | null>(null);
+  // Three chips keep Create/Join + the trust line in the first phone
+  // viewport (audit-01 finding 6); もっと見る reveals the rest.
+  const [allScenes, setAllScenes] = useState(false);
+  const scenes = allScenes ? PUBLIC_SCENES : PUBLIC_SCENES.slice(0, 3);
 
   const persistName = () => {
     const trimmed = name.trim();
@@ -96,13 +100,21 @@ export default function Landing() {
         </div>
         )}
         <div className="solo-links">
-          <span className="bar-label">一人で練習 — solo practice:</span>
+          <span className="bar-label">一人で練習 — solo practice (デモ台本):</span>
           <div className="row">
-            {PUBLIC_SCENES.map((p) => (
+            {scenes.map((p) => (
               <a key={p.slug} className="chip" href={`#/p/${p.slug}`}>
-                {p.script.title.replace('葬送のフリーレン — ', '').replace('葬送のフリーレン ', '')}
+                {p.script.title
+                  .replace('葬送のフリーレン — ', '')
+                  .replace('葬送のフリーレン ', '')
+                  .replace(' (デモ)', '')}
               </a>
             ))}
+            {!allScenes && (
+              <button className="chip" onClick={() => setAllScenes(true)}>
+                もっと見る / more…
+              </button>
+            )}
           </div>
         </div>
         <p className="fineprint">
