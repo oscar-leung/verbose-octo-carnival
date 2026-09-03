@@ -16,12 +16,14 @@ Last updated: 2026-09-03
 | SEO guide: speaking practice with anime (pillar) | `public/guide/speaking-practice-with-anime.html` | Organic search cluster head; linked from launch posts once indexed | **Shipped** (live at `/guide/`) |
 | SEO guide: shadowing Japanese | `public/guide/shadowing-japanese.html` | Organic search; internal links to pillar | **Shipped** |
 | SEO guide: watch-party language learning | `public/guide/watch-party-language-learning.html` | Organic search; highest-intent CTA into the app | **Shipped** |
+| SEO guide #4: Japanese subtitle files (.srt/.vtt/.ass) | `public/guide/japanese-subtitle-files.html` | Organic search (highest volume in plan); money-path CTA into the app; in hub + sitemap | **Shipped** |
+| SEO guide #7: scared to speak Japanese | `public/guide/scared-to-speak-japanese.html` | Organic search ("japanese speaking anxiety"); shareable evergreen, soft CTA; in hub + sitemap | **Shipped** |
 | Guide hub | `public/guide/index.html` | Hub-and-spoke internal linking | **Shipped** |
 | og-image share card + meta tags | site `<head>` + og image in `public/` | Makes every Reddit/HN/X link unfurl properly — free CTR on all social pushes | **Shipped** |
 | robots.txt + sitemap.xml | `public/robots.txt`, `public/sitemap.xml` | Search Console submission (§3.1). Note: sitemap host must be updated when the custom domain lands | **Shipped** |
 | Store-listing pack (title, descriptions, keywords, shot list) | `docs/growth/store-listing.md` | Play Console listing (§3.6) | **Shipped**, unused until Play Console exists |
 | Launch posts ×4 (r/LearnJapanese, r/languagelearning, Show HN, X thread) | `docs/growth/launch-posts.md` | Community launch sequence (§3.3), one at a time | **Shipped**, awaiting sequence gate |
-| SEO content plan (10 articles; 3 written, 7 remaining) | `docs/growth/seo-content-plan.md` | Governs guide production; next two briefed in §6 | **Shipped** (plan) |
+| SEO content plan (10 articles; 5 written, 5 remaining) | `docs/growth/seo-content-plan.md` | Governs guide production; §6 briefs for #4 and #7 fulfilled 2026-09-03 | **Shipped** (plan) |
 | ☕ support-link code (footer, Landing + SoloPractice) | `client/src/components/Landing.tsx:112`, `SoloPractice.tsx:259` | Renders only when `VITE_SUPPORT_URL` is set — dormant until Ko-fi exists (§3.2) | **Shipped, dormant** |
 
 ## 2. Sequencing gates (why nothing else moves yet)
@@ -140,3 +142,6 @@ is our best-tested voice for this feeling.
 
 - 2026-09-03 — Ledger created. Inventoried shipped assets, queued the six Oscar
   checklists, sequenced the next 30 days, delivered briefs for articles #4 and #7.
+- 2026-09-03 — growth-marketer shipped articles #4 (`guide/japanese-subtitle-files.html`)
+  and #7 (`guide/scared-to-speak-japanese.html`) per the §6 briefs; both added to the
+  guide hub and `sitemap.xml`. §6 briefs fulfilled.
