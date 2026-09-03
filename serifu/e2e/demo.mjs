@@ -452,6 +452,49 @@ check('editor offers ふりがな自動付与 / auto-furigana',
   await pageB.isVisible('.editor-tools button:has-text("auto-furigana")'));
 await pageB.click('.modal-footer button:has-text("cancel")');
 
+// ---- 17. Session recap card (📸 きろく) — stats don't survive leaving a
+// room, so A rebuilds a quick fail+pass in the current room (fake speech is
+// baked into ctxA), then the stats bar offers the PNG download. ----
+await pageA.click('button:has-text("load demo scene")');
+await pageA.waitForSelector('.script-header h2', { timeout: 5000 });
+await pageA.click('.char-pill:has-text("ハイター")');
+await pageA.setInputFiles('.video-placeholder input[type="file"]', episodePath);
+await pageA.waitForSelector('video', { timeout: 5000 });
+await pageA.click('.play-btn');
+await pageA.waitForSelector('.rehearsal-banner', { timeout: 15000 });
+await pageA.waitForSelector('.rehearsal-banner', { state: 'detached', timeout: 10000 });
+await pageA.waitForSelector('.stat-chip:has-text("Oscar ★: 1/2")', { timeout: 5000 });
+check('recap button visible once you have an attempt',
+  await pageA.isVisible('.practice-stats .recap-btn:has-text("きろく")'));
+const [recapDownload] = await Promise.all([
+  pageA.waitForEvent('download', { timeout: 8000 }),
+  pageA.click('.practice-stats .recap-btn'),
+]);
+check('clicking きろく downloads serifu-recap.png',
+  recapDownload.suggestedFilename() === 'serifu-recap.png');
+await recapDownload.saveAs(`${SHOTS}/08-recap-card.png`);
+
+// ---- 18. 文法さくいん: browse every taught grammar pattern ----
+await pageB.click('.room-header button:has-text("文法")');
+await pageB.waitForSelector('.modal.grammar-index', { timeout: 5000 });
+const giHeader = (await pageB.textContent('.modal.grammar-index .modal-header h2')) ?? '';
+const giCount = Number(/\((\d+)\)/.exec(giHeader)?.[1] ?? 0);
+check('grammar index opens and lists 40+ deduped patterns', giCount > 40);
+await pageB.fill('.gi-search', '〜なら');
+await pageB.waitForSelector('.gi-row:has(.gi-pattern:text-is("〜なら"))', { timeout: 5000 });
+const giRows = await pageB.$$eval('.gi-list .gi-entry', (els) => els.length);
+check('searching 〜なら narrows the list', giRows > 0 && giRows < giCount);
+await pageB.click('.gi-row:has(.gi-pattern:text-is("〜なら"))');
+await pageB.waitForSelector('.gi-occurrence', { timeout: 5000 });
+const occText = (await pageB.textContent('.gi-occurrence >> nth=0')) ?? '';
+check('expanding 〜なら shows the line that teaches it', occText.includes('ヒンメルなら'));
+check('occurrence links to the scene\'s solo page',
+  await pageB.isVisible('.gi-occurrence a.gi-scene-link[href="#/p/meteor-promise"]'));
+await pageB.screenshot({ path: `${SHOTS}/09-grammar-index.png` });
+await pageB.click('.modal.grammar-index .modal-header button');
+await pageB.waitForSelector('.modal.grammar-index', { state: 'detached', timeout: 3000 });
+check('grammar index closes', true);
+
 console.log('---');
 for (const [label, ok] of results) if (!ok) console.log('FAILED:', label);
 console.log(`${results.filter(([, ok]) => ok).length}/${results.length} checks passed`);

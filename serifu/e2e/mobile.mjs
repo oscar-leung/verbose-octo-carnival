@@ -136,6 +136,28 @@ check('solo: hide levels render as one four-column row', await page.evaluate(() 
 }));
 await page.screenshot({ path: `${SHOTS}/m4-solo.png` });
 
+// ---- 文法さくいん: reachable from the その他 tab on phones ----
+await page.goto(`${BASE}/#/r/gidx${Date.now().toString(36)}`);
+await page.waitForSelector('.mobile-nav');
+await page.click('.mnav-btn:has-text("その他")');
+await page.waitForSelector('.more-actions');
+check(
+  'more tab: 文法 button visible with EN sublabel',
+  (await page.isVisible('.more-actions button:has-text("文法")')) &&
+    (await page.isVisible('.more-actions button small:has-text("grammar")'))
+);
+await page.click('.more-actions button:has-text("文法")');
+await page.waitForSelector('.modal.grammar-index');
+check('文法 opens the grammar index modal', await page.isVisible('.gi-search'));
+check('grammar rows are ≥42px touch targets', await page.evaluate(() => {
+  const r = document.querySelector('.gi-row');
+  return r && r.getBoundingClientRect().height >= 42;
+}));
+await page.screenshot({ path: `${SHOTS}/m5-grammar-index.png` });
+await page.click('.modal.grammar-index .modal-header button');
+await page.waitForSelector('.modal.grammar-index', { state: 'detached', timeout: 3000 });
+check('grammar index closes', true);
+
 console.log('---');
 for (const [label, ok] of results) if (!ok) console.log('FAILED:', label);
 console.log(`${results.filter(([, ok]) => ok).length}/${results.length} mobile checks passed`);
