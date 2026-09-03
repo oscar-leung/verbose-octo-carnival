@@ -103,6 +103,7 @@ export function useRoom(roomId: string, name: string): RoomConnection {
       setConnected(false);
       setState(null);
       setSelfId(null);
+      setScript(null); // don't let the previous room's script leak into the next
     };
   }, [roomId, name]);
 
