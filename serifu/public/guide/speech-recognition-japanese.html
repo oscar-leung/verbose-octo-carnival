@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="dark">
+<title>Can Speech Recognition Grade Your Japanese Pronunciation?</title>
+<meta name="description" content="An honest look at speech-recognition scoring for Japanese learners: what a transcription-based score really measures, what it misses (pitch accent), and how to use it well.">
+<style>
+  body { margin: 0; background: #0e1014; color: #e8eaf0; font-family: 'Hiragino Sans', 'Yu Gothic UI', 'Noto Sans JP', system-ui, sans-serif; line-height: 1.7; }
+  main { max-width: 640px; margin: 0 auto; padding: 40px 20px 80px; }
+  h1 { font-size: 26px; line-height: 1.35; } h1 span { color: #7ecbff; }
+  h2 { font-size: 17px; margin-top: 28px; color: #7ecbff; }
+  h3 { font-size: 15px; margin-top: 20px; color: #e8eaf0; }
+  p, li { color: #c7cdd8; font-size: 15px; }
+  a { color: #7ecbff; }
+  ol li, ul li { margin-bottom: 6px; }
+  .updated { color: #98a2b3; font-size: 13px; }
+  .more { border-top: 1px solid #2a2f3a; margin-top: 40px; padding-top: 20px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Can Speech Recognition <span>Grade Your Japanese Pronunciation?</span></h1>
+  <p class="updated">Updated September 2026</p>
+
+  <p>A growing number of language apps — including <a href="../">Serifu</a>,
+  which we build — listen to you speak Japanese and hand back a score.
+  It feels like magic: say the line, get a number, chase a higher number.
+  But what does that number actually measure? The honest answer is more
+  interesting than either the marketing ("AI pronunciation coach!") or the
+  cynical take ("it's useless"). This guide explains what
+  transcription-based scoring really tests, what it structurally cannot
+  hear, and how to use it so the number makes you better instead of just
+  making you feel graded.</p>
+
+  <h2>How the score is actually computed</h2>
+  <p>Almost every learner-facing tool works the same way under the hood:</p>
+  <ol>
+    <li>A speech recognizer (the same class of system behind voice
+    dictation) listens to your attempt and produces its best-guess
+    <strong>transcription</strong> — the text it thinks you said.</li>
+    <li>That transcription is compared against the <strong>target
+    line</strong> from the script.</li>
+    <li>The comparison is usually an <strong>edit distance</strong>: how
+    many characters or morae would need to be inserted, deleted, or swapped
+    to turn what you said into what you were supposed to say. Fewer edits,
+    higher score.</li>
+  </ol>
+  <p>Notice what's being graded: not your audio, but a <em>text</em>
+  derived from your audio. The recognizer is not a pronunciation judge —
+  it's a listener trying its hardest to understand you, trained mostly on
+  native speech. The score is really answering one question: <strong>"did
+  a machine listener recognize your words as the right words?"</strong></p>
+
+  <h2>What that number genuinely tells you</h2>
+  <p>That question turns out to be worth asking. A transcription-match
+  score is a decent proxy for:</p>
+  <ul>
+    <li><strong>Segmental accuracy.</strong> If you say つ where you meant
+    す, or drop a long vowel (おばさん vs おばあさん — a different person
+    entirely), the transcription changes and the score catches it. These
+    are exactly the errors learners can't hear in themselves.</li>
+    <li><strong>Mora timing, roughly.</strong> Japanese counts beats:
+    doubled consonants (きって vs きて) and long vowels are length
+    contrasts, and recognizers are sensitive to them because native
+    listeners are.</li>
+    <li><strong>Completeness and word accuracy.</strong> Mumbled
+    particles, swallowed conjugations, and skipped words all show up as
+    edits. You can't bluff a recognizer with confident-sounding mush.</li>
+    <li><strong>Baseline intelligibility.</strong> If a machine trained on
+    native Japanese reliably decodes you, a patient human very likely can
+    too. That's a meaningful bar, and clearing it is worth celebrating.</li>
+  </ul>
+
+  <h2>What it structurally cannot tell you</h2>
+  <p>Here's the part most apps don't put on the label:</p>
+  <ul>
+    <li><strong>Pitch accent.</strong> The big one. 雨 (rain) and 飴
+    (candy) differ only in pitch, but a recognizer resolves the ambiguity
+    from context and transcribes you correctly <em>even if your pitch was
+    wrong</em>. You can score 100 with flat, unmistakably foreign pitch on
+    every word. No transcription-based score measures this, whatever the
+    marketing implies.</li>
+    <li><strong>Accent that's understandable but non-native.</strong>
+    Recognizers are robust by design — they forgive exactly the coloration
+    a native listener would notice. "Recognized" is a floor, not native-like
+    delivery.</li>
+    <li><strong>Prosody and naturalness.</strong> Where you pause, how your
+    intonation carries feeling — invisible to an edit distance.</li>
+    <li><strong>Recognizer error.</strong> Sometimes the machine mishears a
+    perfectly good attempt (background noise, rare words, names). A single
+    low score is data; it isn't a verdict.</li>
+  </ul>
+
+  <h2>How to use scoring so it actually helps</h2>
+  <ol>
+    <li><strong>Treat it as a rep counter with a floor, not a coach.</strong>
+    Its real superpower is motivational: it makes speaking practice
+    self-checking, so you'll do it alone, repeatedly, without a tutor
+    watching. Volume of honest reps is what most learners are missing —
+    see the <a href="shadowing-japanese.html">shadowing method</a> for the
+    drill it slots into.</li>
+    <li><strong>Investigate misses, don't just retry them.</strong> When a
+    score comes back low, read what the machine heard. The specific
+    substitution (きて for きって) tells you which contrast your mouth is
+    fudging. Retrying blind trains nothing.</li>
+    <li><strong>Cover pitch accent separately.</strong> Shadow the original
+    audio and compare recordings of yourself against it, or use a
+    dictionary with pitch markings while you learn a line. The recognizer
+    won't do this job; you have to.</li>
+    <li><strong>Don't grind for 100s.</strong> Past the pass threshold,
+    extra points are mostly recognizer luck. Your time is better spent on
+    the next line — or on delivering the same line from memory, which is a
+    harder and more valuable test (see
+    <a href="sentence-srs.html">spaced repetition for sentences</a>).</li>
+  </ol>
+
+  <p>For transparency: this is exactly how scoring works in
+  <a href="../">Serifu</a>. It uses browser speech recognition (ja-JP),
+  scores your attempt 0–100 against the script line by edit distance, and
+  auto-resumes the scene when you pass — and it makes the same caveat
+  in-app that this article makes: the score checks <em>what</em> you said,
+  not your pitch accent. If you want to feel what machine-checked speaking
+  practice is like, <a href="../#/p/meteor-promise">try a practice
+  scene</a> free in your browser — no account, and your audio is processed
+  by your own browser's speech engine, not stored by us.</p>
+
+  <h2>FAQ</h2>
+  <h3>Is a high score proof my pronunciation is good?</h3>
+  <p>It's proof you're intelligible to a machine listener — a real
+  milestone, especially for beginners. It is not proof of native-like
+  pronunciation, and specifically says nothing about your pitch accent.
+  Think "my words land," not "I sound Japanese."</p>
+  <h3>Why did I get a low score when I said the line correctly?</h3>
+  <p>Recognizers mishear: noise, soft input volume, unusual proper nouns,
+  and very short utterances are common causes. Check what it transcribed.
+  If the transcription looks nothing like your (correct) attempt, blame
+  the conditions, fix the mic situation, and move on. If it's consistently
+  off on the same sound, believe it.</p>
+  <h3>Are there tools that grade pitch accent directly?</h3>
+  <p>Specialized research systems and some dedicated pitch-training tools
+  visualize your pitch contour against a native one, and that visual
+  comparison is genuinely useful. General speech recognition is not doing
+  this. For most learners, the practical combo is recognition scoring for
+  segmentals plus shadowing-and-comparing recordings for pitch.</p>
+  <h3>Does practicing to a recognizer teach "machine Japanese"?</h3>
+  <p>Not really — modern recognizers reward the same clarity human
+  listeners do. The realistic risk is subtler: stopping at "recognized"
+  and never working on prosody. Keep shadowing real audio alongside scored
+  practice and you get the best of both.</p>
+
+  <div class="more">
+    <h2>More guides</h2>
+    <ul>
+      <li><a href="sentence-srs.html">Spaced Repetition for Sentences: Why Drilling Lines Beats Drilling Words</a></li>
+      <li><a href="shadowing-japanese.html">Japanese Shadowing: the Complete Beginner's Method</a></li>
+      <li><a href="speaking-practice-with-anime.html">How to Practice Speaking Japanese with Anime (Without a Tutor)</a></li>
+    </ul>
+    <p><a href="../">← Serifu — practice speaking Japanese with the shows you love</a></p>
+  </div>
+</main>
+</body>
+</html>
