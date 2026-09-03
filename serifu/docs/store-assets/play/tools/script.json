@@ -1,0 +1,191 @@
+{
+  "title": "夏祭りの夜 (オリジナルデモ)",
+  "characters": [
+    { "id": "aoi", "name": "アオイ", "color": "#7ecbff" },
+    { "id": "ren", "name": "レン", "color": "#f5a97f" },
+    { "id": "yuki", "name": "ユキ", "color": "#b4befe" }
+  ],
+  "scenes": [
+    { "id": "sc-1", "title": "屋台の準備", "start": 0, "end": 15 },
+    { "id": "sc-2", "title": "提灯と花火", "start": 15, "end": 30 },
+    { "id": "sc-3", "title": "約束の夜", "start": 30, "end": 45 }
+  ],
+  "lines": [
+    {
+      "id": "fes-1",
+      "character": "aoi",
+      "start": 5,
+      "end": 9.5,
+      "tokens": [
+        { "t": "夏祭", "r": "なつまつ" },
+        { "t": "りの" },
+        { "t": "準備", "r": "じゅんび" },
+        { "t": "、" },
+        { "t": "手伝", "r": "てつだ" },
+        { "t": "ってくれない？" }
+      ],
+      "translation": "The summer festival prep — won't you give me a hand?",
+      "vocab": [
+        { "w": "夏祭り", "r": "なつまつり", "en": "summer festival" },
+        { "w": "準備", "r": "じゅんび", "en": "preparations" },
+        { "w": "手伝う", "r": "てつだう", "en": "to help out" }
+      ],
+      "grammar": [
+        { "p": "〜てくれない？", "en": "casual request: \"won't you do ~ for me?\" — くれる marks the action as done for the speaker" }
+      ]
+    },
+    {
+      "id": "fes-2",
+      "character": "ren",
+      "start": 10,
+      "end": 14.5,
+      "tokens": [
+        { "t": "いいよ。" },
+        { "t": "屋台", "r": "やたい" },
+        { "t": "の" },
+        { "t": "飾", "r": "かざ" },
+        { "t": "りつけからやろう。" }
+      ],
+      "translation": "Sure. Let's start with decorating the stalls.",
+      "vocab": [
+        { "w": "屋台", "r": "やたい", "en": "festival stall" },
+        { "w": "飾りつけ", "r": "かざりつけ", "en": "decorating, decorations" }
+      ],
+      "grammar": [
+        { "p": "〜からやろう", "en": "volitional やろう + から: \"let's start from ~\"" }
+      ]
+    },
+    {
+      "id": "fes-3",
+      "character": "yuki",
+      "start": 15,
+      "end": 19.5,
+      "tokens": [
+        { "t": "私", "r": "わたし" },
+        { "t": "は" },
+        { "t": "提灯", "r": "ちょうちん" },
+        { "t": "を" },
+        { "t": "並", "r": "なら" },
+        { "t": "べるね。" }
+      ],
+      "translation": "Then I'll line up the lanterns.",
+      "vocab": [
+        { "w": "提灯", "r": "ちょうちん", "en": "paper lantern" },
+        { "w": "並べる", "r": "ならべる", "en": "to line up, arrange" }
+      ],
+      "grammar": [
+        { "p": "〜ね", "en": "soft sentence-final ね: sharing your plan while inviting agreement" }
+      ]
+    },
+    {
+      "id": "fes-4",
+      "character": "aoi",
+      "start": 20,
+      "end": 24.5,
+      "tokens": [
+        { "t": "花火", "r": "はなび" },
+        { "t": "は" },
+        { "t": "八時", "r": "はちじ" },
+        { "t": "に" },
+        { "t": "始", "r": "はじ" },
+        { "t": "まるんだって。" }
+      ],
+      "translation": "I hear the fireworks start at eight.",
+      "vocab": [
+        { "w": "花火", "r": "はなび", "en": "fireworks" },
+        { "w": "始まる", "r": "はじまる", "en": "to begin (intransitive)" }
+      ],
+      "grammar": [
+        { "p": "〜んだって", "en": "casual hearsay: \"I hear that ~ / they say ~\"" }
+      ]
+    },
+    {
+      "id": "fes-5",
+      "character": "ren",
+      "start": 25,
+      "end": 29.5,
+      "tokens": [
+        { "t": "じゃあ、それまでに" },
+        { "t": "全部", "r": "ぜんぶ" },
+        { "t": "終", "r": "お" },
+        { "t": "わらせよう。" }
+      ],
+      "translation": "Then let's get it all done before that.",
+      "vocab": [
+        { "w": "全部", "r": "ぜんぶ", "en": "everything, all" },
+        { "w": "終わらせる", "r": "おわらせる", "en": "to finish (something) off" }
+      ],
+      "grammar": [
+        { "p": "〜までに", "en": "deadline marker: \"by ~ (no later than)\" — contrast with まで \"until\"" }
+      ]
+    },
+    {
+      "id": "fes-6",
+      "character": "yuki",
+      "start": 30,
+      "end": 34.5,
+      "tokens": [
+        { "t": "終", "r": "お" },
+        { "t": "わったら、" },
+        { "t": "一緒", "r": "いっしょ" },
+        { "t": "にりんご" },
+        { "t": "飴", "r": "あめ" },
+        { "t": "を" },
+        { "t": "食", "r": "た" },
+        { "t": "べようよ。" }
+      ],
+      "translation": "When we're done, let's eat candy apples together.",
+      "vocab": [
+        { "w": "りんご飴", "r": "りんごあめ", "en": "candy apple" },
+        { "w": "一緒に", "r": "いっしょに", "en": "together" }
+      ],
+      "grammar": [
+        { "p": "〜たら", "en": "\"when/once ~\": 終わったら = once we've finished" }
+      ]
+    },
+    {
+      "id": "fes-7",
+      "character": "aoi",
+      "start": 35,
+      "end": 39.5,
+      "tokens": [
+        { "t": "約束", "r": "やくそく" },
+        { "t": "だよ。" },
+        { "t": "忘", "r": "わす" },
+        { "t": "れないでね。" }
+      ],
+      "translation": "It's a promise. Don't forget, okay?",
+      "vocab": [
+        { "w": "約束", "r": "やくそく", "en": "promise" },
+        { "w": "忘れる", "r": "わすれる", "en": "to forget" }
+      ],
+      "grammar": [
+        { "p": "〜ないでね", "en": "gentle negative request: \"please don't ~\"" }
+      ]
+    },
+    {
+      "id": "fes-8",
+      "character": "ren",
+      "start": 40,
+      "end": 44.5,
+      "tokens": [
+        { "t": "今年", "r": "ことし" },
+        { "t": "の" },
+        { "t": "夏", "r": "なつ" },
+        { "t": "は、きっと" },
+        { "t": "忘", "r": "わす" },
+        { "t": "れられない" },
+        { "t": "夜", "r": "よる" },
+        { "t": "になるよ。" }
+      ],
+      "translation": "This summer is going to be an unforgettable night, I just know it.",
+      "vocab": [
+        { "w": "今年", "r": "ことし", "en": "this year" },
+        { "w": "きっと", "en": "surely, definitely" }
+      ],
+      "grammar": [
+        { "p": "〜られない", "en": "potential negative: 忘れられない = cannot forget" }
+      ]
+    }
+  ]
+}

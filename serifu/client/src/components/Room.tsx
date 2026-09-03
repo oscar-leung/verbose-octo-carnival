@@ -13,6 +13,7 @@ import ScriptEditor from './ScriptEditor';
 import Wordbook from './Wordbook';
 import EpisodeBrowser from './EpisodeBrowser';
 import MasteryPanel from './MasteryPanel';
+import GrammarIndex from './GrammarIndex';
 import { loadWordbook } from '../lib/wordbook';
 import { dueEntries, loadMastery } from '../lib/mastery';
 import {
@@ -45,6 +46,7 @@ export default function Room({ roomId, name }: { roomId: string; name: string })
   const [episodesOpen, setEpisodesOpen] = useState(false);
   const [wordbookOpen, setWordbookOpen] = useState(false);
   const [masteryOpen, setMasteryOpen] = useState(false);
+  const [grammarOpen, setGrammarOpen] = useState(false);
   const [masteryDue, setMasteryDue] = useState(() => dueEntries(loadMastery(), Date.now()).length);
   const refreshMastery = () => setMasteryDue(dueEntries(loadMastery(), Date.now()).length);
   /** Phone layout: which of the three tabs is showing (no effect on desktop). */
@@ -245,6 +247,9 @@ export default function Room({ roomId, name }: { roomId: string; name: string })
         <button onClick={() => setWordbookOpen(true)} title="your saved words">
           単語帳 {wordCount > 0 ? `(${wordCount})` : ''} <small>wordbook</small>
         </button>
+        <button onClick={() => setGrammarOpen(true)} title="browse every grammar pattern taught">
+          文法 <small>grammar</small>
+        </button>
         <button
           onClick={() => {
             setEditorInitial(null);
@@ -335,6 +340,9 @@ export default function Room({ roomId, name }: { roomId: string; name: string })
             </button>
             <button onClick={() => setWordbookOpen(true)}>
               単語帳 {wordCount > 0 ? `(${wordCount})` : ''} <small>wordbook</small>
+            </button>
+            <button onClick={() => setGrammarOpen(true)}>
+              文法 <small>grammar</small>
             </button>
             <button
               onClick={() => {
@@ -472,6 +480,7 @@ export default function Room({ roomId, name }: { roomId: string; name: string })
           onChanged={() => setWordCount(loadWordbook().length)}
         />
       )}
+      {grammarOpen && <GrammarIndex onClose={() => setGrammarOpen(false)} />}
       {masteryOpen && (
         <MasteryPanel
           onClose={() => {

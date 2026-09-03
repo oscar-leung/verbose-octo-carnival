@@ -1698,3 +1698,146 @@ input[type='range'] {
     flex-basis: 100%;
   }
 }
+
+/* ---- session recap card (📸 きろく) ---- */
+
+.practice-stats .recap-btn {
+  border-color: var(--accent-dim);
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+.practice-stats .recap-btn:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+@media (max-width: 720px) {
+  .practice-stats .recap-btn {
+    min-height: 42px; /* phone-first touch target */
+  }
+}
+
+/* ---------- 文法さくいん / grammar index ---------- */
+
+.modal.grammar-index {
+  width: min(760px, 100%);
+}
+
+.gi-search {
+  width: 100%;
+  padding: 8px 12px;
+  min-height: 42px; /* comfortable touch target everywhere */
+}
+
+.gi-list {
+  overflow-y: auto;
+  flex: 1;
+  min-height: 120px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-right: 4px;
+}
+
+.gi-entry {
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 4px;
+}
+
+.gi-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  border-radius: 8px;
+  padding: 9px 8px;
+  min-height: 42px;
+}
+
+.gi-row:hover,
+.gi-row.open {
+  background: var(--panel-2);
+}
+
+.gi-pattern {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.gi-explanation {
+  flex: 1;
+  color: var(--muted);
+  font-size: 13px;
+  min-width: 0;
+}
+
+.gi-count {
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.gi-occurrences {
+  list-style: none;
+  margin: 2px 0 4px;
+  padding: 0 8px 0 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.gi-occurrence {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.gi-occurrence .gi-line-jp {
+  flex: 1;
+  min-width: 180px;
+}
+
+.gi-occurrence .gi-scene-link {
+  min-height: 42px;
+  white-space: nowrap;
+}
+
+.gi-occurrence .gi-scene-name {
+  font-size: 12.5px;
+}
+
+/* Quiet link on the solo completion screen. */
+.solo-grammar-link {
+  margin: 10px 0 0;
+  font-size: 13px;
+}
+
+.solo-grammar-link .linklike {
+  background: none;
+  border: none;
+  padding: 6px 8px;
+  min-height: 42px;
+  color: var(--accent);
+  cursor: pointer;
+}
+
+.solo-grammar-link .linklike small {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+@media (max-width: 720px) {
+  .gi-explanation {
+    /* Phones: explanation drops under the pattern instead of squeezing. */
+    flex-basis: 100%;
+    order: 3;
+  }
+
+  .gi-row {
+    flex-wrap: wrap;
+    row-gap: 2px;
+  }
+}

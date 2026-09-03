@@ -6,6 +6,7 @@ import { loadSettings } from '../lib/settings';
 import NightSky from './NightSky';
 import RubyText from './RubyText';
 import LearnPanel from './LearnPanel';
+import GrammarIndex from './GrammarIndex';
 
 interface Props {
   slug: string;
@@ -46,6 +47,7 @@ export default function SoloPractice({ slug, script }: Props) {
   const [passedLines, setPassedLines] = useState<Set<string>>(new Set());
   const [attempts, setAttempts] = useState(0);
   const [copied, setCopied] = useState(false);
+  const [grammarOpen, setGrammarOpen] = useState(false);
   const settings = useMemo(loadSettings, []);
   const listenerRef = useRef<SpeechListener | null>(null);
   const advancedRef = useRef(false);
@@ -171,6 +173,11 @@ export default function SoloPractice({ slug, script }: Props) {
                 try it with friends →
               </a>
             </div>
+            <p className="solo-grammar-link muted">
+              <button className="linklike" onClick={() => setGrammarOpen(true)}>
+                文法さくいん <small>grammar index</small>
+              </button>
+            </p>
           </div>
         ) : line ? (
           <div className="solo-line">
@@ -256,6 +263,8 @@ export default function SoloPractice({ slug, script }: Props) {
             </div>
           </div>
         ) : null}
+
+        {grammarOpen && <GrammarIndex onClose={() => setGrammarOpen(false)} />}
 
         <footer className="solo-footer muted">
           友達と一緒に観るなら → <a href="#/">create a room</a>
