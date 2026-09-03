@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { RoomStore, validateScript } from './rooms';
+import { MAX_ROOMS, MAX_USERS_PER_ROOM, RoomStore, validateScript } from './rooms';
 import type { SkitScript } from '../shared/types';
 
 function makeScript(): SkitScript {
@@ -251,6 +251,59 @@ describe('pass threshold + practice stats', () => {
   });
 });
 
+describe('capacity caps', () => {
+  it('accepts users up to the per-room cap and rejects the next one', () => {
+    const now = { t: 1000 };
+    const store = new RoomStore(() => now.t);
+    for (let i = 0; i < MAX_USERS_PER_ROOM; i++) {
+      expect(store.join('r1', `u${i}`, `User ${i}`)).not.toHaveProperty('error');
+    }
+    const overflow = store.join('r1', 'u-extra', 'Extra');
+    expect(overflow).toHaveProperty('error');
+    expect((overflow as { error: string }).error).toMatch(/full/i);
+    expect(store.toState('r1')?.users).toHaveLength(MAX_USERS_PER_ROOM);
+  });
+
+  it('lets an existing member re-join a full room', () => {
+    const now = { t: 1000 };
+    const store = new RoomStore(() => now.t);
+    for (let i = 0; i < MAX_USERS_PER_ROOM; i++) store.join('r1', `u${i}`, `User ${i}`);
+    expect(store.join('r1', 'u0', 'Renamed')).not.toHaveProperty('error');
+    expect(store.toState('r1')?.users).toHaveLength(MAX_USERS_PER_ROOM);
+  });
+
+  it('accepts rooms up to the server cap and rejects a new room beyond it', () => {
+    const now = { t: 1000 };
+    const store = new RoomStore(() => now.t);
+    for (let i = 0; i < MAX_ROOMS; i++) {
+      expect(store.join(`room-${i}`, `u${i}`, 'A')).not.toHaveProperty('error');
+    }
+    expect(store.roomCount()).toBe(MAX_ROOMS);
+    const overflow = store.join('room-overflow', 'ux', 'X');
+    expect(overflow).toHaveProperty('error');
+    expect((overflow as { error: string }).error).toMatch(/capacity/i);
+    expect(store.roomCount()).toBe(MAX_ROOMS);
+  });
+
+  it('still lets users join an existing room while at the room cap', () => {
+    const now = { t: 1000 };
+    const store = new RoomStore(() => now.t);
+    for (let i = 0; i < MAX_ROOMS; i++) store.join(`room-${i}`, `u${i}`, 'A');
+    expect(store.join('room-0', 'friend', 'Friend')).not.toHaveProperty('error');
+    expect(store.toState('room-0')?.users).toHaveLength(2);
+  });
+
+  it('frees room slots once gc removes empty rooms', () => {
+    const now = { t: 1000 };
+    const store = new RoomStore(() => now.t);
+    for (let i = 0; i < MAX_ROOMS; i++) store.join(`room-${i}`, `u${i}`, 'A');
+    store.leave('room-0', 'u0');
+    now.t += 31 * 60_000;
+    expect(store.gc(30 * 60_000)).toBe(1);
+    expect(store.join('room-new', 'uy', 'Y')).not.toHaveProperty('error');
+  });
+});
+
 describe('gc', () => {
   it('removes rooms only after they have been empty long enough', () => {
     const now = { t: 1000 };
@@ -262,5 +315,53 @@ describe('gc', () => {
     now.t = 1000 + 31 * 60_000;
     expect(store.gc(30 * 60_000)).toBe(1);
     expect(store.get('r1')).toBeUndefined();
+  });
+});
+
+describe('sweepIdle', () => {
+  const DAY = 24 * 60 * 60_000;
+
+  it('removes rooms idle beyond the limit even with lingering users', () => {
+    const now = { t: 1000 };
+    const store = new RoomStore(() => now.t);
+    store.join('dead', 'u1', 'Ghost'); // socket never leaves, never sends events
+    now.t += DAY + 60_000;
+    expect(store.sweepIdle(DAY)).toEqual(['dead']);
+    expect(store.get('dead')).toBeUndefined();
+  });
+
+  it('keeps rooms that saw events within the window', () => {
+    const now = { t: 1000 };
+    const store = new RoomStore(() => now.t);
+    store.join('alive', 'u1', 'A');
+    now.t += DAY - 60_000; // idle, but under the limit
+    expect(store.sweepIdle(DAY)).toEqual([]);
+    expect(store.get('alive')).toBeDefined();
+  });
+
+  it('any accepted event resets the idle clock', () => {
+    const now = { t: 1000 };
+    const store = new RoomStore(() => now.t);
+    store.join('busy', 'u1', 'A');
+    now.t += DAY - 60_000;
+    store.play('busy', 5); // activity just before the deadline
+    now.t += 2 * 60_000; // past the original deadline, but recently active
+    expect(store.sweepIdle(DAY)).toEqual([]);
+    now.t += DAY + 1;
+    expect(store.sweepIdle(DAY)).toEqual(['busy']);
+  });
+
+  it('sweeps multiple idle rooms and leaves active ones untouched', () => {
+    const now = { t: 1000 };
+    const store = new RoomStore(() => now.t);
+    store.join('idle-1', 'u1', 'A');
+    store.join('idle-2', 'u2', 'B');
+    store.join('active', 'u3', 'C');
+    now.t += DAY + 1;
+    store.pause('active', 10);
+    const removed = store.sweepIdle(DAY).sort();
+    expect(removed).toEqual(['idle-1', 'idle-2']);
+    expect(store.get('active')).toBeDefined();
+    expect(store.roomCount()).toBe(1);
   });
 });

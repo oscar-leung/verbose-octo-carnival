@@ -7,6 +7,10 @@ import type {
 } from '../shared/types';
 import { MAX_USERS_PER_ROOM } from '../shared/types';
 
+/** Hard cap on concurrent rooms; joins that would create more are refused. */
+export const MAX_ROOMS = 100;
+export { MAX_USERS_PER_ROOM };
+
 const USER_COLORS = [
   '#7ecbff',
   '#ffb86c',
@@ -41,6 +45,8 @@ export interface Room {
   /** lineId -> ms timestamp of its last rehearsal resume. */
   rehearsalCooldowns: Map<string, number>;
   emptySince: number | null;
+  /** ms timestamp of the last accepted room event (join/playback/etc.). */
+  lastActivityAt: number;
 }
 
 export const DEFAULT_PASS_SCORE = 70;
@@ -201,6 +207,17 @@ export class RoomStore {
     return this.rooms.get(roomId);
   }
 
+  roomCount(): number {
+    return this.rooms.size;
+  }
+
+  /** Look up a room for an incoming event, marking it as active. */
+  private getForEvent(roomId: string): Room | undefined {
+    const room = this.rooms.get(roomId);
+    if (room) room.lastActivityAt = this.now();
+    return room;
+  }
+
   private getOrCreate(roomId: string): Room {
     let room = this.rooms.get(roomId);
     if (!room) {
@@ -221,6 +238,7 @@ export class RoomStore {
         scriptVersion: 0,
         rehearsalCooldowns: new Map(),
         emptySince: null,
+        lastActivityAt: this.now(),
       };
       this.rooms.set(roomId, room);
     }
@@ -235,7 +253,11 @@ export class RoomStore {
   }
 
   join(roomId: string, userId: string, rawName: string): RoomUser | { error: string } {
+    if (!this.rooms.has(roomId) && this.rooms.size >= MAX_ROOMS) {
+      return { error: `Server is at capacity (max ${MAX_ROOMS} rooms) — try again later.` };
+    }
     const room = this.getOrCreate(roomId);
+    room.lastActivityAt = this.now();
     if (room.users.size >= MAX_USERS_PER_ROOM && !room.users.has(userId)) {
       return { error: `Room is full (max ${MAX_USERS_PER_ROOM} people).` };
     }
@@ -252,7 +274,7 @@ export class RoomStore {
   }
 
   leave(roomId: string, userId: string): boolean {
-    const room = this.rooms.get(roomId);
+    const room = this.getForEvent(roomId);
     if (!room || !room.users.delete(userId)) return false;
     room.stats.delete(userId);
     for (const [charId, ownerId] of room.claims) {
@@ -267,7 +289,7 @@ export class RoomStore {
   }
 
   play(roomId: string, position: number): boolean {
-    const room = this.rooms.get(roomId);
+    const room = this.getForEvent(roomId);
     if (!room) return false;
     room.playback = {
       isPlaying: true,
@@ -279,7 +301,7 @@ export class RoomStore {
   }
 
   pause(roomId: string, position: number): boolean {
-    const room = this.rooms.get(roomId);
+    const room = this.getForEvent(roomId);
     if (!room) return false;
     room.playback = {
       isPlaying: false,
@@ -291,7 +313,7 @@ export class RoomStore {
   }
 
   seek(roomId: string, position: number): boolean {
-    const room = this.rooms.get(roomId);
+    const room = this.getForEvent(roomId);
     if (!room) return false;
     const target = clampPosition(position);
     // Seeking backwards means "replay this part" — allow rehearsal pauses again.
@@ -308,7 +330,7 @@ export class RoomStore {
   }
 
   setPassScore(roomId: string, score: number): boolean {
-    const room = this.rooms.get(roomId);
+    const room = this.getForEvent(roomId);
     if (!room || !Number.isFinite(score)) return false;
     room.passScore = Math.min(MAX_PASS_SCORE, Math.max(MIN_PASS_SCORE, Math.round(score)));
     return true;
@@ -316,7 +338,7 @@ export class RoomStore {
 
   /** Tally a spoken attempt; returns whether it passed at the room threshold. */
   recordAttempt(roomId: string, userId: string, score: number): boolean | null {
-    const room = this.rooms.get(roomId);
+    const room = this.getForEvent(roomId);
     if (!room || !room.users.has(userId) || !Number.isFinite(score)) return null;
     const clamped = Math.min(100, Math.max(0, Math.round(score)));
     const passed = clamped >= room.passScore;
@@ -329,7 +351,7 @@ export class RoomStore {
   }
 
   setRehearsal(roomId: string, enabled: boolean): boolean {
-    const room = this.rooms.get(roomId);
+    const room = this.getForEvent(roomId);
     if (!room) return false;
     room.rehearsalEnabled = enabled;
     if (!enabled) room.playback.pausedForLineId = null;
@@ -341,7 +363,7 @@ export class RoomStore {
    * the line crossing; the server dedupes and validates.
    */
   rehearsalPause(roomId: string, lineId: string): boolean {
-    const room = this.rooms.get(roomId);
+    const room = this.getForEvent(roomId);
     if (!room || !room.rehearsalEnabled || !room.script) return false;
     if (!room.playback.isPlaying) return false;
     const line = room.script.lines.find((l) => l.id === lineId);
@@ -365,7 +387,7 @@ export class RoomStore {
   }
 
   rehearsalResume(roomId: string): boolean {
-    const room = this.rooms.get(roomId);
+    const room = this.getForEvent(roomId);
     if (!room || room.playback.pausedForLineId === null) return false;
     room.rehearsalCooldowns.set(room.playback.pausedForLineId, this.now());
     room.playback = {
@@ -378,7 +400,7 @@ export class RoomStore {
   }
 
   claim(roomId: string, characterId: string, userId: string): boolean {
-    const room = this.rooms.get(roomId);
+    const room = this.getForEvent(roomId);
     if (!room || !room.users.has(userId) || !room.script) return false;
     if (!room.script.characters.some((c) => c.id === characterId)) return false;
     const owner = room.claims.get(characterId);
@@ -388,14 +410,14 @@ export class RoomStore {
   }
 
   release(roomId: string, characterId: string, userId: string): boolean {
-    const room = this.rooms.get(roomId);
+    const room = this.getForEvent(roomId);
     if (!room || room.claims.get(characterId) !== userId) return false;
     room.claims.delete(characterId);
     return true;
   }
 
   setVoice(roomId: string, userId: string, inVoice: boolean, muted: boolean): boolean {
-    const room = this.rooms.get(roomId);
+    const room = this.getForEvent(roomId);
     const user = room?.users.get(userId);
     if (!room || !user) return false;
     user.inVoice = inVoice;
@@ -404,7 +426,7 @@ export class RoomStore {
   }
 
   loadScript(roomId: string, script: SkitScript): string | null {
-    const room = this.rooms.get(roomId);
+    const room = this.getForEvent(roomId);
     if (!room) return 'room not found';
     const error = validateScript(script);
     if (error) return error;
@@ -452,6 +474,22 @@ export class RoomStore {
       ) {
         this.rooms.delete(id);
         removed += 1;
+      }
+    }
+    return removed;
+  }
+
+  /**
+   * Remove rooms that have seen no accepted events for longer than
+   * `maxIdleMs`, even if half-dead sockets are still nominally joined.
+   * Returns the ids of the removed rooms.
+   */
+  sweepIdle(maxIdleMs: number): string[] {
+    const removed: string[] = [];
+    for (const [id, room] of this.rooms) {
+      if (this.now() - room.lastActivityAt > maxIdleMs) {
+        this.rooms.delete(id);
+        removed.push(id);
       }
     }
     return removed;
