@@ -193,6 +193,7 @@ export default function Room({ roomId, name }: { roomId: string; name: string })
               serverNow={serverNow}
               userOffset={userOffset}
               videoPosRef={videoPosRef}
+              onShowScript={() => setMobileTab('script')}
             />
             {state.playback.pausedForLineId && script && (
               <RehearsalBanner
@@ -272,9 +273,9 @@ export default function Room({ roomId, name }: { roomId: string; name: string })
                   })
                 }
               >
-                <option value="show">show</option>
-                <option value="hover">on hover</option>
-                <option value="hide">hide</option>
+                <option value="show">表示 / show</option>
+                <option value="hover">タップ / tap</option>
+                <option value="hide">隠す / hide</option>
               </select>
             </label>
             <label className="toggle offset" title="Shift your local video vs. the room (for different encodes/cuts)">

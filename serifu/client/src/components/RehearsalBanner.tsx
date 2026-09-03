@@ -141,6 +141,9 @@ export default function RehearsalBanner({
           className={
             settings.translation === 'hover' ? 'rb-translation hover-reveal' : 'rb-translation'
           }
+          // Tap (:active) or keyboard focus reveals; hover alone never fires
+          // on phones.
+          tabIndex={settings.translation === 'hover' ? 0 : undefined}
         >
           {line.translation}
         </p>

@@ -129,12 +129,42 @@ await pageB.waitForSelector('.room-header', { timeout: 5000 });
 await pageA.waitForSelector('.chip.user:has-text("Yuki")', { timeout: 5000 });
 check('user B joined; A sees both users', true);
 
+// ---- 3.5 Empty stage: one-line explainer; the 台本へ link is phone-only ----
+const placeholderText = await pageA.textContent('.video-placeholder .muted');
+check('empty stage explainer is one line',
+  (placeholderText ?? '').trim() === 'Nothing uploads — playback just stays in sync.');
+check('台本へ escape link hidden on desktop', !(await pageA.isVisible('.placeholder-script-link')));
+
 // ---- 4. Load the demo script from the empty state ----
 await pageA.click('button:has-text("load demo scene")');
 await pageA.waitForSelector('.script-header h2', { timeout: 5000 });
 await pageB.waitForSelector('.script-header h2', { timeout: 5000 });
 const titleB = await pageB.textContent('.script-header h2');
 check('demo script broadcast to both users', (titleB ?? '').includes('フリーレン'));
+
+// ---- 4.5 訳 reveal: blurred by default, revealed on hover, honest label ----
+const translationLabel = await pageA.$eval(
+  '.settings-row select',
+  (el) => el.selectedOptions[0]?.textContent ?? ''
+);
+check('訳 setting labeled タップ / tap (matches the gesture)', translationLabel.includes('タップ'));
+const blurredFilter = await pageB.$eval(
+  '.line-translation.hover-reveal',
+  (el) => getComputedStyle(el).filter
+);
+check('translations blurred until revealed', blurredFilter.includes('blur'));
+await pageB.hover('.line-translation.hover-reveal >> nth=0');
+const hoverRevealed = await pageB
+  .waitForFunction(
+    () => {
+      const el = document.querySelector('.line-translation.hover-reveal');
+      return el && getComputedStyle(el).filter === 'none';
+    },
+    { timeout: 3000 }
+  )
+  .then(() => true)
+  .catch(() => false);
+check('hovering reveals the translation', hoverRevealed);
 
 // ---- 5. Claim characters ----
 await pageA.click('.char-pill:has-text("ハイター")');

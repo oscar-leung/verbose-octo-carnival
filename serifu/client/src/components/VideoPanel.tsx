@@ -14,6 +14,8 @@ interface Props {
   userOffset: number;
   /** Written by this panel so the rest of the UI can read the video clock. */
   videoPosRef: MutableRefObject<number | null>;
+  /** Phone escape hatch from the empty stage: switch to the 台本 tab. */
+  onShowScript: () => void;
 }
 
 export default function VideoPanel({
@@ -25,6 +27,7 @@ export default function VideoPanel({
   serverNow,
   userOffset,
   videoPosRef,
+  onShowScript,
 }: Props) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const prevPosRef = useRef<number | null>(null);
@@ -163,14 +166,14 @@ export default function VideoPanel({
       ) : (
         <div className="video-placeholder">
           <p>みんなそれぞれ、自分の動画ファイルを開いてね</p>
-          <p className="muted">
-            Everyone opens their own copy of the episode — nothing is uploaded, playback just
-            stays in sync. No file? You can still follow the script and voice chat.
-          </p>
+          <p className="muted">Nothing uploads — playback just stays in sync.</p>
           <label className="file-button primary">
             📁 動画を選ぶ / choose episode file
             <input type="file" accept="video/*,.mkv" onChange={onFile} hidden />
           </label>
+          <button className="placeholder-script-link" onClick={onShowScript}>
+            動画なしでもOK — 台本へ →
+          </button>
         </div>
       )}
       {needsGesture && videoUrl && (

@@ -1281,7 +1281,11 @@ input[type='range'] {
   cursor: pointer;
 }
 
-.hover-reveal:hover {
+/* Reveal on hover (desktop), press (touch), or keyboard focus — "on hover"
+   alone never fires on phones (audit-01 finding 1). */
+.hover-reveal:hover,
+.hover-reveal:active,
+.hover-reveal:focus-visible {
   filter: none;
 }
 
@@ -1457,7 +1461,8 @@ input[type='range'] {
 
 /* Desktop: header carries the tool buttons; the mobile-only blocks hide. */
 .mobile-nav,
-.more-actions {
+.more-actions,
+.placeholder-script-link {
   display: none;
 }
 
@@ -1563,5 +1568,55 @@ input[type='range'] {
 
   input[type='range'] {
     height: 28px;
+  }
+
+  /* Empty stage: a quiet way out for the video-less (audit-01 finding 3). */
+  .placeholder-script-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 42px;
+    background: none;
+    border: none;
+    padding: 4px 12px;
+    color: var(--accent);
+    font-size: 14px;
+  }
+
+  /* Solo practice: keep "✓ said it — next" under the thumb (audit-01 finding 2).
+     Sticky needs the page to be the scroll container, so lift .solo's clip —
+     the night-sky canvas is position: fixed and clips to the viewport anyway. */
+  .solo {
+    overflow: visible;
+  }
+
+  .solo-nav {
+    position: sticky;
+    flex-wrap: nowrap;
+    bottom: 0;
+    background: rgba(22, 26, 34, 0.97);
+    border-top: 1px solid var(--border);
+    margin: 0 -24px; /* bleed across .solo-card padding */
+    padding: 10px 24px calc(10px + env(safe-area-inset-bottom));
+    z-index: 5;
+  }
+
+  .solo-nav button {
+    flex: 1;
+    padding: 8px 10px;
+    white-space: nowrap;
+  }
+
+  /* Hide levels are one difficulty slider, not wrapped pills (audit-01 finding 7). */
+  .hide-levels {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+  }
+
+  .hide-levels .chip {
+    padding: 8px 4px;
+    font-size: 13px;
+    text-align: center;
+    justify-content: center;
   }
 }
