@@ -1,0 +1,1 @@
+if('serviceWorker' in navigator) {window.addEventListener('load', () => {navigator.serviceWorker.register('/verbose-octo-carnival/sw.js', { scope: '/verbose-octo-carnival/' })})}
