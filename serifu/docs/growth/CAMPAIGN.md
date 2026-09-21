@@ -5,7 +5,7 @@ copy comes from growth-marketer; anything only Oscar can do is queued in §3, ne
 marked done until he confirms. Rules that bind everything here: anime-agnostic in
 public, honest and disclosed, no astroturf.
 
-Last updated: 2026-09-03
+Last updated: 2026-09-21
 
 ---
 
@@ -21,12 +21,14 @@ Last updated: 2026-09-03
 | SEO guide #5: furigana practice | `public/guide/furigana-practice.html` | Organic search ("furigana reader", "japanese subtitles with furigana"); pairs with #4; in hub + sitemap | **Shipped** |
 | SEO guide #8: sentence SRS | `public/guide/sentence-srs.html` | Organic search ("sentence srs japanese"); wordbook/Anki-export tie-in; pairs with #10; in hub + sitemap | **Shipped** |
 | SEO guide #10: speech recognition scoring | `public/guide/speech-recognition-japanese.html` | Organic search ("japanese pronunciation checker app"); honest-explainer trust piece; pairs with #8; in hub + sitemap | **Shipped** |
+| SEO guide #2: group shadowing | `public/guide/shadowing-with-friends.html` | Organic search ("shadowing japanese with friends", "group shadowing"); session-format evergreen; in hub + sitemap | **Shipped** |
+| SEO guide #9: immersion tools comparison | `public/guide/immersion-tools-compared.html` | Organic search (high-intent comparison queries); disclosed, competitor-fair; money-path CTA; review quarterly — decays fastest | **Shipped** |
 | Guide hub | `public/guide/index.html` | Hub-and-spoke internal linking | **Shipped** |
 | og-image share card + meta tags | site `<head>` + og image in `public/` | Makes every Reddit/HN/X link unfurl properly — free CTR on all social pushes | **Shipped** |
 | robots.txt + sitemap.xml | `public/robots.txt`, `public/sitemap.xml` | Search Console submission (§3.1). Note: sitemap host must be updated when the custom domain lands | **Shipped** |
 | Store-listing pack (title, descriptions, keywords, shot list) | `docs/growth/store-listing.md` | Play Console listing (§3.6) | **Shipped**, unused until Play Console exists |
 | Launch posts ×4 (r/LearnJapanese, r/languagelearning, Show HN, X thread) | `docs/growth/launch-posts.md` | Community launch sequence (§3.3), one at a time | **Shipped**, awaiting sequence gate |
-| SEO content plan (10 articles; 8 written, 2 remaining: #2 group shadowing, #9 comparison) | `docs/growth/seo-content-plan.md` | Governs guide production; §6 briefs for #4 and #7 fulfilled 2026-09-03 | **Shipped** (plan) |
+| SEO content plan (10 articles; **10/10 written — content wave complete**) | `docs/growth/seo-content-plan.md` | Governed guide production; §6 briefs for #4 and #7 fulfilled 2026-09-03 | **Shipped** (plan complete) |
 | ☕ support-link code (footer, Landing + SoloPractice) | `client/src/components/Landing.tsx:112`, `SoloPractice.tsx:259` | Renders only when `VITE_SUPPORT_URL` is set — dormant until Ko-fi exists (§3.2) | **Shipped, dormant** |
 
 ## 2. Sequencing gates (why nothing else moves yet)
@@ -153,3 +155,10 @@ is our best-tested voice for this feeling.
   all three added to the guide hub and `sitemap.xml`. Content plan now 8/10 shipped;
   remaining: #2 (group shadowing — partially covered by shipped shadowing + watch-party
   guides) and #9 (comparison — hold until closer to launch traffic; decays fastest).
+- 2026-09-21 — growth-marketer shipped the final two articles: #2
+  (`guide/shadowing-with-friends.html`) and the previously held #9 comparison
+  (`guide/immersion-tools-compared.html` — released now that the guide library is
+  complete enough to anchor it; disclosed authorship, fair-to-competitor picks,
+  needs quarterly review). Both added to the guide hub and `sitemap.xml`.
+  **SEO content plan 10/10 — content wave complete.** Remaining guide work is
+  maintenance only (quarterly comparison refresh; host swap on custom domain).
