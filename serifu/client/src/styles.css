@@ -1006,6 +1006,18 @@ input[type='range'] {
   background: rgba(126, 203, 255, 0.08);
 }
 
+/* 暗記/ヒント: the notes fold behind this quiet disclosure so the recall
+   moment isn't answered by its own footnotes (audit-02 finding 5). */
+.notes-peek {
+  align-self: flex-start;
+  min-height: 42px;
+}
+
+.notes-peek small {
+  color: var(--muted);
+  font-weight: 400;
+}
+
 .solo-nav {
   display: flex;
   gap: 8px;
@@ -1179,6 +1191,28 @@ input[type='range'] {
 .episodes-hint {
   margin: 0;
   font-size: 12.5px;
+}
+
+/* Prep/practice counts moved out of the h2 so the header never wraps
+   under the ✕ chip at 390px (audit-02 finding 2). */
+.episodes-count {
+  margin: -4px 0 0;
+  font-size: 12.5px;
+}
+
+/* Season headers double as accordion toggles — Season 2 stays folded
+   until one of its episodes is prepped (audit-02 finding 2). */
+button.season-label {
+  display: block;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  margin: 4px 0 6px;
+  padding: 4px 6px 4px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent);
+  text-align: left;
 }
 
 .episodes-list {
@@ -1389,11 +1423,18 @@ input[type='range'] {
   padding-right: 4px;
 }
 
+/* JP text gets the full row; the translation drops to a second row on all
+   widths — editing a 300-line episode blind inside clipped single-line
+   inputs was the core annotation pain (audit-02 finding 4). */
 .editor-line {
   display: grid;
-  grid-template-columns: 28px 130px 70px 70px minmax(200px, 2fr) minmax(140px, 1.2fr) 30px 30px;
+  grid-template-columns: 28px 130px 70px 70px minmax(300px, 1fr) 30px 30px;
   gap: 6px;
   align-items: center;
+}
+
+.editor-line .translation-input {
+  grid-column: 2 / -1;
 }
 
 .editor-line .line-index {
@@ -1451,11 +1492,7 @@ input[type='range'] {
   }
 
   .editor-line {
-    grid-template-columns: 24px 110px 60px 60px 1fr 30px 30px;
-  }
-
-  .editor-line .translation-input {
-    grid-column: 2 / -1;
+    grid-template-columns: 24px 110px 60px 60px minmax(0, 1fr) 30px 30px;
   }
 }
 
@@ -1648,6 +1685,78 @@ input[type='range'] {
     font-size: 13px;
     text-align: center;
     justify-content: center;
+  }
+
+  /* Every modal becomes a bottom sheet: anchored where the thumb lives,
+     with the backdrop above as the natural swipe-away dismiss zone
+     (audit-02 finding 1). */
+  .modal-backdrop {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .modal {
+    width: 100%;
+    max-height: 88dvh;
+    border-radius: 16px 16px 0 0;
+    border-bottom: none;
+    padding-bottom: calc(16px + env(safe-area-inset-bottom));
+  }
+
+  /* Sheet affordance: a grab handle where the thumb expects one. */
+  .modal::before {
+    content: '';
+    align-self: center;
+    width: 36px;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--border);
+    flex-shrink: 0;
+  }
+
+  /* Solo header: let the scene title wrap to two lines instead of losing
+     its identity between two full-width chips (audit-02 finding 6). */
+  .solo-header .chip {
+    padding: 8px 10px;
+    font-size: 13px;
+  }
+
+  .solo-title {
+    white-space: normal;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    font-size: 15px;
+    line-height: 1.3;
+  }
+
+  /* 名場面 chapters are a jump control, not content: one horizontal
+     snap-scroll row instead of a wrapped bar (audit-02 finding 7). */
+  .scene-bar {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .scene-bar .chip.scene {
+    flex-shrink: 0;
+    scroll-snap-align: start;
+  }
+}
+
+/* Pulsing forever — right through the speaking moment — ignores the OS
+   motion preference (audit-02 finding 9). */
+@media (prefers-reduced-motion: reduce) {
+  .conn-dot.off,
+  .mic-live {
+    animation: none;
+  }
+
+  .solo-bar i {
+    transition: none;
   }
 }
 

@@ -28,6 +28,23 @@ export default function EpisodeBrowser({ currentScript, onLoadScript, onPrepEpis
   const [episodes, setEpisodes] = useState(loadEpisodes);
   const [counts, setCounts] = useState(loadCounts);
   const libraryTitles = new Set(loadLibrary().map((e) => e.title));
+  // Later seasons stay folded until one of their episodes is prepped —
+  // first-time users see one season, not a wall of empty slots
+  // (audit-02 finding 2).
+  const [openSeasons, setOpenSeasons] = useState<Record<number, boolean>>(() => {
+    const eps = loadEpisodes();
+    const lib = new Set(loadLibrary().map((e) => e.title));
+    return Object.fromEntries(
+      SEASONS.map((s) => [
+        s.n,
+        s.n === SEASONS[0]?.n ||
+          Object.entries(eps).some(
+            ([key, m]) =>
+              key.startsWith(`s${s.n}e`) && m.scriptTitle !== undefined && lib.has(m.scriptTitle)
+          ),
+      ])
+    );
+  });
 
   const update = (key: string, meta: EpisodeMeta) => {
     setEpisodes(saveEpisode(key, meta));
@@ -42,23 +59,32 @@ export default function EpisodeBrowser({ currentScript, onLoadScript, onPrepEpis
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal episodes" onClick={(e) => e.stopPropagation()}>
         <header className="modal-header">
-          <h2>
-            話数 / episodes <small className="muted">({prepped} prepped · {practiced} practiced)</small>
-          </h2>
+          <h2>話数 / episodes</h2>
           <button className="chip" onClick={onClose}>
             ✕
           </button>
         </header>
+        <p className="muted episodes-count">
+          {prepped} prepped · {practiced} practiced
+        </p>
         <p className="muted episodes-hint">
-          Serifu ships no episode transcripts — fill each slot by importing that episode's
-          subtitles (README → jimaku.cc), chaptering its 名場面, and saving to your library.
-          Link the current room script to an episode with ⤓.
+          字幕を取り込んで各話を準備してね — import an episode's subs to prep it (README →
+          jimaku.cc).
         </p>
         <div className="episodes-list">
           {SEASONS.map((season) => (
             <section key={season.n}>
-              <h3 className="season-label">{season.label}</h3>
-              {Array.from({ length: counts[season.n] ?? season.defaultCount }, (_, i) => {
+              <button
+                className="season-label"
+                aria-expanded={openSeasons[season.n] ?? false}
+                onClick={() =>
+                  setOpenSeasons((prev) => ({ ...prev, [season.n]: !prev[season.n] }))
+                }
+              >
+                {openSeasons[season.n] ? '▾' : '▸'} {season.label}
+              </button>
+              {(openSeasons[season.n] ?? false) &&
+                Array.from({ length: counts[season.n] ?? season.defaultCount }, (_, i) => {
                 const ep = i + 1;
                 const key = episodeKey(season.n, ep);
                 const meta = episodes[key] ?? { title: '' };
@@ -72,7 +98,7 @@ export default function EpisodeBrowser({ currentScript, onLoadScript, onPrepEpis
                     <input
                       className="ep-title"
                       value={meta.title}
-                      placeholder="episode title (yours to fill)"
+                      placeholder="タイトル / title"
                       onChange={(e) => update(key, { ...meta, title: e.target.value })}
                     />
                     <span className={linked ? 'ep-status ok' : 'ep-status'}>
@@ -128,7 +154,7 @@ export default function EpisodeBrowser({ currentScript, onLoadScript, onPrepEpis
                   </div>
                 );
               })}
-              {season.airing && (
+              {season.airing && (openSeasons[season.n] ?? false) && (
                 <button
                   className="mini add-episode"
                   onClick={() => {

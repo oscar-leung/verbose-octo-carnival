@@ -48,11 +48,17 @@ export default function SoloPractice({ slug, script }: Props) {
   const [attempts, setAttempts] = useState(0);
   const [copied, setCopied] = useState(false);
   const [grammarOpen, setGrammarOpen] = useState(false);
+  // ヒント/暗記: notes fold behind a peek chip so the recall prompt isn't
+  // answered by its own footnotes (audit-02 finding 5).
+  const [notesOpen, setNotesOpen] = useState(false);
   const settings = useMemo(loadSettings, []);
   const listenerRef = useRef<SpeechListener | null>(null);
   const advancedRef = useRef(false);
   const thresholdRef = useRef(threshold);
   thresholdRef.current = threshold;
+
+  // Advancing to another line re-hides the notes.
+  useEffect(() => setNotesOpen(false), [index]);
 
   const line: ScriptLine | undefined = lines[index];
   const char = line ? script.characters.find((c) => c.id === line.character) : undefined;
@@ -155,8 +161,9 @@ export default function SoloPractice({ slug, script }: Props) {
           <div className="solo-done">
             <p className="solo-celebrate">🎉 シーン制覇！ You spoke every line.</p>
             <p className="muted">
-              {passedLines.size} lines in {attempts} attempts. The words and grammar you passed are
-              now in your 習得 mastery tracker.
+              {attempts > 0
+                ? `${passedLines.size} lines · ${attempts} attempts — 習得に記録したよ.`
+                : `${passedLines.size} lines spoken — 習得に記録したよ.`}
             </p>
             <div className="row">
               <button
@@ -247,7 +254,15 @@ export default function SoloPractice({ slug, script }: Props) {
                 ))}
             </div>
 
-            <LearnPanel line={line} compact />
+            {hideLevel >= 2 &&
+            !notesOpen &&
+            ((line.vocab?.length ?? 0) > 0 || (line.grammar?.length ?? 0) > 0) ? (
+              <button className="chip notes-peek" onClick={() => setNotesOpen(true)}>
+                📖 ノートを見る <small>peek notes</small>
+              </button>
+            ) : (
+              <LearnPanel line={line} compact />
+            )}
 
             <div className="solo-nav">
               <button disabled={index === 0} onClick={() => setIndex((i) => Math.max(0, i - 1))}>

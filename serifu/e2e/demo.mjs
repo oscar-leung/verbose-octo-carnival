@@ -277,6 +277,26 @@ await pageA.click('.room-header button:has-text("台本")');
 await pageA.waitForSelector('.editor-line', { timeout: 5000 });
 const editorLines = await pageA.$$eval('.editor-line', (els) => els.length);
 check('editor shows all 12 demo lines', editorLines === 12);
+// Tools follow the real prep flow: ① import → ② annotate → ③ save.
+const toolLabels = await pageA.$$eval('.editor-tools .bar-label', (els) =>
+  els.map((e) => e.textContent ?? '')
+);
+check('editor tools grouped into ①取り込み ②注釈 ③保存 flow rows',
+  toolLabels.some((t) => t.includes('① 取り込み')) &&
+  toolLabels.some((t) => t.includes('② 注釈')) &&
+  toolLabels.some((t) => t.includes('③ 保存')));
+check('auto-furigana promoted to the primary annotate action',
+  await pageA.$eval('.editor-tools button:has-text("auto-furigana")', (el) =>
+    el.classList.contains('primary')));
+// JP text owns the full row; the translation drops to a second row.
+check('editor line: translation input sits on its own row under the JP text',
+  await pageA.evaluate(() => {
+    const line = document.querySelector('.editor-line');
+    if (!line) return false;
+    const jp = line.querySelector('.text-input')?.getBoundingClientRect();
+    const en = line.querySelector('.translation-input')?.getBoundingClientRect();
+    return !!jp && !!en && en.top >= jp.bottom - 1;
+  }));
 await pageA.screenshot({ path: `${SHOTS}/06-editor.png` });
 await pageA.click('.modal-footer button:has-text("cancel")');
 
@@ -339,7 +359,21 @@ await pageA.click('.modal.mastery .modal-header button');
 // ---- 14. Episode browser: both seasons slotted, link current script ----
 await pageB.click('.room-header button:has-text("話数")');
 await pageB.waitForSelector('.episode-row', { timeout: 5000 });
-const epNums = await pageB.$$eval('.episode-row .ep-num', (els) => els.map((e) => e.textContent));
+// Header slimmed down: counts moved out of the h2, hint cut to one line.
+check('episodes: h2 is just 話数 / episodes, counts on their own muted line',
+  ((await pageB.textContent('.modal.episodes h2')) ?? '').trim() === '話数 / episodes' &&
+  ((await pageB.textContent('.episodes-count')) ?? '').includes('prepped'));
+check('episodes: hint is one bilingual line',
+  ((await pageB.textContent('.episodes-hint')) ?? '').trim().startsWith('字幕を取り込んで'));
+check('episodes: row title placeholder is bilingual タイトル / title',
+  (await pageB.getAttribute('.episode-row .ep-title', 'placeholder')) === 'タイトル / title');
+// Season 2 stays folded until one of its episodes is prepped.
+let epNums = await pageB.$$eval('.episode-row .ep-num', (els) => els.map((e) => e.textContent));
+check('episodes: Season 2 collapsed behind its label until prepped',
+  epNums.includes('S1E1') && !epNums.includes('S2E1'));
+await pageB.click('button.season-label:has-text("Season 2")');
+await pageB.waitForSelector('.episode-row .ep-num:text-is("S2E1")', { timeout: 3000 });
+epNums = await pageB.$$eval('.episode-row .ep-num', (els) => els.map((e) => e.textContent));
 check('episode browser lists Season 1 and Season 2 slots',
   epNums.includes('S1E1') && epNums.includes('S1E28') && epNums.includes('S2E1'));
 // Link the room's current script to S1E1 (⤓), status flips to 台本あり
@@ -366,6 +400,27 @@ check('solo: passing a spoken line advances to the next', true);
 await pageA.click('.hide-levels .chip:has-text("暗記")');
 const hiddenJp = await pageA.textContent('.solo-line .jp');
 check('solo: 暗記 hide level masks the line', (hiddenJp ?? '').includes('＿'));
+// 暗記/ヒント fold the notes behind a peek chip — the recall prompt must
+// not be answered by its own vocab/grammar footnotes.
+check('solo 暗記: notes collapsed behind 📖 peek chip (no answer leak)',
+  !(await pageA.isVisible('.solo-line .learn')) &&
+  (await pageA.isVisible('.notes-peek')));
+await pageA.click('.notes-peek');
+await pageA.waitForSelector('.solo-line .learn .vocab-chip', { timeout: 3000 });
+check('solo 暗記: peek chip expands the notes on demand', true);
+await pageA.click('.solo-nav button:has-text("✓")');
+await pageA.waitForSelector('.notes-peek', { timeout: 3000 });
+check('solo 暗記: notes auto-collapse on line advance', true);
+// Finish the scene with ✓ (the documented no-mic fallback) to reach the
+// completion screen; the copy must stay honest about attempts.
+for (let i = 0; i < 12; i++) {
+  if (await pageA.isVisible('.solo-done')) break;
+  await pageA.click('.solo-nav button:has-text("✓")').catch(() => {});
+}
+await pageA.waitForSelector('.solo-done', { timeout: 5000 });
+const doneText = (await pageA.textContent('.solo-done .muted')) ?? '';
+check('solo completion: 習得に記録したよ copy, no arithmetic brag paragraph',
+  doneText.includes('習得に記録したよ') && !doneText.includes('mastery tracker'));
 
 // ---- 16. Session restore: a snapshot revives a server-wiped room ----
 // A real mid-suite server restart is impractical, so emulate the user
