@@ -135,10 +135,43 @@ check('solo: hide levels render as one four-column row', await page.evaluate(() 
   );
 }));
 await page.screenshot({ path: `${SHOTS}/m4-solo.png` });
+check('solo: title may wrap instead of truncating (no nowrap ellipsis)', await page.evaluate(() => {
+  const t = document.querySelector('.solo-title');
+  return t !== null && getComputedStyle(t).whiteSpace === 'normal';
+}));
+// 暗記: the notes fold behind a thumb-sized peek chip so the recall
+// moment isn't answered by its own footnotes.
+await page.click('.hide-levels .chip:has-text("暗記")');
+await page.waitForSelector('.notes-peek');
+check('solo 暗記: notes hidden behind a ≥42px 📖 peek chip', await page.evaluate(() => {
+  const c = document.querySelector('.notes-peek');
+  return (
+    c !== null &&
+    c.getBoundingClientRect().height >= 42 &&
+    !document.querySelector('.solo-line .learn')
+  );
+}));
 
 // ---- 文法さくいん: reachable from the その他 tab on phones ----
 await page.goto(`${BASE}/#/r/gidx${Date.now().toString(36)}`);
 await page.waitForSelector('.mobile-nav');
+
+// ---- 名場面 chapter bar: one snap-scroll row, not a wrapped pile ----
+await page.click('.mnav-btn:has-text("台本")');
+await page.waitForSelector('.scene-list');
+await page.click('.scene-btn:has-text("名場面集")');
+await page.waitForSelector('.scene-bar');
+check('script tab: 名場面 bar is a single horizontal snap-scroll row', await page.evaluate(() => {
+  const bar = document.querySelector('.scene-bar');
+  if (!bar) return false;
+  const cs = getComputedStyle(bar);
+  const tops = [...bar.querySelectorAll('.chip.scene')].map((c) =>
+    Math.round(c.getBoundingClientRect().top)
+  );
+  return cs.flexWrap === 'nowrap' && cs.overflowX === 'auto' && new Set(tops).size === 1;
+}));
+check('script tab: scene bar adds no page overflow', await noHScroll());
+
 await page.click('.mnav-btn:has-text("その他")');
 await page.waitForSelector('.more-actions');
 check(
@@ -153,10 +186,66 @@ check('grammar rows are ≥42px touch targets', await page.evaluate(() => {
   const r = document.querySelector('.gi-row');
   return r && r.getBoundingClientRect().height >= 42;
 }));
+// Modals are bottom sheets on phones: anchored to the bottom edge,
+// full width, rounded top, with a grab-handle affordance.
+check('phone modal is a bottom sheet (anchored, full width, rounded top)',
+  await page.evaluate(() => {
+    const bd = document.querySelector('.modal-backdrop');
+    const m = document.querySelector('.modal');
+    if (!bd || !m) return false;
+    const r = m.getBoundingClientRect();
+    const cs = getComputedStyle(m);
+    return (
+      getComputedStyle(bd).alignItems === 'flex-end' &&
+      Math.abs(r.bottom - window.innerHeight) <= 1 &&
+      r.width >= window.innerWidth - 1 &&
+      cs.borderTopLeftRadius === '16px' &&
+      cs.borderBottomLeftRadius === '0px'
+    );
+  }));
+check('bottom sheet carries a grab handle', await page.evaluate(() => {
+  const m = document.querySelector('.modal');
+  return m !== null && getComputedStyle(m, '::before').height === '4px';
+}));
 await page.screenshot({ path: `${SHOTS}/m5-grammar-index.png` });
 await page.click('.modal.grammar-index .modal-header button');
 await page.waitForSelector('.modal.grammar-index', { state: 'detached', timeout: 3000 });
 check('grammar index closes', true);
+
+// ---- 話数 episodes sheet at 390px: slim header, short hint, folded S2 ----
+await page.click('.more-actions button:has-text("話数")');
+await page.waitForSelector('.modal.episodes .episode-row');
+check('話数: one-line h2 clear of the ✕, counts + hint on muted lines',
+  ((await page.textContent('.modal.episodes h2')) ?? '').trim() === '話数 / episodes' &&
+    (await page.isVisible('.episodes-count')) &&
+    ((await page.textContent('.episodes-hint')) ?? '').trim().startsWith('字幕を取り込んで'));
+check('話数: Season 2 folded behind a ≥42px season toggle', await page.evaluate(() => {
+  const toggle = [...document.querySelectorAll('button.season-label')].find((b) =>
+    (b.textContent ?? '').includes('Season 2')
+  );
+  const nums = [...document.querySelectorAll('.ep-num')].map((e) => e.textContent ?? '');
+  return (
+    toggle !== undefined &&
+    toggle.getBoundingClientRect().height >= 42 &&
+    nums.includes('S1E1') &&
+    !nums.includes('S2E1')
+  );
+}));
+check('話数: episode rows fit 390px — no horizontal scroll', await noHScroll());
+await page.screenshot({ path: `${SHOTS}/m6-episodes-sheet.png` });
+await page.click('.modal.episodes .modal-header button');
+await page.waitForSelector('.modal.episodes', { state: 'detached', timeout: 3000 });
+
+// ---- prefers-reduced-motion: the pulse animations must stop ----
+await page.emulateMedia({ reducedMotion: 'reduce' });
+check('prefers-reduced-motion disables the pulse animations', await page.evaluate(() => {
+  const el = document.createElement('span');
+  el.className = 'mic-live';
+  document.body.appendChild(el);
+  const name = getComputedStyle(el).animationName;
+  el.remove();
+  return name === 'none';
+}));
 
 console.log('---');
 for (const [label, ok] of results) if (!ok) console.log('FAILED:', label);

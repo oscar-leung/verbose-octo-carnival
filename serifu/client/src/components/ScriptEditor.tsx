@@ -373,14 +373,17 @@ export default function ScriptEditor({ script: roomScript, initialScript, action
           </button>
         </header>
 
+        {/* The prep flow has an order — import → annotate → save — so the
+            tools show it instead of hiding it in one pile (audit-02 finding 3). */}
         <div className="editor-tools">
-          <input
-            className="title-input"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="scene title"
-            maxLength={200}
-          />
+          <span className="bar-label">① 取り込み / import</span>
+          <label className="file-button">
+            import .srt / .ass / .vtt / .json
+            <input type="file" accept=".srt,.vtt,.ass,.ssa,.json,.txt" onChange={onImportFile} hidden />
+          </label>
+          <button onClick={() => setPasteOpen((v) => !v)}>
+            {pasteOpen ? 'hide paste box' : 'paste subtitles'}
+          </button>
           <select
             value=""
             onChange={(e) => {
@@ -398,14 +401,12 @@ export default function ScriptEditor({ script: roomScript, initialScript, action
               </option>
             ))}
           </select>
-          <label className="file-button">
-            import .srt / .ass / .vtt / .json
-            <input type="file" accept=".srt,.vtt,.ass,.ssa,.json,.txt" onChange={onImportFile} hidden />
-          </label>
-          <button onClick={() => setPasteOpen((v) => !v)}>
-            {pasteOpen ? 'hide paste box' : 'paste subtitles'}
-          </button>
+        </div>
+
+        <div className="editor-tools">
+          <span className="bar-label">② 注釈 / annotate</span>
           <button
+            className="primary"
             disabled={furiProgress !== null}
             onClick={() => void autoFurigana()}
             title="add readings to every line that has none (dictionary loads from CDN on first use)"
@@ -423,11 +424,10 @@ export default function ScriptEditor({ script: roomScript, initialScript, action
             s
             <button onClick={applyShift}>apply</button>
           </span>
-          <button onClick={exportJson}>export JSON</button>
         </div>
 
-        <div className="editor-library">
-          <span className="bar-label">エピソード書庫</span>
+        <div className="editor-tools editor-library">
+          <span className="bar-label">③ 保存 / save</span>
           <select value={libSelection} onChange={(e) => setLibSelection(e.target.value)}>
             <option value="">— saved episodes ({library.length}) —</option>
             {library.map((entry) => (
@@ -443,6 +443,14 @@ export default function ScriptEditor({ script: roomScript, initialScript, action
             ✕
           </button>
           <button onClick={saveCurrentToLibrary}>save current</button>
+          <button onClick={exportJson}>export JSON</button>
+          <input
+            className="title-input"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="scene title"
+            maxLength={200}
+          />
           {notice && <span className="muted">{notice}</span>}
         </div>
 
